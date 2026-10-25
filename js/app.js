@@ -1002,6 +1002,9 @@ function setGroupVisibility(ids, key, on) {
     on ? state.groups.delete(key) : state.groups.add(key);
     syncLayerVisibility(id);
   });
+  allOverlays().forEach(w => {
+    if (w.cogState) ensurePendingCogLayer(w);
+  });
   initializeVisibleCogControls();
   updateArcgisLegendInView();
 }
@@ -4482,6 +4485,13 @@ function addRasterLayer(w, beforeId, isBasemap = false) {
     : { type: 'raster', tileSize: w.tileSize || 256, tiles: Array.isArray(w.tiles) ? w.tiles : [overlayTileUrl(w)] };
   if (w.attribution) source.attribution = w.attribution;
   if (Number.isFinite(w.maxzoom)) source.maxzoom = w.maxzoom;
+  if (w.cog && !isBasemap) {
+    w.cogState.pendingSource = source;
+    w.cogState.pendingBeforeId = beforeId;
+    registerLayerVisibility(w.id, w.visible === true, overlayInitiallyInTheme(w));
+    ensurePendingCogLayer(w);
+    return;
+  }
   map.addSource(w.id, source);
   const layer = {
     id: w.id, type: 'raster', source: w.id,
@@ -4536,6 +4546,27 @@ function addHillshadeLayer(model, beforeId, visible) {
   if (beforeId && map.getLayer(beforeId)) map.addLayer(layer, beforeId);
   else map.addLayer(layer);
   if (layerVisibility.has('hillshade')) syncLayerVisibility('hillshade');
+}
+function ensurePendingCogLayer(w) {
+  const cogState = w.cogState;
+  const visibility = layerVisibility.get(w.id);
+  if (!cogState?.pendingSource || !visibility?.selected || !visibility.inTheme ||
+      visibility.groups.size || map.getLayer(w.id)) return false;
+  if (!map.getSource(w.id)) map.addSource(w.id, cogState.pendingSource);
+  const layer = {
+    id: w.id,
+    type: 'raster',
+    source: w.id,
+    layout: { visibility: 'none' },
+    paint: { 'raster-opacity': w.opacity ?? 1 }
+  };
+  if (Number.isFinite(w.minzoom)) layer.minzoom = w.minzoom;
+  if (Number.isFinite(w.maxzoom)) layer.maxzoom = w.maxzoom;
+  const beforeId = map.getLayer(cogState.pendingBeforeId) ? cogState.pendingBeforeId : undefined;
+  map.addLayer(layer, beforeId);
+  cogState.pendingSource = null;
+  syncLayerVisibility(w.id);
+  return true;
 }
 const CONTOUR_SOURCE_ID = 'dtm-contour-source';
 const CONTOUR_LINE_ID = 'dtm-contour-lines';
@@ -5070,6 +5101,7 @@ function buildOverlayLegend() {
         } else if (w.cogState) {
           w.cogState.visible = on;
           syncCogLayerMode(w);
+          if (on) ensurePendingCogLayer(w);
           initializeVisibleCogControls();
           if (cursorPosition) scheduleCogCursorValues(cursorPosition);
         } else setVis(layerIds, on);
@@ -5079,6 +5111,10 @@ function buildOverlayLegend() {
       if (!w.global) ctl.ov[w.id] = {
         theme: on => {
           setThemeVisibility(layerIds, on);
+          if (on && w.cogState) {
+            ensurePendingCogLayer(w);
+            initializeVisibleCogControls();
+          }
           if (on) ensureOverlaySymbology(w);
         },
         set: setOverlayVisibility,

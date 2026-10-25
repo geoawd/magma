@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 
+const startupCogRequests = new WeakMap();
+
 test.beforeEach(async ({ page }) => {
+  const cogRequests = [];
+  startupCogRequests.set(page, cogRequests);
+  page.on('request', request => {
+    if (/\.tiff?(?:$|[?#])/i.test(request.url())) cogRequests.push(request.url());
+  });
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
   await page.goto('/');
   await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
@@ -23,6 +30,36 @@ test('app title and main landmark identify Sliabh Data', async ({ page }) => {
   await expect(page).toHaveTitle('Sliabh Data');
   await expect(page.getByRole('main')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Select by box' })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('inactive-theme COGs do not make byte-range requests at startup', async ({ page }) => {
+  await page.waitForTimeout(500);
+  const overlayCogPaths = await page.evaluate(() => window.CONFIG.overlays
+    .filter(overlay => typeof overlay.cog === 'string')
+    .map(overlay => new URL(overlay.cog, location.href).pathname));
+  const requests = startupCogRequests.get(page).filter(url => overlayCogPaths.includes(new URL(url).pathname));
+  expect(requests).toEqual([]);
+});
+
+test('a COG source is created when its active-theme layer is enabled', async ({ page }) => {
+  const cogId = await page.evaluate(() => {
+    window.MaplibreCOGProtocol.getCogMetadata = async () => ({
+      bitsPerSample: [8, 8, 8],
+      images: [{ isMask: false, zoom: 0 }]
+    });
+    return window.CONFIG.overlays.find(overlay => overlay.name === 'Aluminium Al % DL = 0.01').id;
+  });
+  let rangeRequests = 0;
+  await page.route(/Aluminium.*\.tif/i, async route => {
+    rangeRequests++;
+    await route.continue();
+  });
+
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Tellus Geochemistry' });
+  const aluminium = page.getByRole('checkbox', { name: /^Aluminium Al %/ });
+  await aluminium.check();
+  await expect.poll(() => page.evaluate(id => !!window.__mapInstance?.getSource(id), cogId)).toBe(true);
+  await expect.poll(() => rangeRequests).toBeGreaterThan(0);
 });
 
 test('OpenStreetMap basemap remains visible independently of theme membership', async ({ page }) => {
