@@ -14,7 +14,7 @@
   #sessionRestoreDialog p { margin: 0 0 18px; color: var(--muted); }
   .session-restore-actions { display: grid; gap: 8px; }
   .session-restore-actions button { min-height: 40px; text-align: left; }
-  #notificationDialog { width: min(520px, calc(100vw - 32px)); max-height: min(90dvh, 760px); border: 1px solid var(--line); border-radius: 8px; padding: 0; color: var(--ink); box-shadow: 0 8px 32px rgba(0,0,0,.28); }
+  #notificationDialog { width: min(520px, calc(100vw - 32px)); max-height: min(90dvh, 760px); overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 0; color: var(--ink); box-shadow: 0 8px 32px rgba(0,0,0,.28); }
   #notificationDialog::backdrop { background: rgba(14,22,28,.58); }
   #geojsonStyleDialog { width: min(520px, calc(100vw - 32px)); max-height: min(90dvh, 760px); overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 20px; color: var(--ink); box-shadow: 0 8px 32px rgba(0,0,0,.28); }
   #geojsonStyleDialog::backdrop { background: rgba(14,22,28,.58); }
@@ -38,7 +38,7 @@
   .geojson-style-actions { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px; margin-top: 10px; }
   .geojson-style-actions button { min-height: 34px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); cursor: pointer; }
   .geojson-style-actions button.primary { background: var(--sec); color: #fff; }
-  #notificationForm { display: grid; max-height: min(90dvh, 760px); gap: 10px; overflow-y: auto; padding: 18px; }
+  #notificationForm { display: grid; gap: 10px; padding: 18px; }
   #notificationForm h2 { margin: 0; font-size: 18px; }
   #notificationLocation { margin: 0; padding: 7px 9px; border: 1px solid var(--line); border-radius: 4px; background: #f3f4f5; font-variant-numeric: tabular-nums; }
   #notificationFields { display: grid; gap: 8px; }
@@ -331,8 +331,9 @@
   .cog-ramp-picker { position: relative; min-width: 0; }
   .cog-ramp-picker-button { display: flex; width: 100%; align-items: center; gap: 8px; padding: 4px 7px; border: 1px solid #8a949e; border-radius: 4px; background: #fff; color: inherit; text-align: left; }
   .cog-ramp-picker-button::after { width: 7px; height: 7px; margin-left: auto; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; content: ''; transform: rotate(45deg) translateY(-2px); }
-  .cog-ramp-current-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cog-ramp-preview { display: inline-block; width: 76px; height: 13px; flex: none; border: 1px solid #65717a; border-radius: 2px; background: linear-gradient(90deg, #eee, #aaa); }
+  .cog-ramp-picker-button .cog-ramp-preview { width: auto; flex: 1; }
+  .cog-ramp-option .cog-ramp-preview { width: 100%; height: 16px; }
   .cog-ramp-preview-none { background: repeating-linear-gradient(135deg, #fff, #fff 4px, #d7dce0 4px, #d7dce0 8px); }
   .cog-ramp-options { position: absolute; z-index: 10; top: calc(100% + 3px); right: 0; left: 0; max-height: 190px; overflow-y: auto; padding: 3px; border: 1px solid #8a949e; border-radius: 4px; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .22); }
   .cog-ramp-options[hidden] { display: none; }

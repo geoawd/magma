@@ -622,6 +622,37 @@ test('Tellus Geophysics exposes its raster groups and toggles a COG layer', asyn
   )).toBe(true);
 });
 
+test('Tellus Geophysics ramp dropdown shows color previews without visible names', async ({ page }) => {
+  await page.evaluate(() => {
+    window.MaplibreCOGProtocol.getCogMetadata = async () => ({
+      bitsPerSample: [16],
+      bbox: [-8, 54, -7, 55],
+      images: [{ isMask: false, zoom: 0 }]
+    });
+    window.MaplibreCOGProtocol.locationValues = async (_url, point) => [point.longitude];
+  });
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Tellus Geophysics' });
+  const magnetics = page.getByRole('checkbox', { name: 'Magnetics Residual', exact: true });
+  await magnetics.check();
+  const row = magnetics.locator('xpath=ancestor::*[@data-order-key][1]');
+  await page.getByRole('button', { name: 'Advanced mode' }).click();
+  await row.locator('.tbtn[aria-label^="Transparency"]').click();
+
+  const picker = row.locator('.cog-ramp-picker-button');
+  await expect(picker).toBeVisible();
+  await expect(picker).toHaveText('');
+  await expect(picker).toHaveAttribute('aria-label', /^Color ramp: /);
+  await picker.click();
+  const options = row.locator('.cog-ramp-option');
+  await expect(options.first()).toBeVisible();
+  const visualOptions = await options.evaluateAll(elements => elements.map(option => ({
+    text: option.textContent.trim(),
+    label: option.getAttribute('aria-label'),
+    preview: getComputedStyle(option.querySelector('.cog-ramp-preview')).backgroundImage
+  })));
+  expect(visualOptions.every(option => !option.text && option.label && option.preview !== 'none')).toBe(true);
+});
+
 test('Tellus Geochemistry samples only the COG layer that is enabled', async ({ page }) => {
   await page.route('https://data.better-open-data.com/**', route => route.abort());
   await page.evaluate(() => {

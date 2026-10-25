@@ -26,6 +26,10 @@ test('configured map notifications are advanced-only and collect a six-digit gri
 
   const dialog = page.getByRole('dialog', { name: 'Borehole notification' });
   await expect(dialog).toBeVisible();
+  await expect.poll(() => dialog.evaluate(element => {
+    const form = element.querySelector('#notificationForm');
+    return [getComputedStyle(element).overflowY, getComputedStyle(form).overflowY];
+  })).toEqual(['auto', 'visible']);
   await expect(page.locator('#notificationLocation')).toContainText(/Irish Grid E \d{6} N \d{6}/);
   await expect(page.getByLabel('Borehole name or ID')).toBeVisible();
   await expect(page.getByLabel('Type')).toBeVisible();

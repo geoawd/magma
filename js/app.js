@@ -4318,9 +4318,7 @@ function initializeCogRampControls(w, panel, legend) {
     rampButton.setAttribute('aria-expanded', 'false');
     const currentPreview = document.createElement('span');
     currentPreview.className = 'cog-ramp-preview';
-    const currentName = document.createElement('span');
-    currentName.className = 'cog-ramp-current-name';
-    rampButton.append(currentPreview, currentName);
+    rampButton.append(currentPreview);
     const options = document.createElement('div');
     options.className = 'cog-ramp-options';
     options.setAttribute('role', 'listbox');
@@ -4332,13 +4330,13 @@ function initializeCogRampControls(w, panel, legend) {
       option.className = 'cog-ramp-option';
       option.setAttribute('role', 'option');
       option.setAttribute('aria-selected', String(name === state.ramp));
-      const label = document.createElement('span');
-      label.textContent = name || 'None (grayscale)';
+      option.setAttribute('aria-label', name || 'None (grayscale)');
       const preview = document.createElement('span');
       preview.className = 'cog-ramp-preview';
       if (name) preview.style.backgroundImage = `linear-gradient(to right, ${COG_RAMP_COLORS[name].join(', ')})`;
       else preview.classList.add('cog-ramp-preview-none');
-      option.append(label, preview);
+      // Add a visible text span before the preview here to restore ramp names.
+      option.append(preview);
       options.appendChild(option);
       option.onclick = () => {
         state.ramp = name;
@@ -4427,11 +4425,10 @@ function initializeCogRampControls(w, panel, legend) {
         : '';
     };
     function updateRampPicker() {
-      currentName.textContent = state.ramp || 'None (grayscale)';
       setPreview(currentPreview, state.ramp);
       optionButtons.forEach((option, index) =>
         option.setAttribute('aria-selected', String(rampNames[index] === state.ramp)));
-      rampButton.setAttribute('aria-label', `Color ramp: ${currentName.textContent}`);
+      rampButton.setAttribute('aria-label', `Color ramp: ${state.ramp || 'None (grayscale)'}`);
     }
     function closeRampPicker() {
       options.hidden = true;
@@ -4913,7 +4910,7 @@ function allOverlays() {   // configured overlays + the built-in hillshade
   if (t && terrainModels.length && t.contours !== false && window.MaplibreCOGProtocol && window.mlcontour)
     list.push({ id: CONTOUR_LINE_ID, layerIds: [CONTOUR_LINE_ID, CONTOUR_LABEL_ID], name: contourSettings?.name || 'Contours', group: t.group || 'Terrain', contours: true, builtin: true, global: true, visible: contoursVisible, opacity: contourOpacity, info: contourSettings?.info });
   if (t && terrainModels.length && t.hillshade !== false && window.MaplibreCOGProtocol)
-    list.push({ id: 'hillshade', name: t.hillshadeName || 'Hillshade (DTM)', group: t.group || 'Terrain', hillshade: true, builtin: true, global: t.allThemes !== false, visible: !!t.hillshadeVisible, opacity: 1, info: t.info });
+    list.push({ id: 'hillshade', name: t.hillshadeName || 'Hillshade', group: t.group || 'Terrain', hillshade: true, builtin: true, global: t.allThemes !== false, visible: !!t.hillshadeVisible, opacity: 1, info: t.info });
   if (t && terrainModels.length && window.MaplibreCOGProtocol)
     list.push({ id: 'terrain3d', name: '3D terrain', group: t.group || 'Terrain', terrain: true, builtin: true, global: true });
   return list;
