@@ -1,0 +1,14 @@
+{
+  "version": 8,
+  "name": "MAGMA",
+  "sources": {},
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f8f9fa"
+      }
+    }
+  ]
+}

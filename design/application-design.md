@@ -25,7 +25,7 @@ Shared links take precedence over the saved-session prompt. Map-view hashes in `
 - `js/config-loader.js`: loads the public profile by default, or the internal profile when opened with `?profile=internal`.
 - `config/config_geomaterials.js`: `window.GEOMATERIALS_CONFIG` for the JSON-backed Geomaterials theme: data paths, schemas, filters, links, popups, and depth symbology.
 - `config/*.json`: MapLibre styles and deployment/link configuration.
-- `data/layers.pmtiles`: vector tile archive used by the configured styles.
+- PMTiles archives are optional and configured per vector dataset; no local archive is required by the current public profile.
 - `data/geomaterials/*.json`: Geomaterials tables. Each file contains an array at the configured `dataKey`.
 - `js/`: startup/style merging and map application behavior.
 - `css/app.css`: application and panel styling.
@@ -63,7 +63,7 @@ Edit the profile config to change its map-wide setup: `config/config.js` for pub
 
 For example, Geomaterials currently uses `groups: ['Geology WMS']`. That named theme supplies its configured WMS overlay IDs to Geomaterials. Borehole depth and Quick Filters/Results Table remain Geomaterials-specific groups at the top of the layer panel.
 
-MapLibre style JSON files reference the vector tiles. If a style is moved, update its path in `datasets`; keep `pmtiles` pointed at `data/layers.pmtiles`.
+The public profile's `config/style.json` supplies the MapLibre background style; configured raster and GeoJSON overlays provide its map content. Optional vector datasets can supply their own MapLibre style and PMTiles archive through `datasets`.
 
 ## Geomaterials JSON Data
 

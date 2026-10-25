@@ -1972,7 +1972,6 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
     { label: 'Contact', path: 'properties.contacts[0].organization' },
     { label: 'Email', path: 'properties.contacts[0].emails[0].value', format: 'email' }
   ],
-  classToggles: { '*': true, 'Geology (Digital 10K)': false },   // tick boxes on each class, per layer ('*' = default). false = classes are shown as a key only; the layer's own box still controls it
   legendInView: 12,           // layers with more classes than this only list the classes present in the map view (0 = always list all)
   legendOther: false,         // true = also list the 'fallback' colour of a class-coloured layer as "Other"
   collapseLayers: false,      // true = start with each layer's classes collapsed
@@ -2018,12 +2017,6 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
 ///////////////////////////////////////////////////////////////////////////
 //  Nice Legend Labels - might remove these when the pmtiles style.json is configured
 ///////////////////////////////////////////////////////////////////////////
-
-  legendLabels: {
-    Boreholes_rule0: '0 – 5 m', Boreholes_rule2_3: '5 – 10 m', Boreholes_rule4_5: '10 – 20 m',
-    Boreholes_rule6_7: '20 – 100 m', Boreholes_rule8_9: '> 100 m',
-    Site_Reports_rule0: 'Site reports'
-  },
 
 ///////////////////////////////////////////////////////////////////////////
 //  Terrain Models

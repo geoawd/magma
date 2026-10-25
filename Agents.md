@@ -2,7 +2,7 @@
 
 ## What this project is
 
-This repository contains a static, browser-based map viewer for Northern Ireland geology and site-investigation data. It uses MapLibre GL JS, PMTiles, and configuration-driven vector, raster, and JSON-backed themes. There is no bundler or build step; most third-party browser libraries are loaded from CDNs.
+This repository contains a static, browser-based map viewer for Northern Ireland geology and site-investigation data. It uses MapLibre GL JS and configuration-driven raster and JSON-backed themes; PMTiles remains supported for optional vector datasets. There is no bundler or build step; most third-party browser libraries are loaded from CDNs.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ The server opens the app in a browser on port 8000 by default. Use `python3 serv
 - `js/json-theme-runtime.js` loads JSON theme modules and data, builds map features, and provides shared JSON-theme filtering and geometry helpers.
 - `config/config_*.js` contains per-theme JSON configuration. These modules are loaded dynamically when their themes are selected.
 - `config/*.json` contains MapLibre styles and deployment/link metadata.
-- `data/layers.pmtiles` is the vector tile archive used by the configured styles. JSON records live under `data/geomaterials/`, `data/site-investigations/`, and `data/test-deployment/`.
+- JSON records live under `data/geomaterials/`, `data/site-investigations/`, and `data/test-deployment/`. PMTiles archives are optional and configured per vector dataset.
 - `css/app.css` styles the interface. `design/application-design.md` documents map and JSON-theme behavior in more detail.
 
 ## Configuration and data conventions
