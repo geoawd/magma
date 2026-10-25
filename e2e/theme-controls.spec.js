@@ -62,6 +62,61 @@ test('a COG source is created when its active-theme layer is enabled', async ({ 
   await expect.poll(() => rangeRequests).toBeGreaterThan(0);
 });
 
+test('selecting a range-enabled DEM updates the visible hillshade source', async ({ page }) => {
+  await page.getByRole('button', { name: 'Advanced mode' }).click();
+  await page.locator('.terrain-tools').click();
+  const modelId = 'Ardtole_DTM';
+  const sourceId = await page.evaluate(id =>
+    `dtm-hillshade-${window.CONFIG.terrain.models.findIndex(model => model.id === id)}`, modelId);
+  const rangeResponse = page.waitForResponse(response =>
+    response.url().includes('/Ardtole_DTM.tif') && response.status() === 206, { timeout: 20_000 });
+
+  await page.locator('.terrain-model').selectOption(modelId);
+  await expect.poll(() => page.evaluate(id =>
+    window.__mapInstance?.getLayer('hillshade')?.source === id, sourceId)).toBe(true);
+  await expect.poll(() => page.evaluate(() =>
+    window.__mapInstance?.getLayoutProperty('hillshade', 'visibility'))).toBe('visible');
+  await rangeResponse;
+  const extentCenter = await page.evaluate(async id => {
+    const model = window.CONFIG.terrain.models.find(item => item.id === id);
+    const { bbox } = await window.MaplibreCOGProtocol.getCogMetadata(new URL(model.cog, location.href).href);
+    return [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2];
+  }, modelId);
+  await expect.poll(() => page.evaluate(center =>
+    window.__mapInstance.getBounds().contains(center), extentCenter)).toBe(true);
+  await expect.poll(() => page.evaluate(() =>
+    window.__mapInstance.getZoom())).toBeGreaterThan(8);
+});
+
+test('terrain refuses a DEM server that ignores byte-range requests', async ({ page }) => {
+  let requests = 0;
+  await page.route(/Ardquin_DTM\.tif/i, async route => {
+    requests++;
+    await route.fulfill({
+      status: 200,
+      headers: { 'access-control-allow-origin': '*' },
+      body: 'range requests are not supported'
+    });
+  });
+  const osm = page.getByRole('checkbox', { name: 'OpenStreetMap' });
+  await osm.uncheck();
+  await osm.check();
+  await page.getByRole('button', { name: 'Advanced mode' }).click();
+  await page.locator('.terrain-tools').click();
+  await page.locator('.terrain-model').selectOption('Ardquin_DTM');
+
+  await expect.poll(() => page.locator('.terrain-model').inputValue()).toBe('10m');
+  const defaultSourceId = await page.evaluate(() => {
+    const models = window.CONFIG.terrain.models;
+    const defaultId = window.CONFIG.terrain.defaultModel || models[0].id;
+    return `dtm-hillshade-${models.findIndex(model => model.id === defaultId)}`;
+  });
+  expect(await page.evaluate(id =>
+    window.__mapInstance?.getLayer('hillshade')?.source, defaultSourceId)).toBe(defaultSourceId);
+  expect(requests).toBe(1);
+  await expect(page.getByText(/refusing to download the full DEM/i)).toBeVisible();
+});
+
 test('OpenStreetMap basemap remains visible independently of theme membership', async ({ page }) => {
   const osm = page.getByRole('checkbox', { name: 'OpenStreetMap' });
   await expect(osm).toBeChecked();

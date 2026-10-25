@@ -4524,6 +4524,43 @@ function configuredTerrainModels() {
 }
 const terrainModels = configuredTerrainModels();
 let activeTerrainModel = null, terrainLayerBeforeId = null;
+const terrainRangeChecks = new Map();
+const terrainRangeVerified = new Set();
+function verifyTerrainRangeSupport(model) {
+  const url = new URL(model.cog, location.href).href;
+  if (!terrainRangeChecks.has(url)) {
+    let tracked;
+    const pending = (async () => {
+      const controller = new AbortController();
+      try {
+        const response = await fetch(url, {
+          headers: { Range: 'bytes=0-0' },
+          signal: controller.signal
+        });
+        if (response.status !== 206) {
+          controller.abort();
+          throw new Error(`The server ignored byte-range requests (HTTP ${response.status}); refusing to download the full DEM.`);
+        }
+        await response.body?.cancel();
+        terrainRangeVerified.add(url);
+      } catch (error) {
+        controller.abort();
+        throw error;
+      }
+    })();
+    tracked = pending.catch(error => {
+      if (terrainRangeChecks.get(url) === tracked) terrainRangeChecks.delete(url);
+      throw error;
+    });
+    terrainRangeChecks.set(url, tracked);
+  }
+  return terrainRangeChecks.get(url);
+}
+function reportTerrainRangeError(model, error) {
+  const message = `Could not load ${model.name || model.id} terrain: ${error.message}`;
+  console.error(message, error);
+  toast(message);
+}
 function addTerrainModelSource(model, kind) {
   const sourceId = kind === 'hillshade' ? model.hillshadeSourceId : model.sourceId;
   if (map.getSource(sourceId)) return;
@@ -5810,9 +5847,17 @@ let terrainExaggeration = Math.min(10, Math.max(1, Number((CONFIG.terrain || {})
 ///////////////////////////////////////////////////////////////////////////
 // Switches the active elevation model and rebuilds dependent terrain layers.
 ///////////////////////////////////////////////////////////////////////////
-function setTerrainModel(id) {
+async function setTerrainModel(id) {
   const model = terrainModels.find(m => m.id === id);
   if (!model || model === activeTerrainModel) return;
+  try {
+    await verifyTerrainRangeSupport(model);
+  } catch (error) {
+    reportTerrainRangeError(model, error);
+    const picker = $('legend').querySelector('.terrain-model');
+    if (picker && activeTerrainModel) picker.value = activeTerrainModel.id;
+    return;
+  }
   const tc = CONFIG.terrain;
   if (map.getLayer(CONTOUR_LINE_ID)) contoursVisible = map.getLayoutProperty(CONTOUR_LINE_ID, 'visibility') !== 'none';
   removeTerrainContours();
@@ -5830,6 +5875,22 @@ function setTerrainModel(id) {
   }
   if (hillshadeLayerExists || hillshadeVisible) addHillshadeLayer(model, terrainLayerBeforeId, hillshadeVisible);
   setupTerrainContours(model, terrainLayerBeforeId);
+  try {
+    const metadata = await window.MaplibreCOGProtocol.getCogMetadata(new URL(model.cog, location.href).href);
+    const bounds = metadata.bbox;
+    if (!Array.isArray(bounds) || bounds.length !== 4 || !bounds.every(Number.isFinite)) {
+      throw new Error('The DEM does not provide a valid geographic extent.');
+    }
+    map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], {
+      padding: 40,
+      maxZoom: Number.isFinite(model.maxzoom) ? model.maxzoom : 16,
+      duration: 700
+    });
+  } catch (error) {
+    const message = `Could not zoom to ${model.name || model.id}: ${error.message}`;
+    console.error(message, error);
+    toast(message);
+  }
 }
 ///////////////////////////////////////////////////////////////////////////
 // Enables or disables 3D terrain and synchronizes map pitch and controls.
