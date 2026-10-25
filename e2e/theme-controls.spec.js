@@ -249,22 +249,17 @@ test('keyboard users can select a map box', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/box-on/);
 });
 
-test('advanced mode shows Terra Draw controls below Find My Location', async ({ page }) => {
+test('Terra Draw controls are advanced-only and follow Find My Location', async ({ page }) => {
+  const drawControl = page.locator('.advanced-drawing-tools');
+  await expect(drawControl).toBeHidden();
   await page.getByRole('button', { name: 'Advanced mode' }).click();
-  const pointButton = page.getByRole('button', { name: 'Point', exact: true });
-  const polygonButton = page.getByRole('button', { name: 'Polygon', exact: true });
-  const downloadButton = page.getByRole('button', { name: 'Download', exact: true });
-  await expect(pointButton).toBeVisible();
-  await expect(polygonButton).toBeVisible();
-  await expect(downloadButton).toBeVisible();
+  await expect(drawControl).toBeVisible();
 
   const drawControlFollowsGeolocate = await page.locator('.maplibregl-ctrl-top-right').evaluate(container => {
     const locationControl = container.querySelector('.maplibregl-ctrl-geolocate')?.closest('.maplibregl-ctrl');
-    const pointControl = [...container.querySelectorAll('button')]
-      .find(button => (button.getAttribute('aria-label') || button.title) === 'Point')
-      ?.closest('.maplibregl-ctrl');
-    return !!locationControl && !!pointControl &&
-      [...container.children].indexOf(pointControl) === [...container.children].indexOf(locationControl) + 1;
+    const drawingControl = container.querySelector('.advanced-drawing-tools');
+    return !!locationControl && !!drawingControl &&
+      [...container.children].indexOf(drawingControl) === [...container.children].indexOf(locationControl) + 1;
   });
   expect(drawControlFollowsGeolocate).toBe(true);
 });
@@ -272,27 +267,25 @@ test('advanced mode shows Terra Draw controls below Find My Location', async ({ 
 test('advanced mode keeps drawing controls hidden on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Advanced mode' }).click();
-  await expect(page.getByRole('button', { name: 'Point', exact: true })).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Polygon', exact: true })).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeHidden();
+  await expect(page.locator('.advanced-drawing-tools')).toBeHidden();
 });
 
 test('standard mode hides drawing and advanced COG controls until enabled', async ({ page }) => {
   const advancedMode = page.getByRole('button', { name: 'Advanced mode' });
-  const pointButton = page.getByRole('button', { name: 'Point', exact: true });
+  const drawControl = page.locator('.advanced-drawing-tools');
   const boxButton = page.getByRole('button', { name: 'Select by box' });
   await expect(advancedMode).toHaveAttribute('aria-pressed', 'false');
-  await expect(pointButton).toBeHidden();
+  await expect(drawControl).toBeHidden();
   await expect(boxButton).toBeVisible();
   await boxButton.click();
   await expect(page.locator('body')).toHaveClass(/box-on/);
   await advancedMode.click();
   await expect(advancedMode).toHaveAttribute('aria-pressed', 'true');
   await expect(boxButton).toBeVisible();
-  await expect(pointButton).toBeVisible();
+  await expect(drawControl).toBeVisible();
   await advancedMode.click();
   await expect(page.locator('body')).not.toHaveClass(/box-on/);
-  await expect(pointButton).toBeHidden();
+  await expect(drawControl).toBeHidden();
 
   await page.evaluate(() => {
     window.MaplibreCOGProtocol.getCogMetadata = async () => ({
@@ -305,6 +298,7 @@ test('standard mode hides drawing and advanced COG controls until enabled', asyn
   await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Tellus Geochemistry' });
   const aluminium = page.getByRole('checkbox', { name: /^Aluminium Al %/ });
   const row = aluminium.locator('xpath=ancestor::*[@data-order-key][1]');
+  await aluminium.check();
   await row.locator('.tbtn[aria-label^="Transparency"]').click();
   await expect(row.locator('.cog-source-copy')).toBeVisible();
   await expect(row.locator('.cog-qgis-download')).toBeVisible();

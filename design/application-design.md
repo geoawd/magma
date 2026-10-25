@@ -6,7 +6,7 @@ This is a static browser application served over HTTP; it has no build step. `in
 
 The layers panel starts in standard mode and includes an **Advanced mode** toggle beside **Legend**. Advanced mode reveals the Terra Draw toolbar and enhanced legend settings. **Select by box** is available in both modes. Standard mode keeps COG transparency, source-URL copy, and QGIS `.qlr` download actions available; color ramps, display classifications, and other enhanced layer settings require advanced mode. The QGIS export uses the native GDAL source, EPSG:29902 (overridable with the layer's `qgisCrs` or `projection` config), and the active browser ramp and breaks when available; it falls back to single-band gray if styling cannot be prepared. Turbo is the fallback ramp when no browser ramp is selected. The ArcGIS Pro entry is a disabled placeholder for COG layers. GeoJSON layer controls also provide QGIS vector `.qlr` export and source-URL copy; the export uses the OGR provider, configured CRS, geometry, opacity, and current configured or session classification. The top-right Terra Draw toolbar appears directly below **Find My Location** and includes point, line, polygon, rectangle, circle, freehand, angled rectangle, sensor, sector, select, delete, and download tools.
 
-On mobile, the tools drawer opens at 45% of the viewport height, can be dragged up to 80%, and closes when dragged down below 25%. Globe and print controls are hidden at mobile widths.
+On mobile, the tools drawer opens at 45% of the viewport height, can be dragged up to 80%, and closes when dragged down below 25%. Globe and print controls are hidden at mobile widths. Terra Draw controls remain hidden on mobile, even in Advanced mode.
 
 ## Map Notifications
 

@@ -351,9 +351,13 @@ const terraDrawControl = new window.MaplibreTerradrawControl.MaplibreTerradrawCo
   ],
   open: true
 });
+const terraDrawOnAdd = terraDrawControl.onAdd.bind(terraDrawControl);
+terraDrawControl.onAdd = mapInstance => {
+  const container = terraDrawOnAdd(mapInstance);
+  container.classList.add('advanced-drawing-tools');
+  return container;
+};
 map.addControl(terraDrawControl, 'top-right');
-document.querySelector('.maplibregl-ctrl-top-right button[aria-label="Point"], .maplibregl-ctrl-top-right button[title="Point"]')
-  ?.closest('.maplibregl-ctrl')?.classList.add('advanced-drawing-tools');
 map.addControl({
   onAdd() {
     const container = document.createElement('div');

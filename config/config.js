@@ -239,7 +239,6 @@ overlays: [
 
 // { id: 'converted_cog', name: 'Converted COG', group: 'COG Rasters', cog: 'data/converted.tif', tileSize: 256, opacity: 1, visible: true },
 
- 
   {
     id : 'Aluminium Al % (Percentile) DL = 0.01',
  name : 'Aluminium Al % DL = 0.01',

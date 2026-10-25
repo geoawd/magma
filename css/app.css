@@ -464,5 +464,5 @@
     #coords, #cogValues { display: none; }
     button, #legend label { min-height: 34px; }
   }
-  @media (hover: none) { #coords, #cogValues { display: none; } }
+  @media (hover: none) { #coords, #cogValues, .advanced-drawing-tools { display: none !important; } }
   @media (prefers-reduced-motion: reduce) { #drawer { transition: none; } }
