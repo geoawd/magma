@@ -10,7 +10,7 @@ import {
   sampleCogValueRange
 } from './cog-style.js';
 import { cogResamplingUrl } from './cog-resampling.js';
-import { equalIntervalBreaks, geojsonFieldStats, matchColorExpression, parseManualBreaks, quantileBreaks, stepColorExpression } from './geojson-classification.js';
+import { equalIntervalBreaks, geojsonFieldStats, matchColorExpression, parseManualBreaks, quantileBreaks, stepColorExpression, tellusPercentileClassification } from './geojson-classification.js';
 import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition, QGIS_TURBO_COLORS } from './qgis-layer.js';
 import { isJsonThemeShareState, jsonThemeMapView, parseMapViewHash } from './shared-links.js';
 import { buildJsonFeatures, createJsonThemeState, filterJsonRows, hasJsonFilters, jsonGeometryCenter, jsonGeometryIntersectsBounds, loadJsonThemeConfig, loadJsonThemeData } from './json-theme-runtime.js';
@@ -1137,11 +1137,17 @@ function geojsonLegendCategories(w, loader) {
     paint: { 'line-color': fillExpression ? style.fill : style.color }
   }, true);
   const configured = !loader.advancedStyle && Array.isArray(w.legend?.entries) ? w.legend.entries : null;
-  if (categories) return categories.map((category, index) => ({
-    ...category,
-    text: configured?.[index]?.label || category.text,
-    color: configured?.[index]?.color || category.color
-  }));
+  if (categories) {
+    const entries = categories.map((category, index) => ({
+      ...category,
+      text: loader.classification?.method === 'tellus_percentile'
+        ? loader.classification.percentileLabels[index] || category.text
+        : configured?.[index]?.label || category.text,
+      color: configured?.[index]?.color || category.color
+    }));
+    return loader.classification?.method === 'tellus_percentile' &&
+      loader.classification.legendDescending ? entries.reverse() : entries;
+  }
   if (configured) {
     return configured.filter(entry => entry && typeof entry.label === 'string' && typeof entry.color === 'string')
       .map(entry => ({ text: entry.label, color: entry.color, test: null }));
@@ -1161,7 +1167,31 @@ function renderGeojsonLegend(w) {
   if (typeof title === 'string' && title.trim()) {
     const heading = document.createElement('div');
     heading.className = 'geojson-legend-title';
-    heading.textContent = title;
+    const percentileClassification = loader.classification?.method === 'tellus_percentile';
+    if (percentileClassification) {
+      const label = document.createElement('span');
+      label.textContent = title;
+      const sortButton = document.createElement('button');
+      const updateSortButton = () => {
+        const descending = loader.classification.legendDescending === true;
+        sortButton.textContent = descending ? '↓' : '↑';
+        sortButton.setAttribute('aria-label',
+          descending ? 'Show lowest percentiles first' : 'Show highest percentiles first');
+        sortButton.title = sortButton.getAttribute('aria-label');
+      };
+      sortButton.type = 'button';
+      sortButton.className = 'geojson-percentile-sort';
+      sortButton.onclick = () => {
+        loader.classification.legendDescending = !loader.classification.legendDescending;
+        [...container.querySelectorAll('.geojson-class-entry')].reverse()
+          .forEach(entry => container.appendChild(entry));
+        updateSortButton();
+      };
+      updateSortButton();
+      heading.append(label, sortButton);
+    } else {
+      heading.textContent = title;
+    }
     container.appendChild(heading);
   }
   const categories = geojsonLegendCategories(w, loader);
@@ -1651,6 +1681,10 @@ function sessionSnapshot() {
       hillshadePreferenceSet: state.hillshadePreferenceSet,
       hillshadeStrength: state.hillshadeStrength,
       hillshadeVerticalScale: state.hillshadeVerticalScale,
+      contoursEnabled: state.contoursEnabled,
+      contourPreferenceSet: state.contourPreferenceSet,
+      contourIntervals: { ...state.contourIntervals },
+      contourColors: { ...state.contourColors },
       opacity: state.opacity
     }];
   }));
@@ -3738,6 +3772,7 @@ function updateGeojsonStyleDialogControls() {
   const manual = method === 'manual_breaks';
   $('geojsonClassCountRow').hidden = !numericAutomatic;
   geojsonClassCount.hidden = !numericAutomatic;
+  geojsonClassCount.disabled = !numericAutomatic;
   $('geojsonManualBreaksRow').hidden = !manual;
   geojsonManualBreaks.hidden = !manual;
   $('geojsonManualBreaksHint').hidden = !manual;
@@ -3745,6 +3780,8 @@ function updateGeojsonStyleDialogControls() {
   if (!field) geojsonStyleStatus.textContent = 'No usable feature attributes were found.';
   else if (!numeric && !uniqueAvailable) {
     geojsonStyleStatus.textContent = `Unique-values classification is unavailable: this field has more than 20 distinct values.`;
+  } else if (method === 'tellus_percentile') {
+    geojsonStyleStatus.textContent = 'Uses fixed breaks at the 1st, 2nd, 5th, 10th, 15th, 20th, 25th, 40th, 50th, 60th, 75th, 85th, 90th, 95th, 98th, and 99th percentiles.';
   } else if (field.uniqueValues.length > 20 && !numericAutomatic && !manual) {
     geojsonStyleStatus.textContent = `This field has ${field.uniqueValues.length} distinct values; unique-values classification is limited to 20.`;
   } else {
@@ -3773,7 +3810,9 @@ function openGeojsonStyleDialog(w) {
   geojsonStyleField.value = classification?.field || configuredField || fields[0]?.name || '';
   geojsonStyleMethod.value = classification?.method ||
     (geojsonNumericField(fields.find(field => field.name === geojsonStyleField.value)) ? 'quantile' : 'unique_values');
-  geojsonClassCount.value = String(classification?.classCount || 5);
+  geojsonClassCount.value = String(
+    ['quantile', 'equal_interval'].includes(classification?.method) ? classification.classCount : 5
+  );
   geojsonManualBreaks.value = (classification?.breaks || []).join(', ');
   geojsonStyleRamp.value = classification?.ramp || 'Viridis';
   $('geojsonStyleTitle').textContent = `Classify ${w.name || w.id} layer`;
@@ -3794,7 +3833,7 @@ function applyGeojsonClassification() {
   const rampName = geojsonStyleRamp.value;
   const ramp = COG_RAMP_COLORS[rampName];
   if (!ramp) throw new Error('Select a valid color ramp.');
-  let expression, breaks = [], classCount;
+  let expression, breaks = [], classCount, percentileLabels;
   if (method === 'unique_values') {
     if (field.uniqueValues.length > 20) throw new Error('Unique-values classification is limited to 20 values.');
     classCount = field.uniqueValues.length;
@@ -3810,6 +3849,11 @@ function applyGeojsonClassification() {
       breaks = method === 'quantile'
         ? quantileBreaks(field.values, classCount)
         : equalIntervalBreaks(field.values, classCount);
+    } else if (method === 'tellus_percentile') {
+      const classification = tellusPercentileClassification(field.values);
+      breaks = classification.breaks;
+      percentileLabels = classification.labels;
+      classCount = breaks.length + 1;
     } else if (method === 'manual_breaks') {
       breaks = parseManualBreaks(geojsonManualBreaks.value, field.min, field.max);
       classCount = breaks.length + 1;
@@ -3821,7 +3865,18 @@ function applyGeojsonClassification() {
   }
   w.style = { ...(w.style || {}), color: expression, fill: expression };
   loader.advancedStyle = true;
-  loader.classification = { field: field.name, method, classCount, breaks, ramp: rampName };
+  const legendDescending = method === 'tellus_percentile' &&
+    loader.classification?.method === 'tellus_percentile' &&
+    loader.classification.legendDescending === true;
+  loader.classification = {
+    field: field.name,
+    method,
+    classCount,
+    breaks,
+    ramp: rampName,
+    percentileLabels,
+    legendDescending
+  };
   applyGeojsonPaint(w);
   renderGeojsonLegend(w);
 }
@@ -3871,6 +3926,51 @@ const COG_HILLSHADE_DEFAULTS = {
   highlightColor: '#ffffff',
   accentColor: '#000000'
 };
+const COG_CONTOUR_DEFAULTS = {
+  intervals: { minor: 10, major: 50 },
+  colors: { minor: '#808384', major: '#30383b' }
+};
+const isHexColor = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+function cogContourSettings(overlay, saved) {
+  const option = overlay.contour_option === true || overlay.contour_option === 'true';
+  if (!option) {
+    return {
+      option: false,
+      enabled: false,
+      preferenceSet: false,
+      intervals: { ...COG_CONTOUR_DEFAULTS.intervals },
+      colors: { ...COG_CONTOUR_DEFAULTS.colors }
+    };
+  }
+  const configuredIntervals = saved?.contourIntervals || overlay.contour_intervals || COG_CONTOUR_DEFAULTS.intervals;
+  const intervals = { minor: Number(configuredIntervals.minor), major: Number(configuredIntervals.major) };
+  if (!(Number.isFinite(intervals.minor) && intervals.minor > 0 &&
+        Number.isFinite(intervals.major) && intervals.major > intervals.minor)) {
+    const message = `Invalid contour_intervals for ${overlay.name || overlay.id}; use positive minor and larger major intervals.`;
+    console.error(message, configuredIntervals);
+    toast(message);
+    intervals.minor = COG_CONTOUR_DEFAULTS.intervals.minor;
+    intervals.major = COG_CONTOUR_DEFAULTS.intervals.major;
+  }
+  const configuredColors = saved?.contourColors || overlay.contour_colors || COG_CONTOUR_DEFAULTS.colors;
+  const colors = { ...COG_CONTOUR_DEFAULTS.colors, ...configuredColors };
+  Object.keys(COG_CONTOUR_DEFAULTS.colors).forEach(key => {
+    if (!isHexColor(colors[key])) {
+      const message = `Invalid ${key} contour color for ${overlay.name || overlay.id}; using the default color.`;
+      console.error(message, colors[key]);
+      toast(message);
+      colors[key] = COG_CONTOUR_DEFAULTS.colors[key];
+    }
+  });
+  const preferenceSet = saved?.contourPreferenceSet === true;
+  return {
+    option,
+    enabled: option && (preferenceSet && typeof saved.contoursEnabled === 'boolean' ? saved.contoursEnabled : true),
+    preferenceSet,
+    intervals,
+    colors
+  };
+}
 async function scaleCogDemTile(bitmap, scale, center) {
   const canvas = typeof OffscreenCanvas === 'function'
     ? new OffscreenCanvas(bitmap.width, bitmap.height)
@@ -3895,6 +3995,13 @@ async function scaleCogDemTile(bitmap, scale, center) {
 }
 function cogValueLabel(value) {
   return Number(value.toPrecision(7)).toString();
+}
+function cogLegendValueLabel(value) {
+  return value.toFixed(2);
+}
+function cogLegendClassLabel(label) {
+  return label.replace(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)/i,
+    value => cogLegendValueLabel(Number(value)));
 }
 function cogHillshadeSliderValue(scale) {
   return Math.round(1 + Math.log10(scale) / Math.log10(COG_HILLSHADE_MAX_VERTICAL_SCALE) *
@@ -3983,6 +4090,9 @@ function syncCogLayerMode(w) {
   if (state.hillshadeCreated) {
     setCogDerivedLayerSelected(w, state.hillshadeLayerId, enabled && state.hillshadeEnabled);
   }
+  if (state.contoursCreated) {
+    state.contourLayerIds.forEach(id => setCogDerivedLayerSelected(w, id, enabled && state.contoursEnabled));
+  }
 }
 function isCogOverlayVisible(w) {
   const state = w.cogState;
@@ -3996,9 +4106,9 @@ function isCogOverlayVisible(w) {
 function initializeVisibleCogControls() {
   allOverlays().forEach(w => {
     const state = w.cogState;
-    if (state && state.controlsPanel && state.controlsLegend && isCogOverlayVisible(w)) {
-      initializeCogRampControls(w, state.controlsPanel, state.controlsLegend);
-    }
+    if (!state || !isCogOverlayVisible(w)) return;
+    if (state.contourOption && state.contoursEnabled) createCogContours(w);
+    if (state.controlsPanel && state.controlsLegend) initializeCogRampControls(w, state.controlsPanel, state.controlsLegend);
   });
 }
 function removeCogColorLayers(w) {
@@ -4128,12 +4238,12 @@ function renderCogRampLegend(w, legend) {
       swatch.style.backgroundColor = colors[index];
       const label = document.createElement('span');
       const limit = index === 0
-        ? `≤ ${cogValueLabel(state.classes[0].max)}`
+        ? `≤ ${cogLegendValueLabel(state.classes[0].max)}`
         : index < state.classes.length
-          ? `> ${cogValueLabel(state.classes[index - 1].max)} to ≤ ${cogValueLabel(state.classes[index].max)}`
-          : `> ${cogValueLabel(state.classes[index - 1].max)}`;
+          ? `> ${cogLegendValueLabel(state.classes[index - 1].max)} to ≤ ${cogLegendValueLabel(state.classes[index].max)}`
+          : `> ${cogLegendValueLabel(state.classes[index - 1].max)}`;
       const classLabel = state.classes[index]?.label;
-      label.textContent = classLabel ? `${classLabel} (${limit})` : limit;
+      label.textContent = classLabel ? `${cogLegendClassLabel(classLabel)} (${limit})` : limit;
       row.append(swatch, label);
       classList.appendChild(row);
     }
@@ -4146,9 +4256,9 @@ function renderCogRampLegend(w, legend) {
   const values = document.createElement('div');
   values.className = 'cog-ramp-legend-values';
   const min = document.createElement('span');
-  min.textContent = cogValueLabel(range.min);
+  min.textContent = cogLegendValueLabel(range.min);
   const max = document.createElement('span');
-  max.textContent = cogValueLabel(range.max);
+  max.textContent = cogLegendValueLabel(range.max);
   values.append(min, max);
   legend.append(title, bar, values);
 }
@@ -4262,6 +4372,50 @@ function initializeCogRampControls(w, panel, legend) {
     error.className = 'cog-ramp-error';
     error.setAttribute('role', 'alert');
     controls.replaceChildren(rampLabel, modeLabel, status, error);
+    let contourToggle, minorIntervalInput, majorIntervalInput, minorColorInput, majorColorInput;
+    if (state.contourOption) {
+      const contourControls = document.createElement('section');
+      contourControls.className = 'cog-contour-controls';
+      const contourLabel = document.createElement('label');
+      contourLabel.className = 'trow cog-contour-toggle';
+      contourToggle = document.createElement('input');
+      contourToggle.type = 'checkbox';
+      contourToggle.checked = state.contoursEnabled;
+      contourLabel.append(contourToggle, 'Create contour lines');
+      const intervals = document.createElement('div');
+      intervals.className = 'cog-contour-intervals';
+      const makeIntervalInput = (label, key) => {
+        const field = document.createElement('label');
+        field.append(label);
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0.000001';
+        input.step = 'any';
+        input.value = String(state.contourIntervals[key]);
+        field.appendChild(input);
+        intervals.appendChild(field);
+        return input;
+      };
+      minorIntervalInput = makeIntervalInput('Minor interval', 'minor');
+      majorIntervalInput = makeIntervalInput('Major interval', 'major');
+      const colors = document.createElement('div');
+      colors.className = 'hillshade-colors cog-contour-colors';
+      const makeColorInput = (label, key) => {
+        const field = document.createElement('label');
+        field.append(label);
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = state.contourColors[key];
+        field.appendChild(input);
+        colors.appendChild(field);
+        return input;
+      };
+      minorColorInput = makeColorInput('Minor color', 'minor');
+      majorColorInput = makeColorInput('Major color', 'major');
+      contourControls.append(contourLabel, intervals, colors);
+      controls.appendChild(contourControls);
+      state.contourToggle = contourToggle;
+    }
     const setPreview = (preview, name) => {
       preview.classList.toggle('cog-ramp-preview-none', !name);
       preview.style.backgroundImage = name
@@ -4393,6 +4547,46 @@ function initializeCogRampControls(w, panel, legend) {
         }
       };
     }
+    if (state.contourOption) {
+      contourToggle.onchange = async () => {
+        state.contourPreferenceSet = true;
+        state.contoursEnabled = contourToggle.checked;
+        error.textContent = '';
+        await refreshCogContours(w);
+      };
+      const updateIntervals = async () => {
+        const intervals = { minor: Number(minorIntervalInput.value), major: Number(majorIntervalInput.value) };
+        if (!(Number.isFinite(intervals.minor) && intervals.minor > 0 &&
+              Number.isFinite(intervals.major) && intervals.major > intervals.minor)) {
+          error.textContent = 'Contour intervals must be positive, and the major interval must be larger than the minor interval.';
+          minorIntervalInput.value = String(state.contourIntervals.minor);
+          majorIntervalInput.value = String(state.contourIntervals.major);
+          return;
+        }
+        state.contourIntervals = intervals;
+        error.textContent = '';
+        await refreshCogContours(w);
+      };
+      minorIntervalInput.onchange = updateIntervals;
+      majorIntervalInput.onchange = updateIntervals;
+      minorColorInput.oninput = () => {
+        state.contourColors.minor = minorColorInput.value;
+        if (map.getLayer(state.contourLayerIds[0])) {
+          map.setPaintProperty(state.contourLayerIds[0], 'line-color',
+            ['match', ['get', 'level'], 1, state.contourColors.major, state.contourColors.minor]);
+        }
+      };
+      majorColorInput.oninput = () => {
+        state.contourColors.major = majorColorInput.value;
+        if (map.getLayer(state.contourLayerIds[0])) {
+          map.setPaintProperty(state.contourLayerIds[0], 'line-color',
+            ['match', ['get', 'level'], 1, state.contourColors.major, state.contourColors.minor]);
+        }
+        if (map.getLayer(state.contourLayerIds[1])) {
+          map.setPaintProperty(state.contourLayerIds[1], 'text-color', state.contourColors.major);
+        }
+      };
+    }
     updateRampPicker();
     try {
       updateCogColorLayers(w);
@@ -4449,6 +4643,7 @@ function addRasterLayer(w, beforeId, isBasemap = false) {
     const mode = availableModes.includes(saved?.mode)
       ? saved.mode : configuredMode;
     const configuredHillshade = w.hillshade_option === true || w.hillshade_option === 'true';
+    const configuredContours = cogContourSettings(w, saved);
     const savedHillshadePreference = saved?.hillshadePreferenceSet === true;
     w.cogState = {
       url: baseUrl.href,
@@ -4462,6 +4657,18 @@ function addRasterLayer(w, beforeId, isBasemap = false) {
       hillshadeEnabled: configuredHillshade && savedHillshadePreference && typeof saved.hillshadeEnabled === 'boolean'
         ? saved.hillshadeEnabled : configuredHillshade,
       hillshadePreferenceSet: savedHillshadePreference,
+      contourOption: configuredContours.option,
+      contoursEnabled: configuredContours.enabled,
+      contourPreferenceSet: configuredContours.preferenceSet,
+      contourIntervals: configuredContours.intervals,
+      contourColors: configuredContours.colors,
+      contourUnits: typeof w.legendunits === 'string' ? w.legendunits : '',
+      contourSourceId: `${w.id}__contour_source`,
+      contourLayerIds: configuredContours.option ? [`${w.id}__contour_lines`, `${w.id}__contour_labels`] : [],
+      contoursCreated: false,
+      contourGeneration: 0,
+      contourPromise: null,
+      contourToggle: null,
       hillshadeStrength: Number.isFinite(saved?.hillshadeStrength)
         ? Math.max(0, Math.min(1, saved.hillshadeStrength)) : COG_HILLSHADE_DEFAULTS.strength,
       hillshadeVerticalScale: 1,
@@ -4484,7 +4691,7 @@ function addRasterLayer(w, beforeId, isBasemap = false) {
       controlsInitializing: false
     };
     w.visible = w.cogState.visible;
-    w.layerIds = [w.id, w.cogState.hillshadeLayerId];
+    w.layerIds = [w.id, w.cogState.hillshadeLayerId, ...w.cogState.contourLayerIds];
   }
   const source = w.cog
     ? { type: 'raster', url: cogResamplingUrl(`cog://${cogUrl}`, w.resampling), tileSize: w.tileSize || 256 }
@@ -4735,6 +4942,40 @@ function removeTerrainContours() {
   if (map.getSource(CONTOUR_SOURCE_ID)) map.removeSource(CONTOUR_SOURCE_ID);
   contourDemSource = null;
 }
+function getContourDemSource(cogUrl, maxzoom) {
+  let source = contourDemSources.get(cogUrl);
+  if (source) return source;
+  source = new window.mlcontour.DemSource({
+    url: `cog://${cogUrl}#dem/{z}/{x}/{y}`,
+    encoding: 'mapbox', maxzoom, worker: false, cacheSize: 128
+  });
+  source.manager.getTile = async (url, abortController) => {
+    if (abortController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    const { data: bitmap } = await window.MaplibreCOGProtocol.cogProtocol({ url, type: 'image' });
+    if (abortController.signal.aborted) { bitmap.close(); throw new DOMException('Aborted', 'AbortError'); }
+    return { data: bitmap };
+  };
+  source.manager.decodeImage = async bitmap => {
+    const { width, height } = bitmap;
+    const canvas = typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(width, height) : Object.assign(document.createElement('canvas'), { width, height });
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(bitmap, 0, 0);
+    const pixels = context.getImageData(0, 0, width, height).data;
+    const data = new Float32Array(width * height);
+    for (let index = 0; index < data.length; index++) {
+      const offset = index * 4;
+      const encoded = pixels[offset] * 65536 + pixels[offset + 1] * 256 + pixels[offset + 2];
+      // The COG protocol's opaque 0 m sentinel represents no-data.
+      data[index] = pixels[offset + 3] < 255 || encoded === 100000
+        ? NaN : encoded * 0.1 - 10000;
+    }
+    return { width, height, data };
+  };
+  source.setupMaplibre(maplibregl);
+  contourDemSources.set(cogUrl, source);
+  return source;
+}
 ///////////////////////////////////////////////////////////////////////////
 // Creates contour sources and layers for the selected elevation model.
 ///////////////////////////////////////////////////////////////////////////
@@ -4748,38 +4989,7 @@ async function setupTerrainContours(model, beforeId = terrainLayerBeforeId) {
     if (generation !== contourGeneration) return;
     const zooms = (metadata.images || []).filter(image => !image.isMask).map(image => Math.round(image.zoom)).filter(Number.isFinite);
     const maxzoom = zooms.length ? Math.max(...zooms) : (model.maxzoom || 14);
-    let source = contourDemSources.get(cogUrl);
-    if (!source) {
-      source = new window.mlcontour.DemSource({
-        url: `cog://${cogUrl}#dem/{z}/{x}/{y}`,
-        encoding: 'mapbox', maxzoom, worker: false, cacheSize: 128
-      });
-      source.manager.getTile = async (url, abortController) => {
-        if (abortController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        const { data: bitmap } = await window.MaplibreCOGProtocol.cogProtocol({ url, type: 'image' });
-        if (abortController.signal.aborted) { bitmap.close(); throw new DOMException('Aborted', 'AbortError'); }
-        return { data: bitmap };
-      };
-      // Decode the Terrain-RGB bitmap at native size (no resampling); transparent (no-data) pixels become NaN.
-      source.manager.decodeImage = async (bitmap) => {
-        const { width, height } = bitmap;
-        const canvas = typeof OffscreenCanvas !== 'undefined'
-          ? new OffscreenCanvas(width, height) : Object.assign(document.createElement('canvas'), { width, height });
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(bitmap, 0, 0);
-        const px = ctx.getImageData(0, 0, width, height).data;
-        const out = new Float32Array(width * height);
-        for (let i = 0; i < out.length; i++) {
-          const j = i * 4;
-          const raw = px[j] * 65536 + px[j + 1] * 256 + px[j + 2];
-          // The COG protocol encodes no-data as an opaque 0 m; left in, it contours every level along the DEM edge.
-          out[i] = px[j + 3] < 255 || raw === 100000 ? NaN : raw * 0.1 - 10000;
-        }
-        return { width, height, data: out };
-      };
-      source.setupMaplibre(maplibregl);
-      contourDemSources.set(cogUrl, source);
-    }
+    const source = getContourDemSource(cogUrl, maxzoom);
     const thresholds = contourSettings && contourSettings.thresholds || {
       8: [100, 500], 9: [100, 500], 10: [100, 500], 11: [100, 500],
       12: [50, 250], 13: [20, 100], 14: [10, 50], 15: [10, 50], 16: [5, 25]
@@ -4814,6 +5024,110 @@ async function setupTerrainContours(model, beforeId = terrainLayerBeforeId) {
   } catch (error) {
     console.error(`Could not generate contours for ${model.name}:`, error);
   }
+}
+function cogContourThresholds(intervals, maxzoom) {
+  const lastZoom = Math.max(0, Math.floor(maxzoom));
+  return Object.fromEntries(Array.from({ length: lastZoom + 1 }, (_, zoom) =>
+    [zoom, [intervals.minor, intervals.major]]));
+}
+function removeCogContours(w) {
+  const state = w.cogState;
+  if (!state) return;
+  state.contourGeneration = (state.contourGeneration || 0) + 1;
+  [...state.contourLayerIds].reverse().forEach(id => {
+    if (map.getLayer(id)) map.removeLayer(id);
+    layerVisibility.delete(id);
+  });
+  if (map.getSource(state.contourSourceId)) map.removeSource(state.contourSourceId);
+  state.contoursCreated = false;
+}
+function createCogContours(w) {
+  const state = w.cogState;
+  if (!state?.contourOption || !state.contoursEnabled || state.contoursCreated ||
+      state.contourPromise || !isCogOverlayVisible(w)) return state?.contourPromise;
+  if (!window.mlcontour || !window.MaplibreCOGProtocol) {
+    state.contoursEnabled = false;
+    if (state.contourToggle) state.contourToggle.checked = false;
+    const message = `Could not create contours for ${w.name || w.id}: the COG contour protocol is unavailable.`;
+    console.error(message);
+    toast(message);
+    return;
+  }
+  const generation = (state.contourGeneration || 0) + 1;
+  state.contourGeneration = generation;
+  const promise = (async () => {
+    const metadata = await window.MaplibreCOGProtocol.getCogMetadata(state.url);
+    if (generation !== state.contourGeneration || !state.contoursEnabled || !isCogOverlayVisible(w)) return;
+    if (metadata.bitsPerSample?.length !== 1) {
+      throw new Error('COG contouring requires a readable single-band raster.');
+    }
+    const zooms = (metadata.images || []).filter(image => !image.isMask)
+      .map(image => Math.round(image.zoom)).filter(Number.isFinite);
+    const maxzoom = zooms.length ? Math.max(...zooms) : (w.maxzoom || 14);
+    const source = getContourDemSource(state.url, maxzoom);
+    const thresholds = cogContourThresholds(state.contourIntervals, maxzoom);
+    map.addSource(state.contourSourceId, {
+      type: 'vector',
+      tiles: [source.contourProtocolUrl({ thresholds })],
+      maxzoom
+    });
+    const [lineId, labelId] = state.contourLayerIds;
+    const styleLayers = map.getStyle().layers;
+    const baseIndex = styleLayers.findIndex(layer => layer.id === w.id);
+    const beforeId = baseIndex >= 0 ? styleLayers[baseIndex + 1]?.id : undefined;
+    map.addLayer({
+      id: lineId,
+      type: 'line',
+      source: state.contourSourceId,
+      'source-layer': 'contours',
+      layout: { visibility: 'none' },
+      paint: {
+        'line-color': ['match', ['get', 'level'], 1, state.contourColors.major, state.contourColors.minor],
+        'line-width': ['match', ['get', 'level'], 1, 1.2, 0.7]
+      }
+    }, beforeId);
+    map.addLayer({
+      id: labelId,
+      type: 'symbol',
+      source: state.contourSourceId,
+      'source-layer': 'contours',
+      filter: ['>', ['get', 'level'], 0],
+      layout: {
+        visibility: 'none',
+        'symbol-placement': 'line',
+        'text-size': 10,
+        'text-font': ['Noto Sans Regular'],
+        'text-field': ['concat', ['number-format', ['get', 'ele'], {}], state.contourUnits ? ` ${state.contourUnits}` : '']
+      },
+      paint: {
+        'text-color': state.contourColors.major,
+        'text-halo-color': '#fff',
+        'text-halo-width': 1.2
+      }
+    }, beforeId);
+    state.contoursCreated = true;
+    state.contourLayerIds.forEach(id => w.groupLayerIds?.add(id));
+    syncCogLayerMode(w);
+    syncMapLayerOrder();
+  })().catch(error => {
+    removeCogContours(w);
+    state.contoursEnabled = false;
+    if (state.contourToggle) state.contourToggle.checked = false;
+    const message = `Could not create contours for ${w.name || w.id}: ${error.message}`;
+    console.error(message, error);
+    toast(message);
+  }).finally(() => {
+    if (state.contourPromise === promise) state.contourPromise = null;
+  });
+  state.contourPromise = promise;
+  return promise;
+}
+async function refreshCogContours(w) {
+  const state = w.cogState;
+  if (state.contourPromise) await state.contourPromise;
+  removeCogContours(w);
+  if (state.contoursEnabled && isCogOverlayVisible(w)) await createCogContours(w);
+  else syncCogLayerMode(w);
 }
 const arcgisLegendCache = new Map();
 const arcgisLegendViews = new Map();

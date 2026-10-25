@@ -44,6 +44,40 @@ function sortedFiniteValues(values) {
   return sorted;
 }
 
+const TELLUS_PERCENTILE_RANKS = [1, 2, 5, 10, 15, 20, 25, 40, 50, 60, 75, 85, 90, 95, 98, 99, 100];
+
+function percentileOrdinal(percentile) {
+  const remainder = percentile % 100;
+  const suffix = remainder >= 11 && remainder <= 13
+    ? 'th'
+    : percentile % 10 === 1 ? 'st' : percentile % 10 === 2 ? 'nd' : percentile % 10 === 3 ? 'rd' : 'th';
+  return `${percentile}${suffix}`;
+}
+
+export function tellusPercentileClassification(values) {
+  const sorted = sortedFiniteValues(values);
+  const min = sorted[0], max = sorted[sorted.length - 1];
+  const boundaries = [];
+  TELLUS_PERCENTILE_RANKS.slice(0, -1).forEach(percentile => {
+    const position = (sorted.length - 1) * percentile / 100;
+    const lower = Math.floor(position);
+    const fraction = position - lower;
+    const value = sorted[lower] + (sorted[Math.min(lower + 1, sorted.length - 1)] - sorted[lower]) * fraction;
+    if (value <= min || value >= max) return;
+    const previous = boundaries[boundaries.length - 1];
+    if (previous?.value === value) previous.percentile = percentile;
+    else boundaries.push({ value, percentile });
+  });
+
+  const labels = boundaries.length
+    ? [
+      ...boundaries.map(boundary => `${boundary.value.toFixed(2)} (${percentileOrdinal(boundary.percentile)})`),
+      `${max.toFixed(2)} (${percentileOrdinal(100)})`
+    ]
+    : ['All values'];
+  return { breaks: boundaries.map(boundary => boundary.value), labels };
+}
+
 export function quantileBreaks(values, classCount) {
   const sorted = sortedFiniteValues(values);
   const breaks = [];

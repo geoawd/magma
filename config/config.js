@@ -110,6 +110,8 @@ window.CONFIG = {
 //   info (https link shown as an 'i' link in the layer's panel)
 // For COGs, set resampling to 'nearest' or 'bilinear' (default: nearest for color rasters);
 //   hillshade controls are hidden by default; set hillshade_option: true to show them and enable hillshade initially.
+//   set contour_option: true to draw COG contours; configure contour_intervals: { minor, major } and
+//   contour_colors: { minor, major }. Intervals use the COG's value units; defaults are 10 and 50.
 
 // GeoJSON overlay (polygon fills, line strokes and point circles):
 // {
@@ -200,8 +202,10 @@ overlays: [
     style: { color: '#070707', width: 0.25}, 
     opacity: 1, 
     visible: false,
-    minzoom: 10, maxzoom: 22,  
+    minzoom: 9, maxzoom: 22,  
   },
+
+
 
    { id: 'Tellus Waters', 
     name: 'Tellus Waters', 
@@ -213,7 +217,7 @@ overlays: [
     style: { color: '#1f86db', width: 0.25}, 
     opacity: 1, 
     visible: false,
-    minzoom: 10, maxzoom: 22,  
+    minzoom: 9, maxzoom: 22,  
   },
 
 { id: 'Bedrock Aquifer Classification', 
@@ -1686,7 +1690,10 @@ legendunits: '%',
   legendunits: 'nT',
   tileSize: 256,
   opacity: 1,
-  visible: false
+  visible: false,
+  contour_option: true,
+  contour_intervals: { minor: 10, major: 50 },
+  contour_colors: { minor: '#808384', major: '#30383b' },
 },
 
 {
@@ -2198,8 +2205,8 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
       { id: 'Saintfield_02_02_2012_DTM', name: 'Saintfield_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Saintfield_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
       { id: 'Saul_DSM', name: 'Saul_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Saul_DSM.tif', tileSize: 256, maxzoom: 16 },
       { id: 'Saul_DTM', name: 'Saul_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Saul_DTM.tif', tileSize: 256, maxzoom: 16 },
-      { id: 'Scrabo_DSM', name: 'Scrabo_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Scrabo_DSM.tif', tileSize: 256, maxzoom: 16 },
-      { id: 'Scrabo_DTM', name: 'Scrabo_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Scrabo_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Scrabo_DSM', name: 'Scrabo_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Scrabo_DSM.tif', tileSize: 256, maxzoom: 18 },
+      { id: 'Scrabo_DTM', name: 'Scrabo_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Scrabo_DTM.tif', tileSize: 256, maxzoom: 18 },
       { id: 'Sion_Mills_02_02_2012_DSM', name: 'Sion_Mills_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Sion_Mills_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
       { id: 'Sion_Mills_02_02_2012_DTM', name: 'Sion_Mills_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Sion_Mills_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
       { id: 'Slemish_DSM', name: 'Slemish_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Slemish_DSM.tif', tileSize: 256, maxzoom: 16 },

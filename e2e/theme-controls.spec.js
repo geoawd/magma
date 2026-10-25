@@ -62,6 +62,75 @@ test('a COG source is created when its active-theme layer is enabled', async ({ 
   await expect.poll(() => rangeRequests).toBeGreaterThan(0);
 });
 
+test('enabled single-band COGs create configured contour layers lazily', async ({ page }) => {
+  await page.route(/psg_cog\.tif/i, route => route.abort());
+  await page.route('https://contour.test/**', route => route.abort());
+  const contourIds = await page.evaluate(() => {
+    const overlay = window.CONFIG.overlays.find(item => item.id === 'Magnetics Pseudo Gravity');
+    window.MaplibreCOGProtocol.getCogMetadata = async () => ({
+      bitsPerSample: [16],
+      images: [{ isMask: false, zoom: 12 }],
+      bbox: [-6.1, 54.1, -5.9, 54.3]
+    });
+    window.MaplibreCOGProtocol.locationValues = async () => [0, 10];
+    window.__cogContourThresholds = [];
+    window.mlcontour.DemSource = class {
+      constructor() { this.manager = {}; }
+      setupMaplibre() {}
+      contourProtocolUrl({ thresholds }) {
+        window.__cogContourThresholds.push(thresholds);
+        return 'https://contour.test/{z}/{x}/{y}.pbf';
+      }
+    };
+    return {
+      source: overlay.cogState.contourSourceId,
+      lines: overlay.cogState.contourLayerIds[0],
+      labels: overlay.cogState.contourLayerIds[1]
+    };
+  });
+
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Tellus Geophysics' });
+  await page.getByRole('checkbox', { name: 'Magnetics Pseudo Gravity', exact: true }).check();
+  await expect.poll(() => page.evaluate(ids =>
+    !!window.__mapInstance?.getSource(ids.source) &&
+    !!window.__mapInstance.getLayer(ids.lines) &&
+    !!window.__mapInstance.getLayer(ids.labels), contourIds)).toBe(true);
+  await expect.poll(() => page.evaluate(ids => [
+    window.__mapInstance.getLayoutProperty(ids.lines, 'visibility'),
+    window.__mapInstance.getLayoutProperty(ids.labels, 'visibility')
+  ], contourIds)).toEqual(['visible', 'visible']);
+
+  const contourStyle = await page.evaluate(ids => ({
+    thresholds: window.__cogContourThresholds,
+    lineColor: window.__mapInstance.getPaintProperty(ids.lines, 'line-color'),
+    labelColor: window.__mapInstance.getPaintProperty(ids.labels, 'text-color'),
+    label: window.__mapInstance.getLayoutProperty(ids.labels, 'text-field')
+  }), contourIds);
+  expect(contourStyle.thresholds).toContainEqual(expect.objectContaining({ 12: [10, 50] }));
+  expect(contourStyle.lineColor).toEqual(['match', ['get', 'level'], 1, '#30383b', '#808384']);
+  expect(contourStyle.labelColor).toBe('#30383b');
+  expect(JSON.stringify(contourStyle.label)).toContain('nT');
+
+  await page.getByRole('button', { name: 'Advanced mode' }).click();
+  const overlayRow = page.locator('#legend [data-order-key="overlay:Magnetics Pseudo Gravity"]');
+  await overlayRow.locator('.tbtn[aria-label="Transparency"]').click();
+  const intervals = overlayRow.locator('.cog-contour-intervals input');
+  await expect(intervals.nth(0)).toHaveValue('10');
+  await expect(intervals.nth(1)).toHaveValue('50');
+  await intervals.nth(1).fill('100');
+  await intervals.nth(1).press('Tab');
+  await expect.poll(() => page.evaluate(() => window.__cogContourThresholds.some(thresholds =>
+    thresholds[12]?.[0] === 10 && thresholds[12]?.[1] === 100))).toBe(true);
+
+  await overlayRow.locator('.cog-contour-colors input').nth(0).evaluate(input => {
+    input.value = '#123456';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect.poll(() => page.evaluate(ids =>
+    window.__mapInstance.getPaintProperty(ids.lines, 'line-color'),
+  contourIds)).toEqual(['match', ['get', 'level'], 1, '#30383b', '#123456']);
+});
+
 test('selecting a range-enabled DEM updates the visible hillshade source', async ({ page }) => {
   await page.getByRole('button', { name: 'Advanced mode' }).click();
   await page.locator('.terrain-tools').click();
@@ -244,6 +313,9 @@ test('standard mode hides drawing and advanced COG controls until enabled', asyn
   await expect(rampLegend).toBeVisible();
   await expect(rampLegend.locator('.cog-ramp-legend-title')).toContainText('%');
   await expect(rampLegend.locator('.cog-ramp-legend-bar, .cog-ramp-class-legend')).toBeVisible();
+  await expect(
+    rampLegend.locator('.cog-ramp-class-row').filter({ hasText: '98th' }).locator('span').nth(1)
+  ).toHaveText('5.48 (98th) (> 4.74 to ≤ 5.48)');
   await expect(rampLegend.locator('.cog-ramp-legend-ramp-name')).toBeHidden();
   await expect(row.locator('.cog-ramp-picker-button')).toBeHidden();
   await expect(row.locator('.cog-ramp-mode-select')).toBeHidden();
@@ -252,6 +324,28 @@ test('standard mode hides drawing and advanced COG controls until enabled', asyn
   await expect(rampLegend.locator('.cog-ramp-legend-ramp-name')).toBeVisible();
   await expect(row.locator('.cog-ramp-picker-button')).toBeVisible();
   await expect(row.locator('.cog-ramp-mode-select')).toBeVisible();
+});
+
+test('Tellus COG class legend formats break values to two decimal places', async ({ page }) => {
+  await page.evaluate(() => {
+    window.MaplibreCOGProtocol.getCogMetadata = async () => ({
+      bitsPerSample: [16],
+      bbox: [-8, 54, -7, 55],
+      images: [{ isMask: false, zoom: 0 }]
+    });
+    window.MaplibreCOGProtocol.locationValues = async (_url, point) => [point.longitude];
+  });
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Tellus Geochemistry' });
+  const aluminium = page.getByRole('checkbox', { name: /^Aluminium Al %/ });
+  const row = aluminium.locator('xpath=ancestor::*[@data-order-key][1]');
+  await aluminium.check();
+  await row.locator('.tbtn[aria-label^="Transparency"]').click();
+
+  const legend = row.locator('.cog-ramp-legend');
+  await expect(legend).toBeVisible();
+  await expect(
+    legend.locator('.cog-ramp-class-row').filter({ hasText: '98th' }).locator('span').nth(1)
+  ).toHaveText('5.48 (98th) (> 4.74 to ≤ 5.48)');
 });
 
 test('COG download panel offers QGIS export, ArcGIS placeholder, and source copy', async ({ page }) => {
@@ -745,9 +839,36 @@ test('GeoJSON config legend is shown in Basic mode and can be classified in Adva
   await expect(layer.locator('.geojson-class-entry').first().locator('.geojson-point')).toHaveCSS('background-color', 'rgb(13, 8, 135)');
 
   await classifyButton.click();
-  await dialog.locator('#geojsonStyleMethod').selectOption('manual_breaks');
-  await dialog.locator('#geojsonManualBreaks').fill('0, 1');
+  await dialog.locator('#geojsonStyleMethod').selectOption('tellus_percentile');
+  await expect(dialog.locator('#geojsonClassCountRow')).toBeHidden();
+  await expect(dialog.locator('#geojsonClassCount')).toBeDisabled();
   await dialog.getByRole('button', { name: 'Apply' }).click();
+  const percentileClasses = layer.locator('.geojson-class-entry');
+  const percentileClassCount = await percentileClasses.count();
+  expect(percentileClassCount).toBeGreaterThan(1);
+  expect(percentileClassCount).toBeLessThanOrEqual(17);
+  const percentileLabels = await layer.locator('.geojson-class-entry > span:not(.sw)').allTextContents();
+  expect(percentileLabels.every(label => /^-?\d+\.\d{2} \(\d+(st|nd|rd|th)\)$/.test(label))).toBe(true);
+  const firstPercentileLabel = percentileLabels[0];
+  const lastPercentileLabel = percentileLabels.at(-1);
+  const sortButton = layer.getByRole('button', { name: 'Show highest percentiles first' });
+  await sortButton.click();
+  await expect(percentileClasses.first().locator('span:not(.sw)')).toHaveText(lastPercentileLabel);
+  await expect(percentileClasses.last().locator('span:not(.sw)')).toHaveText(firstPercentileLabel);
+  await layer.getByRole('button', { name: 'Show lowest percentiles first' }).click();
+  await expect(percentileClasses.first().locator('span:not(.sw)')).toHaveText(firstPercentileLabel);
+
+  await classifyButton.click();
+  await dialog.locator('#geojsonStyleMethod').selectOption('manual_breaks');
+  await expect(dialog.locator('#geojsonManualBreaksRow')).toBeVisible();
+  const percentileBreaks = await page.evaluate(() => {
+    const expression = window.__mapInstance.getPaintProperty('Tellus Waters-points', 'circle-color');
+    return expression.filter((_, index) => index >= 3 && index % 2 === 1).slice(0, 2);
+  });
+  expect(percentileBreaks).toHaveLength(2);
+  await dialog.locator('#geojsonManualBreaks').fill(percentileBreaks.join(', '));
+  await dialog.getByRole('button', { name: 'Apply' }).click();
+  await expect(dialog).toBeHidden();
   await expect(layer.locator('.geojson-class-entry')).toHaveCount(3);
 
   await classifyButton.click();
