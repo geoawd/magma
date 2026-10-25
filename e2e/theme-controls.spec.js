@@ -350,6 +350,37 @@ test('add-data search only shows matching layers inside matching groups', async 
   ]);
 });
 
+test('layer search loads and searches the selected GeoJSON file', async ({ page }) => {
+  let requests = 0;
+  await page.route('https://data.better-open-data.com/lidar_zstd/sitereports.geojson', async route => {
+    requests++;
+    await route.fulfill({
+      status: 200,
+      headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          id: 'report-1',
+          properties: { REPORT_TITLE: 'geojson-search-needle', SITE_ID: 'SR-1' },
+          geometry: { type: 'Point', coordinates: [0, 0] }
+        }]
+      })
+    });
+  });
+  await page.evaluate(() => {
+    window.CONFIG.overlays.find(overlay => overlay.id === 'Site Reports').projection = 'EPSG:4326';
+  });
+  await page.getByRole('navigation', { name: 'Map tools' }).getByRole('button', { name: 'Search' }).click();
+  await expect(page.locator('#searchLayer option[value="geojson:Site Reports"]')).toBeAttached();
+  await page.locator('#searchLayer').selectOption('geojson:Site Reports');
+  await expect(page.locator('#searchFields')).toContainText('REPORT_TITLE');
+  expect(requests).toBe(1);
+  await page.locator('#searchText').fill('geojson-search-needle');
+  await page.locator('#runSearch').click();
+  await expect(page.locator('#tablewrap')).toContainText('geojson-search-needle');
+});
+
 test('saved-session prompt offers only Resume and Reset app', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('mapviewer.session.v1', JSON.stringify({

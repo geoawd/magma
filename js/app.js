@@ -931,42 +931,47 @@ function updateGeojsonLoadStatus(id) {
 }
 async function loadGeojsonData(id) {
   const loader = geojsonLoaders.get(id);
-  if (!loader || loader.status === 'loading' || loader.status === 'loaded') return;
+  if (!loader || loader.status === 'loaded') return;
+  if (loader.loadingPromise) return loader.loadingPromise;
   const w = loader.config;
   loader.status = 'loading';
   updateGeojsonLoadStatus(id);
-  try {
-    await loadGeojsonStyle(w);
-    const response = await fetch(w.url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (Array.isArray(data.features)) {
-      const featureCount = data.features.length;
-      data.features = data.features.filter(feature => hasRenderableGeojsonGeometry(feature?.geometry));
-      const skippedCount = featureCount - data.features.length;
-      if (skippedCount) {
-        const message = `Skipped ${skippedCount} feature${skippedCount === 1 ? '' : 's'} without coordinates in ${w.name || w.id}.`;
-        console.warn(message);
-        toast(message);
+  loader.loadingPromise = (async () => {
+    try {
+      await loadGeojsonStyle(w);
+      const response = await fetch(w.url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (Array.isArray(data.features)) {
+        const featureCount = data.features.length;
+        data.features = data.features.filter(feature => hasRenderableGeojsonGeometry(feature?.geometry));
+        const skippedCount = featureCount - data.features.length;
+        if (skippedCount) {
+          const message = `Skipped ${skippedCount} feature${skippedCount === 1 ? '' : 's'} without coordinates in ${w.name || w.id}.`;
+          console.warn(message);
+          toast(message);
+        }
       }
+      const from = w.projection || 'EPSG:4326';
+      if (from !== 'EPSG:4326') (data.features || []).forEach(f => {
+        if (f.geometry?.coordinates) f.geometry.coordinates = reprojectCoords(f.geometry.coordinates, from);
+      });
+      const source = map.getSource(id);
+      if (!source) throw new Error('GeoJSON map source is unavailable');
+      source.setData(data);
+      loader.geometryTypes = geojsonGeometryTypes(data);
+      loader.data = data;
+      loader.status = 'loaded';
+      renderGeojsonLegend(w);
+    } catch (error) {
+      loader.status = 'error';
+      toast(`Could not load ${w.name || w.id}: ${error.message}`);
+    } finally {
+      loader.loadingPromise = null;
+      updateGeojsonLoadStatus(id);
     }
-    const from = w.projection || 'EPSG:4326';
-    if (from !== 'EPSG:4326') (data.features || []).forEach(f => {
-      if (f.geometry?.coordinates) f.geometry.coordinates = reprojectCoords(f.geometry.coordinates, from);
-    });
-    const source = map.getSource(id);
-    if (!source) throw new Error('GeoJSON map source is unavailable');
-    source.setData(data);
-    loader.geometryTypes = geojsonGeometryTypes(data);
-    loader.data = data;
-    loader.status = 'loaded';
-    renderGeojsonLegend(w);
-  } catch (error) {
-    loader.status = 'error';
-    toast(`Could not load ${w.name || w.id}: ${error.message}`);
-  } finally {
-    updateGeojsonLoadStatus(id);
-  }
+  })();
+  return loader.loadingPromise;
 }
 function loadVisibleGeojsonLayers() {
   geojsonLoaders.forEach((loader, id) => {
@@ -3614,7 +3619,8 @@ function addGeojsonLayer(w, beforeId) {
     advancedStyle: false,
     classification: null,
     geometryTypes: null,
-    data: null
+    data: null,
+    loadingPromise: null
   });
   const inTheme = overlayInitiallyInTheme(w);
   registerLayerVisibility(fillId, w.visible === true, inTheme);
@@ -5667,29 +5673,86 @@ $('csvBtn').onclick = () => {
 };
 
 // ---------- Search ----------
+function pmtilesSearchLayers() {
+  return [...new Set(map.getStyle().layers.filter(layer => layer['source-layer']).map(layer => layer['source-layer']))]
+    .filter(layer => !themeLayers || themeLayers.includes(layer));
+}
 function populateSearchLayers() {
-  const layers = [...new Set(map.getStyle().layers.filter(l => l['source-layer']).map(l => l['source-layer']))]
-    .filter(l => !themeLayers || themeLayers.includes(l));
-  $('searchLayer').innerHTML = layers.map(l => `<option value="${esc(l)}">${esc(l.replace(/_/g, ' '))}</option>`).join('');
+  const geojsonLayers = (CONFIG.overlays || []).filter(overlay => overlay.geojson && geojsonLoaders.has(overlay.id) &&
+    (activeThemeAll || themeOverlays.includes(overlay.id)));
+  const pmtilesLayers = pmtilesSearchLayers();
+  const options = [
+    ...geojsonLayers.map(overlay => `<option value="geojson:${esc(overlay.id)}">${esc(overlay.name || overlay.id)}</option>`),
+    ...pmtilesLayers.map(layer => `<option value="pmtiles:${esc(layer)}">${esc(layer.replace(/_/g, ' '))}</option>`)
+  ];
+  $('searchLayer').innerHTML = options.join('');
   updateSearchFields();
 }
-function updateSearchFields() {
-  const layer = $('searchLayer').value;
-  const sample = queryData(wholeMap()).find(f => f.sourceLayer === layer);
-  $('searchFields').innerHTML = sample
-    ? Object.keys(sample.properties).map(f => `<label><input type="checkbox" value="${esc(f)}" checked>${esc(f)}</label>`).join('')
-    : '<em class="hint">' + (layer ? 'No fields yet – make sure this layer is visible in the current view.' : 'This theme has no searchable layers.') + '</em>';
+function renderSearchFields(properties, layer) {
+  const fields = Object.keys(properties || {});
+  $('searchFields').innerHTML = fields.length
+    ? fields.map(field => `<label><input type="checkbox" value="${esc(field)}" checked>${esc(field)}</label>`).join('')
+    : `<em class="hint">${layer ? 'No searchable fields in this layer.' : 'This theme has no searchable layers.'}</em>`;
+}
+function updatePmtilesSearchFields(layer) {
+  const sample = queryData(wholeMap()).find(feature => feature.sourceLayer === layer);
+  if (sample) renderSearchFields(sample.properties, layer);
+  else $('searchFields').innerHTML =
+    `<em class="hint">${layer ? 'No fields yet – make sure this layer is visible in the current view.' : 'This theme has no searchable layers.'}</em>`;
+}
+async function updateSearchFields() {
+  const selection = $('searchLayer').value;
+  const separator = selection.indexOf(':');
+  const type = separator < 0 ? '' : selection.slice(0, separator);
+  const layer = separator < 0 ? '' : selection.slice(separator + 1);
+  if (type !== 'geojson') {
+    updatePmtilesSearchFields(type === 'pmtiles' ? layer : '');
+    return;
+  }
+  const loader = geojsonLoaders.get(layer);
+  if (!loader) {
+    $('searchFields').innerHTML = '<em class="hint">This GeoJSON layer is unavailable.</em>';
+    return;
+  }
+  $('searchFields').innerHTML = '<em class="hint">Loading GeoJSON fields...</em>';
+  await loadGeojsonData(layer);
+  if ($('searchLayer').value !== selection) return;
+  if (loader.status === 'error') {
+    $('searchFields').innerHTML = '<em class="hint">Could not load this GeoJSON file. Try selecting the layer again.</em>';
+    return;
+  }
+  const sample = loader.data?.features?.find(feature => feature.properties && Object.keys(feature.properties).length);
+  renderSearchFields(sample?.properties, layer);
 }
 ///////////////////////////////////////////////////////////////////////////
-// Searches selected feature properties in the current map view.
+// Searches every record in the selected GeoJSON file or visible PMTiles features.
 ///////////////////////////////////////////////////////////////////////////
-function runSearch() {
+async function runSearch() {
   const text = $('searchText').value.trim().toLowerCase();
   if (!text) { $('searchText').focus(); return; }
-  const layer = $('searchLayer').value;
+  const selection = $('searchLayer').value;
+  const separator = selection.indexOf(':');
+  const type = separator < 0 ? '' : selection.slice(0, separator);
+  const layer = separator < 0 ? '' : selection.slice(separator + 1);
+  if (type === 'geojson') {
+    const loader = geojsonLoaders.get(layer);
+    if (!loader) return toast('The selected GeoJSON layer is unavailable.');
+    await loadGeojsonData(layer);
+    if (loader.status !== 'loaded') return;
+    if (!document.querySelector('#searchFields input')) renderSearchFields(
+      loader.data?.features?.find(feature => feature.properties)?.properties, layer);
+  }
   const fields = [...document.querySelectorAll('#searchFields input:checked')].map(cb => cb.value);
-  const matches = queryData(wholeMap()).filter(f => f.sourceLayer === layer &&
-    fields.some(k => f.properties[k] != null && String(f.properties[k]).toLowerCase().includes(text)));
+  const matches = type === 'geojson'
+    ? geojsonLoaders.get(layer).data.features.filter(feature =>
+      fields.some(field => feature.properties?.[field] != null &&
+        String(feature.properties[field]).toLowerCase().includes(text)))
+      .map(feature => ({ ...feature, sourceLayer: geojsonLoaders.get(layer).config.name || layer }))
+    : type === 'pmtiles'
+      ? queryData(wholeMap()).filter(feature => feature.sourceLayer === layer &&
+        fields.some(field => feature.properties[field] != null &&
+          String(feature.properties[field]).toLowerCase().includes(text)))
+      : [];
   activeTab = null;
   showTable(matches, `${matches.length} search result(s)`);
   if (isMobile()) openTool(tool);   // reveal the results

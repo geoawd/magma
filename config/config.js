@@ -200,7 +200,7 @@ overlays: [
     style: { color: '#070707', width: 0.25}, 
     opacity: 1, 
     visible: false,
-    minzoom: 8, maxzoom: 22,  
+    minzoom: 10, maxzoom: 22,  
   },
 
    { id: 'Tellus Waters', 
