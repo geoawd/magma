@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f6f8">
+  <title>Data catalogue | Sliabh Data</title>
+  <link rel="stylesheet" href="css/data-catalogue.css">
+</head>
+<body>
+  <header class="page-header">
+    <a id="backToMap" class="back-link" href="index.html">← Back to map</a>
+    <p class="eyebrow">Sliabh Data</p>
+    <h1>Data catalogue</h1>
+    <p class="intro">Browse configured GeoJSON and Cloud Optimized GeoTIFF datasets. Download a QGIS layer definition or copy a source URL.</p>
+    <p class="note">GeoJSON exports use the configured style. COG exports use configured class breaks when available; otherwise they use the configured smooth quantile ramp (CET rainbow4, 256 stops by default). All configured terrain COG models, including DSMs and DTMs, are listed in the Terrain COGs group.</p>
+    <label class="search-label" for="catalogueSearch">Filter datasets</label>
+    <input id="catalogueSearch" type="search" placeholder="Search names, groups, or URLs" autocomplete="off">
+    <p id="catalogueStatus" class="status" role="status" aria-live="polite">Loading datasets…</p>
+  </header>
+  <main id="catalogue" aria-label="Datasets"></main>
+  <script type="module" src="js/data-catalogue.js"></script>
+</body>
+</html>

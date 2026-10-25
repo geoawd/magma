@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MAGMA - Mapping and Analysis of Geoscience Models and Archives</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="modulepreload" href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs" integrity="sha384-tG0qQdL7veKvVoyu6PbnmddDls/OVkTjaK9oVY5eq9afBA6zYptFui69Dx57duAh" crossorigin="anonymous">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.css" integrity="sha384-yFNc3bs28S14jOJo1ZO9SnLiAmtyY2a3H9be8GkLMpDGlO5r1zZNP8fYu+fOCE/w" crossorigin="anonymous">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.css" integrity="sha384-kWhXkxsLl6DODYRUoNdPQrEwAFVzLoegtEL9WR3Xybrqmi+2HSENt8VyRofcRDUG" crossorigin="anonymous">
+<style id="pageStyle"></style>
+</head>
+<body>
+<div id="side">
+  <nav id="rail" aria-label="Map tools">
+    <button data-tool="legend" title="Legend and layers" aria-label="Legend and layers">
+      <svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></svg></button>
+    <button id="addDataBtn" title="Add data to the current theme" aria-label="Add data to the current theme" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button id="tableBtn" title="Results table on/off" aria-label="Results table" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 10h18M3 14.500h18M9 10v9"/></svg></button>
+    <button data-tool="search" title="Search" aria-label="Search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+    <button id="boxBtn" title="Select by box (Esc to cancel)" aria-label="Select by box" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 2.5"/><path d="m13 13 3 7 1.5-3 3-1.5-7.500-2.500Z" fill="currentColor"/></svg></button>
+    <button id="globeBtn" title="Switch to globe view" aria-label="Switch to globe view" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></button>
+    <button id="terrainBtn" title="3D terrain view" aria-label="3D terrain view" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="m3 19 6-11 4 7 3-4 5 8Z"/></svg></button>
+    <button id="printBtn" title="Print map and key" aria-label="Print map and key">
+      <svg viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="1.500"/><path d="M7 14h10v6H7z"/></svg></button>
+    <div class="gap"></div>
+    <button data-tool="about" title="Information" aria-label="Information">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
+  </nav>
+  <div id="drawer">
+    <div id="drawerDragHandle" role="separator" aria-label="Resize map tools panel" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="80" aria-valuenow="45" tabindex="0"></div>
+    <section id="legendPage" class="dpage">
+      <div class="dhead"><span>Legend</span><div class="dhead-actions"><button id="advancedModeBtn" type="button" aria-label="Advanced mode" aria-pressed="false">Advanced mode</button><button class="dclose" aria-label="Close">&times;</button></div></div>
+      <div class="themebar" id="themeBar" hidden><select id="themeSel" aria-label="Theme"></select></div>
+      <section id="addDataPanel" hidden aria-label="Add data to theme">
+        <div class="add-data-head"><strong>Available data</strong><button id="addDataClose" type="button" aria-label="Close add data">&times;</button></div>
+        <div class="add-data-search"><input id="addDataSearch" type="search" aria-label="Search groups and layers" placeholder="Search groups and layers" autocomplete="off" disabled></div>
+        <div id="addDataList"></div>
+        <div class="add-data-actions"><button id="addDataApply" class="primary" type="button" disabled>Add selected</button></div>
+      </section>
+      <div class="dbody" id="legend"></div>
+    </section>
+    <section id="searchPage" class="dpage">
+      <div class="dhead"><span>Search</span><button class="dclose" aria-label="Close">&times;</button></div>
+      <div class="dbody form">
+        <label for="searchLayer">Layer</label><select id="searchLayer"></select>
+        <label>Fields to search</label><div id="searchFields"></div>
+        <label for="searchText">Text</label><input id="searchText" type="text" autocomplete="off">
+        <button id="runSearch" class="primary">Search</button>
+        <span class="hint">Searches features loaded in the current map view. Zoom out to cover more.</span>
+      </div>
+    </section>
+    <section id="aboutPage" class="dpage">
+      <div class="dhead"><span>Information</span><button class="dclose" aria-label="Close">&times;</button></div>
+      <div class="dbody">
+        <!-- Edit the headings and text below. Add more sections by copying a <section class="lgroup"> block. -->
+        <section class="lgroup">
+          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Help</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <div class="lgbody info-copy">
+            <p>To help get you started, take a quick, guided look at the map controls.</p>
+            <button id="startTour" class="primary" type="button">Start tour</button>
+          </div>
+        </section>
+        <!-- Edit tour titles and descriptions here; data-target points to each interface control. -->
+        <template id="tourSteps">
+          <ol>
+            <li data-title="Themes" data-target="#themeSel">Choose a theme to switch the map to a different subject or collection. The legend updates to show its available layers.</li>
+            <li data-title="Legend and layers" data-target="#legend">Expand a group to see its layers. Use each layer's checkbox to show or hide it on the map.</li>
+            <li data-title="Reorder layers" data-target="#legend .lgbody [draggable=&quot;true&quot;]">Drag a layer row up or down to change its order in the legend. Drag a group heading to reorder a whole group.</li>
+            <li data-title="Group controls" data-target="#legend .lgexpand">Use the chevron to collapse or expand a group's layer list. The eye beside it toggles visibility for every layer in that group.</li>
+            <li data-title="Layer metadata" data-target="#legend .tbtn[aria-label=&quot;Layer information&quot;]">Select the information (i) button beside a layer to view its metadata and source link. Not every layer has metadata.</li>
+            <li data-title="Add and remove data" data-target="#addDataBtn">Use the + button to add data to the current theme. Select items and choose Add selected. Remove your additions with the trash button beside a group heading.</li>
+            <li data-title="Transparency" data-target="#legend .tbtn[aria-label^=&quot;Transparency&quot;]" data-open="transparency">Open the sliders button beside a layer, then drag Transparency to blend it with the map. Higher transparency values make the layer more see-through.</li>
+            <li data-title="Select by box" data-target="#boxBtn">Choose Select by box, then drag a rectangle on the map. Keyboard: focus the map, press Enter to set one corner, pan with the arrow keys, then press Enter again. Press Esc to cancel.</li>
+            <li data-title="Navigate the map" data-target="#map .maplibregl-ctrl-top-right">Drag to pan; scroll or pinch to zoom. Use the map controls to zoom, rotate, reset north, or fit the configured extent.</li>
+            <li data-title="Hillshade settings" data-target="#legend .hillshade-settings .hs-method" data-open="hillshade">In the Terrain group, open Hillshade settings to choose a shading method, set light direction and altitude, choose the illumination reference, and adjust shadow, highlight, and accent colors.</li>
+            <li data-title="3D terrain options" data-target="#legend .terrain-exaggeration" data-open="terrain">Open the 3D terrain options to choose among configured terrain models and adjust vertical exaggeration. Use the toolbar button to turn 3D terrain on or off.</li>
+          </ol>
+        </template>
+        <section class="lgroup">
+          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>About</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <div class="lgbody info-copy">
+            <p>An unofficial, experimental map viewer for Geological Survey of Northern Ireland datasets. Data is derived from Open Data or consumed via OGL services. The project is available on <a href="https://github.com/geoawd/pmtiles">Github</a></p>
+          </div>
+        </section>
+        <section class="lgroup">
+          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Data Catalogue</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <div class="lgbody info-copy">
+            <p>Browse GeoJSON and COG datasets, metadata, source URLs, and QGIS exports in the <a id="dataCatalogueLink" href="data-catalogue.html">data catalogue</a>.</p>
+          </div>
+        </section>
+         <section class="lgroup">
+          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Copyright</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <div class="lgbody info-copy">
+            <p>Data is derived from data available under the OGLV3.</p>
+          </div>
+        </section>
+        <section class="lgroup collapsed">
+          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="false"><span>Third-party notices</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <div class="lgbody"><pre id="thirdPartyNotices" class="notice-copy" aria-live="polite">Open Information to load notices.</pre></div>
+        </section>
+      </div>
+    </section>
+  </div>
+</div>
+
+<main id="main">
+  <div id="mapwrap">
+    <div id="map"></div>
+    <button id="jsonCopyBtn" class="json-action" type="button" aria-label="Copy a link to this page with filters applied" title="Copy a link to this page with filters applied" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.71-1.71M8 12h8"/></svg>
+    </button>
+    <div id="geo" role="search">
+      <div class="geobox">
+        <input id="geoIn" type="search" placeholder="Place or grid ref, e.g. J 3374 7396" aria-label="Search for a place or Irish grid reference" autocomplete="off">
+        <button id="geoGo" title="Search" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500"/><path d="m16 16 5 5"/></svg></button>
+      </div>
+      <ul id="geoList" hidden></ul>
+    </div>
+    <div id="mapinfo">
+      <div id="cogValues"></div>
+      <div class="mapinfo-coordinates"><div id="zoomLevel" hidden></div><div id="coords">Move the cursor…</div></div>
+    </div>
+    <div id="toast" role="status"></div>
+    <div id="boxTip" role="status" aria-live="polite">Drag a box on the map, or focus the map and press Enter to set the first corner</div>
+  </div>
+    <div id="panelSplitter" role="separator" aria-label="Resize results panel" aria-orientation="horizontal"
+      aria-valuemin="150" aria-valuenow="240" aria-valuemax="600" tabindex="0"></div>
+  <div id="panel">
+    <header><span id="count"></span>
+      <div>
+        <button id="csvBtn">Export CSV</button>
+        <button id="xlsxBtn" hidden>Export filtered Boreholes to XLSX</button>
+        <button id="jsonExcelBtn" class="json-action" aria-label="Export Excel" hidden>Export filtered results to XLSX</button>
+        <button id="jsonClearBtn" class="json-action" aria-label="Clear filters" hidden>Clear filters</button>
+        <button id="closeBtn">Close</button>
+      </div>
+    </header>
+    <div id="tabs"></div>
+    <section id="jsonControls" hidden>
+      <div id="jsonActiveFilters" role="group" aria-label="Active filters"></div>
+    </section>
+    <div id="tablewrap"></div>
+  </div>
+</main>
+
+<div id="printView" aria-hidden="true"></div>
+<dialog id="sessionRestoreDialog" aria-labelledby="sessionRestoreTitle" aria-describedby="sessionRestoreDescription">
+  <h2 id="sessionRestoreTitle">Resume your previous session?</h2>
+  <p id="sessionRestoreDescription">A saved map session is available. Choose how you want to start.</p>
+  <div class="session-restore-actions">
+    <button class="primary" type="button" data-session-choice="resume">Resume</button>
+    <button type="button" data-session-choice="reset">Reset app</button>
+  </div>
+</dialog>
+<dialog id="notificationDialog" aria-labelledby="notificationTitle">
+  <form id="notificationForm">
+    <h2 id="notificationTitle"></h2>
+    <p id="notificationLocation"></p>
+    <div id="notificationFields"></div>
+    <label for="notificationPreview">Message preview (you can edit before copying)</label>
+    <textarea id="notificationPreview" rows="8"></textarea>
+    <p id="notificationReminder"></p>
+    <div id="notificationStatus" role="status" aria-live="polite"></div>
+    <div class="notification-actions">
+      <button id="notificationEmail" class="primary" type="button">Open in email</button>
+      <button id="notificationCopy" type="button">Copy text</button>
+      <button id="notificationClose" type="button">Close</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="geojsonStyleDialog" aria-labelledby="geojsonStyleTitle" aria-describedby="geojsonStyleDescription">
+  <form id="geojsonStyleForm">
+    <h2 id="geojsonStyleTitle"></h2>
+    <p id="geojsonStyleDescription"></p>
+    <label for="geojsonStyleField">Attribute</label>
+    <select id="geojsonStyleField"></select>
+    <label for="geojsonStyleMethod">Classification method</label>
+    <select id="geojsonStyleMethod">
+      <option value="quantile">Quantile ranges</option>
+      <option value="equal_interval">Equal-interval ranges</option>
+      <option value="manual_breaks">Manual numeric breaks</option>
+      <option value="unique_values">Discrete unique values</option>
+    </select>
+    <label id="geojsonClassCountRow" for="geojsonClassCount">Number of classes</label>
+    <input id="geojsonClassCount" type="number" min="2" max="12" step="1" value="5">
+    <label id="geojsonManualBreaksRow" for="geojsonManualBreaks" hidden>Break values</label>
+    <input id="geojsonManualBreaks" type="text" placeholder="0.5, 1, 1.5" hidden>
+    <p id="geojsonManualBreaksHint" class="geojson-style-hint" hidden>Enter ascending numeric breaks separated by commas. Values must be inside the data range.</p>
+    <span class="geojson-style-label">Color ramp</span>
+    <div class="geojson-ramp-picker">
+      <input id="geojsonStyleRamp" type="hidden" value="Viridis">
+      <button id="geojsonStyleRampButton" class="geojson-ramp-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+        <span id="geojsonStyleRampCurrent" class="geojson-ramp-bar" aria-hidden="true"></span>
+      </button>
+      <div id="geojsonStyleRampOptions" class="geojson-ramp-options" role="listbox" aria-label="Color ramps" hidden></div>
+    </div>
+    <p id="geojsonStyleStatus" role="status" aria-live="polite"></p>
+    <div class="geojson-style-actions">
+      <button id="geojsonResetStyle" type="button">Reset to default</button>
+      <span></span>
+      <button id="geojsonCancelStyle" type="button">Cancel</button>
+      <button id="geojsonApplyStyle" class="primary" type="submit">Apply</button>
+    </div>
+  </form>
+</dialog>
+<script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js" integrity="sha384-QfbOCebHNw8pQiPAOd2IFee2v2A5VYZxBk0+JGZ5H+3mfzVIp6zsQNkTsfGJot93" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.umd.js" integrity="sha384-yhep21kwwLZCV1aZfqjNeKXP6znnkpri9p4oBTDjwidlfwiFuxVEDfhTtTaEi1Ag" crossorigin="anonymous"></script>
+<!--<script src="https://unpkg.com/@geomatico/maplibre-cog-protocol@0.10.0/dist/index.js" integrity="sha384-t1PE7x+ltzMRnLBdPzuY56UPewCP9ZGEFqEuaEa579Mq61Q0psO4LM+lNUFP5WqP" crossorigin="anonymous"></script>-->
+<script src="js/maplibre-cog-protocol.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.22.0/proj4.js" integrity="sha384-RCBbAm8IhfOOoFV7vqUhspSb+BCSvVSd84WJpv5VMq4rNiXJ88VMHtndxQntlbnd" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js" integrity="sha384-f2gK0HoDkM64k6ZBnbv6ZuvMzDqPOwrfTaIU9iv2BN7CWHyyTQJkPC9AoRNuuV39" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+<script src="js/config-loader.js"></script>
+</body>
+</html>

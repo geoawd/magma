@@ -1,0 +1,60 @@
+{
+  "style": {
+    "color": [
+      "match",
+      ["get", "Aquifer"],
+      "'Old Red Sandstones'", "#af762a",
+      "Basalts", "#e884af",
+      "Carboniferous Limestones", "#00a9e0",
+      "Cretaceous (Chalk)", "#b7d488",
+      "Dalradian", "#c3afd5",
+      "Greywackes", "#8bd0c1",
+      "Intrusive Igneous: Dykes and Sills", "#a7549b",
+      "Intrusive Igneous: Plutonic", "#f37778",
+      "Non aquifer: Lough Neagh Clays", "#808080",
+      "Non aquifer: Moffat Shale Group", "#808080",
+      "Non aquifer: Mudstones", "#808080",
+      "Permo-Triassic Sandstones", "#fddbcc",
+      "Upper Carboniferous Sandstones", "#749596",
+      "#808080"
+    ],
+    "fill": [
+      "match",
+      ["get", "Aquifer"],
+      "'Old Red Sandstones'", "#af762a",
+      "Basalts", "#e884af",
+      "Carboniferous Limestones", "#00a9e0",
+      "Cretaceous (Chalk)", "#b7d488",
+      "Dalradian", "#c3afd5",
+      "Greywackes", "#8bd0c1",
+      "Intrusive Igneous: Dykes and Sills", "#a7549b",
+      "Intrusive Igneous: Plutonic", "#f37778",
+      "Non aquifer: Lough Neagh Clays", "#808080",
+      "Non aquifer: Moffat Shale Group", "#808080",
+      "Non aquifer: Mudstones", "#808080",
+      "Permo-Triassic Sandstones", "#fddbcc",
+      "Upper Carboniferous Sandstones", "#749596",
+      "#808080"
+    ],
+    "width": 0.25
+  },
+  "legend": {
+    "title": "Aquifer",
+    "entries": [
+      { "label": "'Old Red Sandstones'", "color": "#af762a" },
+      { "label": "Basalts", "color": "#e884af" },
+      { "label": "Carboniferous Limestones", "color": "#00a9e0" },
+      { "label": "Cretaceous (Chalk)", "color": "#b7d488" },
+      { "label": "Dalradian", "color": "#c3afd5" },
+      { "label": "Greywackes", "color": "#8bd0c1" },
+      { "label": "Intrusive Igneous: Dykes and Sills", "color": "#a7549b" },
+      { "label": "Intrusive Igneous: Plutonic", "color": "#f37778" },
+      { "label": "Non aquifer: Lough Neagh Clays", "color": "#808080" },
+      { "label": "Non aquifer: Moffat Shale Group", "color": "#808080" },
+      { "label": "Non aquifer: Mudstones", "color": "#808080" },
+      { "label": "Permo-Triassic Sandstones", "color": "#fddbcc" },
+      { "label": "Upper Carboniferous Sandstones", "color": "#749596" },
+      { "label": "Other", "color": "#808080" }
+    ]
+  }
+}

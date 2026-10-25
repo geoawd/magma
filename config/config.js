@@ -1,0 +1,2268 @@
+///////////////////////////////////////////////////////////////////////////
+// APPLICATION CONFIGURATION
+///////////////////////////////////////////////////////////////////////////
+
+window.CONFIG = {
+  title: 'MAGMA - Mapping and Analysis of Geospatial Material and Archives',
+  showZoom: true, // development helper: show the current zoom level beside the grid reference; set to false for production
+  // Map reports are available in Advanced mode. Add report types and fields here.
+  notifications: [
+    {
+      id: 'borehole',
+      label: 'Report a borehole',
+      title: 'Borehole notification',
+      recipient: '',
+      reminderText: 'Please attach borehole reports, logs, and photos to your email.',
+      fields: [
+        { name: 'name', label: 'Borehole name or ID', type: 'text' },
+        { name: 'type', label: 'Type', type: 'select', options: ['Water supply', 'Monitoring', 'Ground investigation', 'Geothermal', 'Unknown'] },
+        { name: 'depth', label: 'Depth (m)', type: 'number', min: 0, step: 0.1 },
+        { name: 'date', label: 'Date drilled', type: 'date' },
+        { name: 'notes', label: 'Notes', type: 'textarea', rows: 3 },
+        { name: 'contact', label: 'Your name and contact details', type: 'text' }
+      ]
+    },
+    {
+      id: 'landslide',
+      label: 'Report a landslide',
+      title: 'Landslide notification',
+      recipient: '',
+      reminderText: 'Please attach landslide reports and photos to your email.',
+      fields: [
+        { name: 'date', label: 'Date observed', type: 'date' },
+        { name: 'extent', label: 'Approximate extent', type: 'text' },
+        { name: 'notes', label: 'Description and notes', type: 'textarea', rows: 3 },
+        { name: 'contact', label: 'Your name and contact details', type: 'text' }
+      ]
+    },
+    {
+      id: 'rockfall',
+      label: 'Report a rockfall',
+      title: 'Rockfall notification',
+      recipient: '',
+      reminderText: 'Please attach rockfall reports and photos to your email.',
+      fields: [
+        { name: 'date', label: 'Date observed', type: 'date' },
+        { name: 'material', label: 'Location / material / approximate size', type: 'text' },
+        { name: 'notes', label: 'Description and notes', type: 'textarea', rows: 3 },
+        { name: 'contact', label: 'Your name and contact details', type: 'text' }
+      ]
+    }
+  ],
+
+///////////////////////////////////////////////////////////////////////////
+//  Datasets - PMTILES
+///////////////////////////////////////////////////////////////////////////
+// Vector datasets: each has its own .pmtiles and style.json. Layers from all datasets share one legend.
+//   id (unique) | style (style.json path) | pmtiles (optional: overrides the file named in that style) | name (optional legend group if the style has none)
+// Themes can use `datasets: ['geol']` to switch on every layer from a dataset, and/or `
+// layers: [...]` for individual layers.
+// Remove `datasets` to use `styleUrl` alone.
+///////////////////////////////////////////////////////////////////////////
+
+  datasets: [
+  ],
+  styleUrl: 'config/style.json',
+
+  // Applied to COGs without configured classes, including Tellus Magnetics.
+  // Quantile mode exports a smooth ramp with this many stops; configured classes still take precedence.
+  cogStyleDefaults: {
+    ramp: 'CET rainbow4',
+    mode: 'quantile',
+    quantileStops: 256
+  },
+
+///////////////////////////////////////////////////////////////////////////
+//  Query Layers 
+//  null = auto-detect every layer on a vector source in your style; or list ids
+///////////////////////////////////////////////////////////////////////////  
+  queryLayers: null,          
+
+///////////////////////////////////////////////////////////////////////////
+//  Basemaps
+///////////////////////////////////////////////////////////////////////////
+
+  basemaps: [
+    { id: 'osm', name: 'OpenStreetMap', tiles: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      maxzoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', opacity: 1, visible: true },
+    { id: 'Gray', name: 'World Light Gray Base', tiles: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}.png',
+      maxzoom: 19, attribution: '&copy; ESRI', opacity: 1, visible: false }
+  ],
+
+///////////////////////////////////////////////////////////////////////////
+//  Project Extent
+///////////////////////////////////////////////////////////////////////////
+
+  bounds: [[-8.5, 53.5], [-5.0, 55.6]], // project extent: southwest and northeast [longitude, latitude]
+
+///////////////////////////////////////////////////////////////////////////
+//  Layer Visibility on startup
+///////////////////////////////////////////////////////////////////////////
+  
+  layerDefaults: {}, // vector source-layer names enabled at startup, e.g. { Boreholes: true }
+
+///////////////////////////////////////////////////////////////////////////
+//  Overlays XYZ / WMS etc
+///////////////////////////////////////////////////////////////////////////
+// WMS:  { id: 'w1', name: 'My WMS', url: 'https://example.org/wms', layers: 'geology_50k', version: '1.3.0' },
+// XYZ:  { id: 'x1', name: 'My tiles', tiles: 'https://example.org/{z}/{x}/{y}.png', maxzoom: 18 },
+// Optional on any overlay: group, opacity (0-1), visible (true/false), attribution, minzoom, maxzoom, legendUrl (image),
+//   info (https link shown as an 'i' link in the layer's panel)
+// For COGs, set resampling to 'nearest' or 'bilinear' (default: nearest for color rasters);
+//   hillshade controls are hidden by default; set hillshade_option: true to show them and enable hillshade initially.
+
+// GeoJSON overlay (polygon fills, line strokes and point circles):
+// {
+//   id: 'g1', name: 'My boundary', group: 'Boundaries',
+//   geojson: true, url: 'data/boundary.geojson',
+//   projection: 'EPSG:29902', // source CRS; defaults to EPSG:4326
+//   geometryType: 'Polygon', // optional hint for the legend before lazy-loaded data is available
+//   style: {
+//     color: '#d9480f',       // line/point outline and polygon outline color
+//     width: 2,               // line width and point outline width
+//     dasharray: [4, 2],      // optional dashed line
+//     radius: 5,              // point radius; defaults to 5
+//     fill: '#fdae61'         // polygon/point fill; defaults to color
+//   },
+//   styleUrl: 'config/hydrostyle.json', // optional JSON file with { style: {...}, legend: {...} }
+//   opacity: 1,               // 0-1; defaults to 1
+//   visible: false,           // defaults to hidden
+//   minzoom: 10, maxzoom: 22, // display zoom range; does not defer the data request
+//   attribution: '&copy; Data provider',
+//   legendUrl: 'https://example.org/legend.png', // optional legend image
+//   info: 'https://example.org/about'             // optional info link
+// }
+// Attribute-driven color legends: style.color can use MapLibre `match` for explicit string/numeric classes,
+// or `step` with numeric stops for ranges. GeoJSON class entries are listed and can be toggled individually.
+///////////////////////////////////////////////////////////////////////////
+
+  
+overlays: [
+
+///////////////////////////////////////////////////////////////////////////
+//  Local JSON
+///////////////////////////////////////////////////////////////////////////
+{ id: 'Boreholes', 
+    name: 'Boreholes', 
+    group: 'Geotechnical', 
+    geojson: true,
+    geometryType: 'Point',
+    url: 'https://data.better-open-data.com/lidar_zstd/boreholes.geojson', 
+    projection: 'EPSG:29902',
+    style: {
+      color: '#000000',
+      fill: [
+        'step',
+        ['to-number', ['get', 'TOTAL DEPTH'], 0],
+        '#2c7bb6', 
+        5,    '#abd9e9', 
+        10,   '#ffffbf', 
+        20,   '#fdae61', 
+        100,  '#d73027', 
+        1000, '#7f0000', 
+      ],
+      radius: [
+          'interpolate', ['linear'], ['zoom'],
+          10, 2,  // zoom 10: radius 2 px
+          14, 5,  // zoom 14: radius 5 px
+          18, 9,  // zoom 18: radius 9 px
+        ],
+        width: 1.0,    },
+    opacity: 1, 
+    visible: false,
+    minzoom: 10, maxzoom: 22,  
+  },   
+
+  { id: 'Site Reports', 
+    name: 'Site Reports', 
+    group: 'Geotechnical', 
+    geojson: true,
+    geometryType: 'Polygon',
+    url: 'https://data.better-open-data.com/lidar_zstd/sitereports.geojson', 
+    projection: 'EPSG:29902',
+    style: {
+      fill: '#746c65',
+      color: '#000000',
+      width: 1,
+    },
+    opacity: 0.5, 
+    visible: false,
+    minzoom: 10, maxzoom: 22,  
+  },   
+
+{ id: 'Tellus Shallow Soil - XRF', 
+    name: 'Tellus Shallow Soil - XRF', 
+    group: 'Tellus Soils', 
+    geojson: true,
+    geometryType: 'Point',
+    url: 'https://data.better-open-data.com/lidar_zstd/regional-soils-a-xrf.geojson', 
+    projection: 'EPSG:4326',
+    style: { color: '#070707', width: 0.25}, 
+    opacity: 1, 
+    visible: false,
+    minzoom: 8, maxzoom: 22,  
+  },
+
+   { id: 'Tellus Waters', 
+    name: 'Tellus Waters', 
+    group: 'Tellus Waters', 
+    geojson: true,
+    geometryType: 'Point',
+    url: 'https://data.better-open-data.com/lidar_zstd/regionalwatersicp.geojson',
+    projection: 'EPSG:4326',
+    style: { color: '#1f86db', width: 0.25}, 
+    opacity: 1, 
+    visible: false,
+    minzoom: 10, maxzoom: 22,  
+  },
+
+{ id: 'Bedrock Aquifer Classification', 
+    name: 'Bedrock Aquifer Classification', 
+    group: 'Bedrock Aquifer Classification', 
+    geojson: true,
+    geometryType: 'MultiPolygon',
+    url: 'https://data.better-open-data.com/lidar_zstd/hydro.geojson',
+    projection: 'EPSG:29902',
+    styleUrl: 'config/hydrostyle.json',
+    opacity: 0.7, 
+    visible: false,
+    minzoom: 7, maxzoom: 22,  
+  },
+
+///////////////////////////////////////////////////////////////////////////
+//  Local COG raster
+///////////////////////////////////////////////////////////////////////////
+
+// { id: 'converted_cog', name: 'Converted COG', group: 'COG Rasters', cog: 'data/converted.tif', tileSize: 256, opacity: 1, visible: true },
+
+ 
+  {
+    id : 'Aluminium Al % (Percentile) DL = 0.01',
+ name : 'Aluminium Al % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Aluminium Al % (Percentile) DL = 0.01.tif',
+    legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.06 , label:  '0.06 (1st)' },
+      { max: 0.07 , label:  '0.07 (2nd)' },
+      { max: 0.13 , label:  '0.13 (5th)' },
+      { max: 0.45 , label:  '0.45 (10th)' },
+      { max: 0.7 , label:  '0.7 (15th)' },
+      { max: 0.85 , label:  '0.85 (20th)' },
+      { max: 0.99 , label:  '0.99 (25th)' },
+      { max: 1.33 , label:  '1.33 (40th)' },
+      { max: 1.58 , label:  '1.58 (50th)' },
+      { max: 1.87 , label:  '1.87 (60th)' },
+      { max: 2.31 , label:  '2.31 (75th)' },
+      { max: 3.29 , label:  '3.29 (85th)' },
+      { max: 3.96 , label:  '3.96 (90th)' },
+      { max: 4.74 , label:  '4.74 (95th)' },
+      { max: 5.4758 , label:  '5.4758 (98th)' },
+      { max: 5.8229 , label:  '5.8229 (99th)' },
+      { max: 7.35 , label:  '7.35 (100th)' },
+    ]
+  },
+  {
+    id : 'Antimony Sb mg/kg (Percentile) DL = 0.05',
+ name : 'Antimony Sb mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Antimony Sb mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.09 , label:  '0.09 (1st)' },
+      { max: 0.11 , label:  '0.11 (2nd)' },
+      { max: 0.14 , label:  '0.14 (5th)' },
+      { max: 0.17 , label:  '0.17 (10th)' },
+      { max: 0.19 , label:  '0.19 (15th)' },
+      { max: 0.21 , label:  '0.21 (20th)' },
+      { max: 0.22 , label:  '0.22 (25th)' },
+      { max: 0.28 , label:  '0.28 (40th)' },
+      { max: 0.32 , label:  '0.32 (50th)' },
+      { max: 0.37 , label:  '0.37 (60th)' },
+      { max: 0.49 , label:  '0.49 (75th)' },
+      { max: 0.63 , label:  '0.63 (85th)' },
+      { max: 0.77 , label:  '0.77 (90th)' },
+      { max: 1.06 , label:  '1.06 (95th)' },
+      { max: 1.55 , label:  '1.55 (98th)' },
+      { max: 2.02 , label:  '2.02 (99th)' },
+      { max: 347.0 , label:  '347 (100th)' },
+    ]
+  },
+  {
+    id : 'Arsenic As mg/kg (Percentile) DL = 0.1',
+ name : 'Arsenic As mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Arsenic As mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.3 , label:  '0.3 (1st)' },
+      { max: 0.6 , label:  '0.6 (2nd)' },
+      { max: 1.1 , label:  '1.1 (5th)' },
+      { max: 1.6 , label:  '1.6 (10th)' },
+      { max: 2.0 , label:  '2 (15th)' },
+      { max: 2.4 , label:  '2.4 (20th)' },
+      { max: 2.8 , label:  '2.8 (25th)' },
+      { max: 3.8 , label:  '3.8 (40th)' },
+      { max: 4.6 , label:  '4.6 (50th)' },
+      { max: 5.5 , label:  '5.5 (60th)' },
+      { max: 7.3 , label:  '7.3 (75th)' },
+      { max: 9.3 , label:  '9.3 (85th)' },
+      { max: 11.3 , label:  '11.3 (90th)' },
+      { max: 15.545 , label:  '15.545 (95th)' },
+      { max: 23.658 , label:  '23.658 (98th)' },
+      { max: 36.729 , label:  '36.729 (99th)' },
+      { max: 232.8 , label:  '232.8 (100th)' },
+    ]
+  },
+  {
+    id : 'Barium Ba mg/kg (Percentile) DL = 5',
+ name : 'Barium Ba mg/kg DL = 5',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Barium Ba mg_kg (Percentile) DL = 5.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 7.0 , label:  '7 (1st)' },
+      { max: 9.0 , label:  '9 (2nd)' },
+      { max: 12.0 , label:  '12 (5th)' },
+      { max: 22.0 , label:  '22 (10th)' },
+      { max: 33.0 , label:  '33 (15th)' },
+      { max: 42.0 , label:  '42 (20th)' },
+      { max: 49.0 , label:  '49 (25th)' },
+      { max: 67.0 , label:  '67 (40th)' },
+      { max: 77.0 , label:  '77 (50th)' },
+      { max: 87.0 , label:  '87 (60th)' },
+      { max: 104.0 , label:  '104 (75th)' },
+      { max: 121.0 , label:  '121 (85th)' },
+      { max: 136.0 , label:  '136 (90th)' },
+      { max: 171.45 , label:  '171.45 (95th)' },
+      { max: 246.16 , label:  '246.16 (98th)' },
+      { max: 318.29 , label:  '318.29 (99th)' },
+      { max: 2930.0 , label:  '2930 (100th)' },
+    ]
+  },
+  {
+    id : 'Beryllium Be mg/kg (Percentile) DL = 0.1',
+ name : 'Beryllium Be mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Beryllium Be mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.1 , label:  '0.1 (10th)' },
+      { max: 0.2 , label:  '0.2 (15th)' },
+      { max: 0.3 , label:  '0.3 (25th)' },
+      { max: 0.4 , label:  '0.4 (50th)' },
+      { max: 0.5 , label:  '0.5 (60th)' },
+      { max: 0.6 , label:  '0.6 (75th)' },
+      { max: 0.7 , label:  '0.7 (85th)' },
+      { max: 0.8 , label:  '0.8 (90th)' },
+      { max: 1.0 , label:  '1 (95th)' },
+      { max: 1.3 , label:  '1.3 (98th)' },
+      { max: 1.7 , label:  '1.7 (99th)' },
+      { max: 27.9 , label:  '27.9 (100th)' },
+    ]
+  },
+  {
+    id : 'Bismuth Bi mg/kg (Percentile) DL = 0.02',
+ name : 'Bismuth Bi mg/kg DL = 0.02',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Bismuth Bi mg_kg (Percentile) DL = 0.02.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.04 , label:  '0.04 (1st)' },
+      { max: 0.05 , label:  '0.05 (2nd)' },
+      { max: 0.06 , label:  '0.06 (5th)' },
+      { max: 0.07 , label:  '0.07 (10th)' },
+      { max: 0.08 , label:  '0.08 (15th)' },
+      { max: 0.09 , label:  '0.09 (25th)' },
+      { max: 0.11 , label:  '0.11 (40th)' },
+      { max: 0.13 , label:  '0.13 (50th)' },
+      { max: 0.15 , label:  '0.15 (60th)' },
+      { max: 0.18 , label:  '0.18 (75th)' },
+      { max: 0.22 , label:  '0.22 (85th)' },
+      { max: 0.26 , label:  '0.26 (90th)' },
+      { max: 0.36 , label:  '0.36 (95th)' },
+      { max: 0.51 , label:  '0.51 (98th)' },
+      { max: 0.69 , label:  '0.69 (99th)' },
+      { max: 4.28066349029541 , label:  '4.45 (100th)' },
+    ]
+  },
+  {
+    id : 'Boron B mg/kg (Percentile) DL = 10',
+ name : 'Boron B mg/kg DL = 10',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Boron B mg_kg (Percentile) DL = 10.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 10.0 , label:  '10 (98th)' },
+      { max: 12.0 , label:  '12 (99th)' },
+      { max: 50.0 , label:  '50 (100th)' },
+    ]
+  },
+  {
+    id : 'Cadmium Cd mg/kg (Percentile) DL = 0.01',
+ name : 'Cadmium Cd mg/kg DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Cadmium Cd mg_kg (Percentile) DL = 0.01.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.07 , label:  '0.07 (1st)' },
+      { max: 0.09 , label:  '0.09 (2nd)' },
+      { max: 0.12 , label:  '0.12 (5th)' },
+      { max: 0.15 , label:  '0.15 (10th)' },
+      { max: 0.17 , label:  '0.17 (15th)' },
+      { max: 0.19 , label:  '0.19 (20th)' },
+      { max: 0.2 , label:  '0.2 (25th)' },
+      { max: 0.25 , label:  '0.25 (40th)' },
+      { max: 0.29 , label:  '0.29 (50th)' },
+      { max: 0.32 , label:  '0.32 (60th)' },
+      { max: 0.41 , label:  '0.41 (75th)' },
+      { max: 0.51 , label:  '0.51 (85th)' },
+      { max: 0.61 , label:  '0.61 (90th)' },
+      { max: 0.8 , label:  '0.8 (95th)' },
+      { max: 1.1158 , label:  '1.1158 (98th)' },
+      { max: 1.43 , label:  '1.43 (99th)' },
+      { max: 67.0999984741211 , label:  '67.1 (100th)' },
+    ]
+  },
+  {
+    id : 'Caesium Cs mg/kg (Percentile) DL = 0.05',
+ name : 'Caesium Cs mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Caesium Cs mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.05 , label:  '0.05 (5th)' },
+      { max: 0.15 , label:  '0.15 (10th)' },
+      { max: 0.26 , label:  '0.26 (15th)' },
+      { max: 0.35 , label:  '0.35 (20th)' },
+      { max: 0.41 , label:  '0.41 (25th)' },
+      { max: 0.58 , label:  '0.58 (40th)' },
+      { max: 0.68 , label:  '0.68 (50th)' },
+      { max: 0.8 , label:  '0.8 (60th)' },
+      { max: 1.03 , label:  '1.03 (75th)' },
+      { max: 1.24 , label:  '1.24 (85th)' },
+      { max: 1.43 , label:  '1.43 (90th)' },
+      { max: 1.94 , label:  '1.94 (95th)' },
+      { max: 2.8274 , label:  '2.8274 (98th)' },
+      { max: 3.52 , label:  '3.52 (99th)' },
+      { max: 6.829999923706055 , label:  '6.83 (100th)' },
+    ]
+  },
+  {
+    id : 'Calcium Ca % (Percentile) DL = 0.01',
+ name : 'Calcium Ca % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Calcium Ca % (Percentile) DL = 0.01.tif',
+    legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.04 , label:  '0.04 (1st)' },
+      { max: 0.06 , label:  '0.06 (2nd)' },
+      { max: 0.1 , label:  '0.1 (5th)' },
+      { max: 0.13 , label:  '0.13 (10th)' },
+      { max: 0.15 , label:  '0.15 (15th)' },
+      { max: 0.17 , label:  '0.17 (20th)' },
+      { max: 0.19 , label:  '0.19 (25th)' },
+      { max: 0.25 , label:  '0.25 (40th)' },
+      { max: 0.3 , label:  '0.3 (50th)' },
+      { max: 0.36 , label:  '0.36 (60th)' },
+      { max: 0.49 , label:  '0.49 (75th)' },
+      { max: 0.65 , label:  '0.65 (85th)' },
+      { max: 0.76 , label:  '0.76 (90th)' },
+      { max: 0.96 , label:  '0.96 (95th)' },
+      { max: 1.4 , label:  '1.4 (98th)' },
+      { max: 1.9845 , label:  '1.9845 (99th)' },
+      { max: 11.78 , label:  '11.78 (100th)' },
+    ]
+  },
+  {
+    id : 'Cerium Ce mg/kg (Percentile) DL = 0.05',
+ name : 'Cerium Ce mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Cerium Ce mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.9013 , label:  '287.921875 (100th)' },
+      { max: 1.06 , label:  '66.945 (99th)' },
+      { max: 1.99 , label:  '58.016 (98th)' },
+      { max: 7.051 , label:  '47.3 (95th)' },
+      { max: 10.565 , label:  '41.6 (90th)' },
+      { max: 12.2 , label:  '38.035 (85th)' },
+      { max: 13.7 , label:  '32.2 (75th)' },
+      { max: 18.6 , label:  '25.6 (60th)' },
+      { max: 22.0 , label:  '22 (50th)' },
+      { max: 25.6 , label:  '18.6 (40th)' },
+      { max: 32.2 , label:  '13.7 (25th)' },
+      { max: 38.035 , label:  '12.2 (20th)' },
+      { max: 41.6 , label:  '10.565 (15th)' },
+      { max: 47.3 , label:  '7.051 (10th)' },
+      { max: 58.016 , label:  '1.99 (5th)' },
+      { max: 66.945 , label:  '1.06 (2nd)' },
+      { max: 287.921875 , label:  '0.9013 (1st)' },
+    ]
+  },
+  {
+    id : 'Chromium Cr mg/kg (Percentile) DL = 1',
+ name : 'Chromium Cr mg/kg DL = 1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Chromium Cr mg_kg (Percentile) DL = 1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 1.0 , label:  '1 (2nd)' },
+      { max: 2.0 , label:  '2 (5th)' },
+      { max: 6.0 , label:  '6 (10th)' },
+      { max: 11.0 , label:  '11 (15th)' },
+      { max: 14.0 , label:  '14 (20th)' },
+      { max: 17.0 , label:  '17 (25th)' },
+      { max: 26.0 , label:  '26 (40th)' },
+      { max: 33.0 , label:  '33 (50th)' },
+      { max: 40.0 , label:  '40 (60th)' },
+      { max: 58.0 , label:  '58 (75th)' },
+      { max: 88.0 , label:  '88 (85th)' },
+      { max: 106.0 , label:  '106 (90th)' },
+      { max: 127.0 , label:  '127 (95th)' },
+      { max: 152.0 , label:  '152 (98th)' },
+      { max: 172.29 , label:  '172.29 (99th)' },
+      { max: 1900.0 , label:  '1900 (100th)' },
+    ]
+  },
+  {
+    id : 'Cobalt Co mg/kg (Percentile) DL = 0.1',
+ name : 'Cobalt Co mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Cobalt Co mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.3 , label:  '0.3 (1st)' },
+      { max: 0.4 , label:  '0.4 (2nd)' },
+      { max: 0.6 , label:  '0.6 (5th)' },
+      { max: 1.4 , label:  '1.4 (10th)' },
+      { max: 2.5 , label:  '2.5 (15th)' },
+      { max: 3.5 , label:  '3.5 (20th)' },
+      { max: 4.4 , label:  '4.4 (25th)' },
+      { max: 6.8 , label:  '6.8 (40th)' },
+      { max: 8.6 , label:  '8.6 (50th)' },
+      { max: 10.7 , label:  '10.7 (60th)' },
+      { max: 15.2 , label:  '15.2 (75th)' },
+      { max: 24.5 , label:  '24.5 (85th)' },
+      { max: 31.0 , label:  '31 (90th)' },
+      { max: 37.0 , label:  '37 (95th)' },
+      { max: 42.2 , label:  '42.2 (98th)' },
+      { max: 44.7 , label:  '44.7 (99th)' },
+      { max: 204.5 , label:  '204.5 (100th)' },
+    ]
+  },
+  {
+    id : 'Copper Cu mg/kg (Percentile) DL = 0.5',
+ name : 'Copper Cu mg/kg DL = 0.5',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Copper Cu mg_kg (Percentile) DL = 0.5.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 2.8 , label:  '2.8 (1st)' },
+      { max: 3.5 , label:  '3.5 (2nd)' },
+      { max: 4.9 , label:  '4.9 (5th)' },
+      { max: 7.21 , label:  '7.21 (10th)' },
+      { max: 9.9 , label:  '9.9 (15th)' },
+      { max: 12.9 , label:  '12.9 (20th)' },
+      { max: 15.9 , label:  '15.9 (25th)' },
+      { max: 23.04 , label:  '23.04 (40th)' },
+      { max: 27.6 , label:  '27.6 (50th)' },
+      { max: 32.2 , label:  '32.2 (60th)' },
+      { max: 42.9 , label:  '42.9 (75th)' },
+      { max: 57.1 , label:  '57.1 (85th)' },
+      { max: 69.6 , label:  '69.6 (90th)' },
+      { max: 86.445 , label:  '86.445 (95th)' },
+      { max: 108.0 , label:  '108 (98th)' },
+      { max: 120.2 , label:  '120.2 (99th)' },
+      { max: 1200.0 , label:  '1200 (100th)' },
+    ]
+  },
+  {
+    id : 'Gallium Ga mg/kg (Percentile) DL = 0.1',
+ name : 'Gallium Ga mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Gallium Ga mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.3 , label:  '0.3 (1st)' },
+      { max: 0.4 , label:  '0.4 (2nd)' },
+      { max: 0.7 , label:  '0.7 (5th)' },
+      { max: 1.6 , label:  '1.6 (10th)' },
+      { max: 2.4 , label:  '2.4 (15th)' },
+      { max: 2.9 , label:  '2.9 (20th)' },
+      { max: 3.3 , label:  '3.3 (25th)' },
+      { max: 4.3 , label:  '4.3 (40th)' },
+      { max: 5.1 , label:  '5.1 (50th)' },
+      { max: 5.8 , label:  '5.8 (60th)' },
+      { max: 7.0 , label:  '7 (75th)' },
+      { max: 8.7 , label:  '8.7 (85th)' },
+      { max: 10.0 , label:  '10 (90th)' },
+      { max: 11.3 , label:  '11.3 (95th)' },
+      { max: 12.6 , label:  '12.6 (98th)' },
+      { max: 13.3 , label:  '13.3 (99th)' },
+      { max: 24.1 , label:  '24.1 (100th)' },
+    ]
+  },
+  {
+    id : 'Hafnium Hf mg/kg (Percentile) DL = 0.05',
+ name : 'Hafnium Hf mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Hafnium Hf mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.05 , label:  '0.05 (25th)' },
+      { max: 0.06 , label:  '0.06 (40th)' },
+      { max: 0.07 , label:  '0.07 (50th)' },
+      { max: 0.09 , label:  '0.09 (60th)' },
+      { max: 0.13 , label:  '0.13 (75th)' },
+      { max: 0.18 , label:  '0.18 (85th)' },
+      { max: 0.22 , label:  '0.22 (90th)' },
+      { max: 0.3 , label:  '0.3 (95th)' },
+      { max: 0.43 , label:  '0.43 (98th)' },
+      { max: 0.58 , label:  '0.58 (99th)' },
+      { max: 3.08 , label:  '3.08 (100th)' },
+    ]
+  },
+  {
+    id : 'Indium In mg/kg (Percentile) DL = 0.02',
+ name : 'Indium In mg/kg DL = 0.02',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Indium In mg_kg (Percentile) DL = 0.02.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.02 , label:  '0.02 (50th)' },
+      { max: 0.03 , label:  '0.03 (60th)' },
+      { max: 0.04 , label:  '0.04 (85th)' },
+      { max: 0.05 , label:  '0.05 (90th)' },
+      { max: 0.06 , label:  '0.06 (98th)' },
+      { max: 0.07 , label:  '0.07 (99th)' },
+      { max: 0.15 , label:  '0.15 (100th)' },
+    ]
+  },
+  {
+    id : 'Iron Fe % (Percentile) DL = 0.01',
+ name : 'Iron Fe % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Iron Fe % (Percentile) DL = 0.01.tif',
+    legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.1 , label:  '0.1 (1st)' },
+      { max: 0.13 , label:  '0.13 (2nd)' },
+      { max: 0.2525 , label:  '0.2525 (5th)' },
+      { max: 0.58 , label:  '0.58 (10th)' },
+      { max: 0.95 , label:  '0.95 (15th)' },
+      { max: 1.22 , label:  '1.22 (20th)' },
+      { max: 1.44 , label:  '1.44 (25th)' },
+      { max: 1.97 , label:  '1.97 (40th)' },
+      { max: 2.32 , label:  '2.32 (50th)' },
+      { max: 2.65 , label:  '2.65 (60th)' },
+      { max: 3.28 , label:  '3.28 (75th)' },
+      { max: 4.4 , label:  '4.4 (85th)' },
+      { max: 5.17 , label:  '5.17 (90th)' },
+      { max: 5.96 , label:  '5.96 (95th)' },
+      { max: 6.657 , label:  '6.657 (98th)' },
+      { max: 7.06 , label:  '7.06 (99th)' },
+      { max: 22.57 , label:  '22.57 (100th)' },
+    ]
+  },
+  {
+    id : 'Lanthanum La mg/kg (Percentile) DL = 0.1',
+ name : 'Lanthanum La mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Lanthanum La mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.4 , label:  '0.4 (1st)' },
+      { max: 0.5 , label:  '0.5 (2nd)' },
+      { max: 1.0 , label:  '1 (5th)' },
+      { max: 3.2 , label:  '3.2 (10th)' },
+      { max: 4.5 , label:  '4.5 (15th)' },
+      { max: 5.2 , label:  '5.2 (20th)' },
+      { max: 5.9 , label:  '5.9 (25th)' },
+      { max: 8.4 , label:  '8.4 (40th)' },
+      { max: 10.0 , label:  '10 (50th)' },
+      { max: 11.9 , label:  '11.9 (60th)' },
+      { max: 15.3 , label:  '15.3 (75th)' },
+      { max: 18.4 , label:  '18.4 (85th)' },
+      { max: 20.5 , label:  '20.5 (90th)' },
+      { max: 23.5 , label:  '23.5 (95th)' },
+      { max: 27.7 , label:  '27.7 (98th)' },
+      { max: 32.429 , label:  '32.429 (99th)' },
+      { max: 120.0 , label:  '120 (100th)' },
+    ]
+  },
+  {
+    id : 'Lead Pb mg/kg (Percentile) DL = 0.2',
+ name : 'Lead Pb mg/kg DL = 0.2',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Lead Pb mg_kg (Percentile) DL = 0.2.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 9.17 , label:  '9.17 (1st)' },
+      { max: 10.9 , label:  '10.9 (2nd)' },
+      { max: 12.9 , label:  '12.9 (5th)' },
+      { max: 14.6 , label:  '14.6 (10th)' },
+      { max: 15.9 , label:  '15.9 (15th)' },
+      { max: 17.1 , label:  '17.1 (20th)' },
+      { max: 18.3 , label:  '18.3 (25th)' },
+      { max: 22.1 , label:  '22.1 (40th)' },
+      { max: 24.8 , label:  '24.8 (50th)' },
+      { max: 28.4 , label:  '28.4 (60th)' },
+      { max: 36.9 , label:  '36.9 (75th)' },
+      { max: 49.05 , label:  '49.05 (85th)' },
+      { max: 60.4 , label:  '60.4 (90th)' },
+      { max: 83.85 , label:  '83.85 (95th)' },
+      { max: 114.6 , label:  '114.6 (98th)' },
+      { max: 138.3 , label:  '138.3 (99th)' },
+      { max: 3110.0 , label:  '3,110 (100th)' },
+    ]
+  },
+  {
+    id : 'Lithium Li mg/kg (Percentile) DL = 1',
+ name : 'Lithium Li mg/kg DL = 1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Lithium Li mg_kg (Percentile) DL = 1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 1.0 , label:  '1 (10th)' },
+      { max: 4.0 , label:  '4 (15th)' },
+      { max: 6.0 , label:  '6 (20th)' },
+      { max: 7.0 , label:  '7 (25th)' },
+      { max: 9.0 , label:  '9 (40th)' },
+      { max: 10.0 , label:  '10 (50th)' },
+      { max: 12.0 , label:  '12 (60th)' },
+      { max: 18.0 , label:  '18 (75th)' },
+      { max: 22.0 , label:  '22 (85th)' },
+      { max: 24.0 , label:  '24 (90th)' },
+      { max: 27.0 , label:  '27 (95th)' },
+      { max: 31.0 , label:  '31 (98th)' },
+      { max: 34.0 , label:  '34 (99th)' },
+      { max: 54.0 , label:  '54 (100th)' },
+    ]
+  },
+  {
+    id : 'Lutetium Lu mg/kg (Percentile) DL = 0.01',
+ name : 'Lutetium Lu mg/kg DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Lutetium Lu mg_kg (Percentile) DL = 0.01.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.01 , label:  '0.01 (5th)' },
+      { max: 0.02 , label:  '0.02 (10th)' },
+      { max: 0.03 , label:  '0.03 (15th)' },
+      { max: 0.04 , label:  '0.04 (20th)' },
+      { max: 0.05 , label:  '0.05 (25th)' },
+      { max: 0.06 , label:  '0.06 (40th)' },
+      { max: 0.07 , label:  '0.07 (50th)' },
+      { max: 0.09 , label:  '0.09 (60th)' },
+      { max: 0.12 , label:  '0.12 (75th)' },
+      { max: 0.16 , label:  '0.16 (85th)' },
+      { max: 0.19 , label:  '0.19 (90th)' },
+      { max: 0.2245 , label:  '0.2245 (95th)' },
+      { max: 0.29 , label:  '0.29 (98th)' },
+      { max: 0.35 , label:  '0.35 (99th)' },
+      { max: 3.37 , label:  '3.37 (100th)' },
+    ]
+  },
+  {
+    id : 'Magnesium Mg % (Percentile) DL = 0.01',
+ name : 'Magnesium Mg % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Magnesium Mg % (Percentile) DL = 0.01.tif',
+    legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.04 , label:  '0.04 (1st)' },
+      { max: 0.05 , label:  '0.05 (2nd)' },
+      { max: 0.07 , label:  '0.07 (5th)' },
+      { max: 0.1 , label:  '0.1 (10th)' },
+      { max: 0.12 , label:  '0.12 (15th)' },
+      { max: 0.142 , label:  '0.142 (20th)' },
+      { max: 0.18 , label:  '0.18 (25th)' },
+      { max: 0.3 , label:  '0.3 (40th)' },
+      { max: 0.41 , label:  '0.41 (50th)' },
+      { max: 0.52 , label:  '0.52 (60th)' },
+      { max: 0.71 , label:  '0.71 (75th)' },
+      { max: 0.91 , label:  '0.91 (85th)' },
+      { max: 1.1 , label:  '1.1 (90th)' },
+      { max: 1.4745 , label:  '1.4745 (95th)' },
+      { max: 1.83 , label:  '1.83 (98th)' },
+      { max: 2.0129 , label:  '2.0129 (99th)' },
+      { max: 3.46 , label:  '3.46 (100th)' },
+    ]
+  },
+  {
+    id : 'Manganese Mn mg/kg (Percentile) DL = 5',
+ name : 'Manganese Mn mg/kg DL = 5',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Manganese Mn mg_kg (Percentile) DL = 5.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 8.0 , label:  '8 (1st)' },
+      { max: 10.0 , label:  '10 (2nd)' },
+      { max: 16.0 , label:  '16 (5th)' },
+      { max: 42.0 , label:  '42 (10th)' },
+      { max: 86.0 , label:  '86 (15th)' },
+      { max: 135.0 , label:  '135 (20th)' },
+      { max: 177.0 , label:  '177 (25th)' },
+      { max: 303.0 , label:  '303 (40th)' },
+      { max: 391.0 , label:  '391 (50th)' },
+      { max: 495.2 , label:  '495.2 (60th)' },
+      { max: 701.0 , label:  '701 (75th)' },
+      { max: 934.0 , label:  '934 (85th)' },
+      { max: 1120.0 , label:  '1120 (90th)' },
+      { max: 1389.0 , label:  '1389 (95th)' },
+      { max: 1737.6 , label:  '1737.6 (98th)' },
+      { max: 2277.6 , label:  '2277.6 (99th)' },
+      { max: 28360.0 , label:  '28360 (100th)' },
+    ]
+  },
+  {
+    id : 'Mercury Hg mg/kg (Percentile) DL = 0.01',
+ name : 'Mercury Hg mg/kg DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Mercury Hg mg_kg (Percentile) DL = 0.01.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.01 , label:  '0.01 (1st)' },
+      { max: 0.02 , label:  '0.02 (2nd)' },
+      { max: 0.03 , label:  '0.03 (5th)' },
+      { max: 0.04 , label:  '0.04 (10th)' },
+      { max: 0.05 , label:  '0.05 (15th)' },
+      { max: 0.06 , label:  '0.06 (25th)' },
+      { max: 0.07 , label:  '0.07 (40th)' },
+      { max: 0.08 , label:  '0.08 (50th)' },
+      { max: 0.09 , label:  '0.09 (60th)' },
+      { max: 0.12 , label:  '0.12 (75th)' },
+      { max: 0.15 , label:  '0.15 (85th)' },
+      { max: 0.17 , label:  '0.17 (90th)' },
+      { max: 0.21 , label:  '0.21 (95th)' },
+      { max: 0.27 , label:  '0.27 (98th)' },
+      { max: 0.3229 , label:  '0.3229 (99th)' },
+      { max: 11.7 , label:  '11.7 (100th)' },
+    ]
+  },
+  {
+    id : 'Molybdenum Mo mg/kg (Percentile) DL = 0.05',
+ name : 'Molybdenum Mo mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Molybdenum Mo mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.16 , label:  '0.16 (1st)' },
+      { max: 0.19 , label:  '0.19 (2nd)' },
+      { max: 0.25 , label:  '0.25 (5th)' },
+      { max: 0.3 , label:  '0.3 (10th)' },
+      { max: 0.34 , label:  '0.34 (15th)' },
+      { max: 0.37 , label:  '0.37 (20th)' },
+      { max: 0.4 , label:  '0.4 (25th)' },
+      { max: 0.49 , label:  '0.49 (40th)' },
+      { max: 0.56 , label:  '0.56 (50th)' },
+      { max: 0.64 , label:  '0.64 (60th)' },
+      { max: 0.83 , label:  '0.83 (75th)' },
+      { max: 1.06 , label:  '1.06 (85th)' },
+      { max: 1.26 , label:  '1.26 (90th)' },
+      { max: 1.62 , label:  '1.62 (95th)' },
+      { max: 2.2358 , label:  '2.2358 (98th)' },
+      { max: 2.86 , label:  '2.86 (99th)' },
+      { max: 28.7 , label:  '28.7 (100th)' },
+    ]
+  },
+  {
+    id : 'Nickel Ni mg/kg (Percentile) DL = 0.5',
+ name : 'Nickel Ni mg/kg DL = 0.5',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Nickel Ni mg_kg (Percentile) DL = 0.5.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 1.6 , label:  '1.6 (1st)' },
+      { max: 1.9 , label:  '1.9 (2nd)' },
+      { max: 2.7 , label:  '2.7 (5th)' },
+      { max: 4.6 , label:  '4.6 (10th)' },
+      { max: 7.6 , label:  '7.6 (15th)' },
+      { max: 9.9 , label:  '9.9 (20th)' },
+      { max: 12.2 , label:  '12.2 (25th)' },
+      { max: 19.94 , label:  '19.94 (40th)' },
+      { max: 26.1 , label:  '26.1 (50th)' },
+      { max: 32.9 , label:  '32.9 (60th)' },
+      { max: 49.6 , label:  '49.6 (75th)' },
+      { max: 77.735 , label:  '77.735 (85th)' },
+      { max: 97.6 , label:  '97.6 (90th)' },
+      { max: 128.0 , label:  '128 (95th)' },
+      { max: 159.0 , label:  '159 (98th)' },
+      { max: 183.0 , label:  '183 (99th)' },
+      { max: 1360.0 , label:  '1360 (100th)' },
+    ]
+  },
+  {
+    id : 'Niobium Nb mg/kg (Percentile) DL = 0.05',
+ name : 'Niobium Nb mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Niobium Nb mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.1 , label:  '0.1 (1st)' },
+      { max: 0.12 , label:  '0.12 (2nd)' },
+      { max: 0.1555 , label:  '0.1555 (5th)' },
+      { max: 0.21 , label:  '0.21 (10th)' },
+      { max: 0.25 , label:  '0.25 (15th)' },
+      { max: 0.29 , label:  '0.29 (20th)' },
+      { max: 0.33 , label:  '0.33 (25th)' },
+      { max: 0.43 , label:  '0.43 (40th)' },
+      { max: 0.505 , label:  '0.505 (50th)' },
+      { max: 0.59 , label:  '0.59 (60th)' },
+      { max: 0.77 , label:  '0.77 (75th)' },
+      { max: 0.98 , label:  '0.98 (85th)' },
+      { max: 1.2 , label:  '1.2 (90th)' },
+      { max: 1.76 , label:  '1.76 (95th)' },
+      { max: 2.73 , label:  '2.73 (98th)' },
+      { max: 3.6058 , label:  '3.6058 (99th)' },
+      { max: 13.2 , label:  '13.2 (100th)' },
+    ]
+  },
+  {
+    id : 'Phosphorus P mg/kg (Percentile) DL = 50',
+ name : 'Phosphorus P mg/kg DL = 50',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Phosphorus P mg_kg (Percentile) DL = 50.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 236.26 , label:  '236.26 (1st)' },
+      { max: 286.42 , label:  '286.42 (2nd)' },
+      { max: 380.0 , label:  '380 (5th)' },
+      { max: 480.0 , label:  '480 (10th)' },
+      { max: 550.0 , label:  '550 (15th)' },
+      { max: 610.0 , label:  '610 (20th)' },
+      { max: 660.0 , label:  '660 (25th)' },
+      { max: 791.0 , label:  '791 (40th)' },
+      { max: 880.0 , label:  '880 (50th)' },
+      { max: 980.0 , label:  '980 (60th)' },
+      { max: 1160.0 , label:  '1,160 (75th)' },
+      { max: 1330.0 , label:  '1,330 (85th)' },
+      { max: 1490.0 , label:  '1,490 (90th)' },
+      { max: 1720.0 , label:  '1,720 (95th)' },
+      { max: 2025.8 , label:  '2,025.8 (98th)' },
+      { max: 2312.9 , label:  '2,312.9 (99th)' },
+      { max: 8650.0 , label:  '8,650 (100th)' },
+    ]
+  },
+  {
+    id : 'Potassium K % (Percentile) DL = 0.01',
+ name : 'Potassium K % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Potassium K % (Percentile) DL = 0.01.tif',
+    legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.02 , label:  '0.02 (2nd)' },
+      { max: 0.03 , label:  '0.03 (5th)' },
+      { max: 0.04 , label:  '0.04 (10th)' },
+      { max: 0.05 , label:  '0.05 (15th)' },
+      { max: 0.06 , label:  '0.06 (20th)' },
+      { max: 0.07 , label:  '0.07 (25th)' },
+      { max: 0.09 , label:  '0.09 (40th)' },
+      { max: 0.11 , label:  '0.11 (50th)' },
+      { max: 0.13 , label:  '0.13 (60th)' },
+      { max: 0.16 , label:  '0.16 (75th)' },
+      { max: 0.19 , label:  '0.19 (85th)' },
+      { max: 0.209 , label:  '0.209 (90th)' },
+      { max: 0.23 , label:  '0.23 (95th)' },
+      { max: 0.26 , label:  '0.26 (98th)' },
+      { max: 0.29 , label:  '0.29 (99th)' },
+      { max: 0.5 , label:  '0.5 (100th)' },
+    ]
+  },
+  {
+    id : 'Rubidium Rb mg/kg (Percentile) DL = 0.2',
+ name : 'Rubidium Rb mg/kg DL = 0.2',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Rubidium Rb mg_kg (Percentile) DL = 0.2.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 1.8 , label:  '1.8 (1st)' },
+      { max: 3.7 , label:  '3.7 (2nd)' },
+      { max: 5.6 , label:  '5.6 (5th)' },
+      { max: 7.5 , label:  '7.5 (10th)' },
+      { max: 9.4 , label:  '9.4 (15th)' },
+      { max: 11.2 , label:  '11.2 (20th)' },
+      { max: 13.0 , label:  '13 (25th)' },
+      { max: 14.9 , label:  '14.9 (40th)' },
+      { max: 16.8 , label:  '16.8 (50th)' },
+      { max: 18.6 , label:  '18.6 (60th)' },
+      { max: 20.4 , label:  '20.4 (75th)' },
+      { max: 22.3 , label:  '22.3 (85th)' },
+      { max: 24.4 , label:  '24.4 (90th)' },
+      { max: 27.0 , label:  '27 (95th)' },
+      { max: 30.2 , label:  '30.2 (98th)' },
+      { max: 35.9 , label:  '35.9 (99th)' },
+      { max: 52.0 , label:  '52 (100th)' },
+    ]
+  },
+  {
+    id : 'Scandium Sc mg/kg (Percentile) DL = 0.1',
+ name : 'Scandium Sc mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Scandium Sc mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.1 , label:  '0.1 (1st)' },
+      { max: 0.2 , label:  '0.2 (2nd)' },
+      { max: 0.3 , label:  '0.3 (5th)' },
+      { max: 0.7 , label:  '0.7 (10th)' },
+      { max: 1.0 , label:  '1 (15th)' },
+      { max: 1.3 , label:  '1.3 (20th)' },
+      { max: 1.6 , label:  '1.6 (25th)' },
+      { max: 2.4 , label:  '2.4 (40th)' },
+      { max: 3.0 , label:  '3 (50th)' },
+      { max: 3.7 , label:  '3.7 (60th)' },
+      { max: 5.9 , label:  '5.9 (75th)' },
+      { max: 9.8 , label:  '9.8 (85th)' },
+      { max: 11.9 , label:  '11.9 (90th)' },
+      { max: 15.0 , label:  '15 (95th)' },
+      { max: 18.0 , label:  '18 (98th)' },
+      { max: 19.8 , label:  '19.8 (99th)' },
+      { max: 34.2 , label:  '34.2 (100th)' },
+    ]
+  },
+  {
+    id : 'Selenium Se mg/kg (Percentile) DL = 1',
+ name : 'Selenium Se mg/kg DL = 1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Selenium Se mg_kg (Percentile) DL = 1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 1.0 , label:  '1 (85th)' },
+      { max: 2.0 , label:  ' 2 (95th)' },
+      { max: 3.0 , label:  '3 (98th)' },
+      { max: 4.0 , label:  '4 (99th)' },
+      { max: 11.0 , label:  '11 (100th)' },
+    ]
+  },
+  {
+    id : 'Silver Ag mg/kg (Percentile) DL = 0.01',
+ name : 'Silver Ag mg/kg DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Silver Ag mg_kg (Percentile) DL = 0.01.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.01 , label:  '0.01 (1st)' },
+      { max: 0.0138 , label:  '0.0138 (2nd)' },
+      { max: 0.03 , label:  '0.03 (10th)' },
+      { max: 0.04 , label:  '0.04 (15th)' },
+      { max: 0.05 , label:  '0.05 (25th)' },
+      { max: 0.06 , label:  '0.06 (40th)' },
+      { max: 0.07 , label:  '0.07 (50th)' },
+      { max: 0.08 , label:  '0.08 (60th)' },
+      { max: 0.1 , label:  '0.1 (75th)' },
+      { max: 0.12 , label:  '0.12 (85th)' },
+      { max: 0.15 , label:  '0.15 (90th)' },
+      { max: 0.18 , label:  '0.18 (95th)' },
+      { max: 0.25 , label:  '0.25 (98th)' },
+      { max: 0.3131 , label:  '0.3131 (99th)' },
+      { max: 6.07 , label:  '6.07 (100th)' },
+    ]
+  },
+  {
+    id : 'Sodium Na % (Percentile) DL = 0.01',
+ name : 'Sodium Na % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Sodium Na % (Percentile) DL = 0.01.tif',
+    legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.01 , label:  '0.01 (25th)' },
+      { max: 0.02 , label:  '0.02 (75th)' },
+      { max: 0.03 , label:  '0.03 (90th)' },
+      { max: 0.04 , label:  '0.04 (95th)' },
+      { max: 0.05 , label:  '0.05 (98th)' },
+      { max: 0.07 , label:  '0.07 (99th)' },
+      { max: 0.2 , label:  '0.2 (100th)' },
+    ]
+  },
+  {
+    id : 'Strontium Sr mg/kg (Percentile) DL = 0.5',
+ name : 'Strontium Sr mg/kg DL = 0.5',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Strontium Sr mg_kg (Percentile) DL = 0.5.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 4.4 , label:  '4.4 (1st)' },
+      { max: 5.5 , label:  '5.5 (2nd)' },
+      { max: 6.955 , label:  '6.955 (5th)' },
+      { max: 8.5 , label:  '8.5 (10th)' },
+      { max: 9.8 , label:  '9.8 (15th)' },
+      { max: 10.7 , label:  '10.7 (20th)' },
+      { max: 11.6 , label:  '11.6 (25th)' },
+      { max: 14.4 , label:  '14.4 (40th)' },
+      { max: 17.0 , label:  '17 (50th)' },
+      { max: 21.0 , label:  '21 (60th)' },
+      { max: 32.8 , label:  '32.8 (75th)' },
+      { max: 53.8 , label:  '53.8 (85th)' },
+      { max: 68.9 , label:  '68.9 (90th)' },
+      { max: 92.935 , label:  '92.935 (95th)' },
+      { max: 123.0 , label:  '123 (98th)' },
+      { max: 150.361 , label:  '150.361 (99th)' },
+      { max: 479.3 , label:  '479.3 (100th)' },
+    ]
+  },
+  {
+    id : 'Sulpher S % (Percentile) DL = 0.01',
+ name : 'Sulpher S % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Sulpher S % (Percentile) DL = 0.01.tif',
+    legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.03 , label:  '0.03 (1st)' },
+      { max: 0.04 , label:  '0.04 (5th)' },
+      { max: 0.05 , label:  '0.05 (10th)' },
+      { max: 0.06 , label:  '0.06 (20th)' },
+      { max: 0.07 , label:  '0.07 (25th)' },
+      { max: 0.08 , label:  '0.08 (40th)' },
+      { max: 0.09 , label:  '0.09 (50th)' },
+      { max: 0.1 , label:  '0.1 (60th)' },
+      { max: 0.14 , label:  '0.14 (75th)' },
+      { max: 0.23 , label:  '0.23 (85th)' },
+      { max: 0.31 , label:  '0.31 (90th)' },
+      { max: 0.38 , label:  '0.38 (95th)' },
+      { max: 0.45 , label:  '0.45 (98th)' },
+      { max: 0.51 , label:  '0.51 (99th)' },
+      { max: 1.05 , label:  '1.05 (100th)' },
+    ]
+  },
+  {
+    id : 'Tantalum Ta mg/kg (Percentile) DL = 0.05',
+ name : 'Tantalum Ta mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Tantalum Ta mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.05 , label:  '0.05 (85th)' },
+      { max: 0.06 , label:  '0.06 (90th)' },
+      { max: 0.11 , label:  '0.11 (95th)' },
+      { max: 0.18 , label:  '0.18 (98th)' },
+      { max: 0.27 , label:  '0.27 (99th)' },
+      { max: 1.39 , label:  '1.39 (100th)' },
+    ]
+  },
+  {
+    id : 'Tellurium Te mg/kg (Percentile) DL = 0.05',
+ name : 'Tellurium Te mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Tellurium Te mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.05 , label:  '0.05 (75th)' },
+      { max: 0.09 , label:  '0.09 (85th)' },
+      { max: 0.22 , label:  '0.22 (90th)' },
+      { max: 0.48 , label:  '0.48 (95th)' },
+      { max: 0.81 , label:  '0.81 (98th)' },
+      { max: 1.48 , label:  '1.48 (99th)' },
+      { max: 2.49 , label:  '2.49 (100th)' },
+    ]
+  },
+  {
+    id : 'Terbium Tb mg/kg (Percentile) DL = 0.02',
+ name : 'Terbium Tb mg/kg DL = 0.02',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Terbium Tb mg_kg (Percentile) DL = 0.02.tif',   
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.02 , label:  '0.02 (5th)' },
+      { max: 0.09 , label:  '0.09 (10th)' },
+      { max: 0.14 , label:  '0.14 (15th)' },
+      { max: 0.17 , label:  '0.17 (20th)' },
+      { max: 0.19 , label:  '0.19 (25th)' },
+      { max: 0.25 , label:  '0.25 (40th)' },
+      { max: 0.29 , label:  '0.29 (50th)' },
+      { max: 0.32 , label:  '0.32 (60th)' },
+      { max: 0.39 , label:  '0.39 (75th)' },
+      { max: 0.46 , label:  '0.46 (85th)' },
+      { max: 0.52 , label:  '0.52 (90th)' },
+      { max: 0.63 , label:  '0.63 (95th)' },
+      { max: 0.77 , label:  '0.77 (98th)' },
+      { max: 0.9329 , label:  '0.9329 (99th)' },
+      { max: 5.67 , label:  '5.67 (100th)' },
+    ]
+  },
+  {
+    id : 'Thallium Tl mg/kg (Percentile) DL = 0.02',
+ name : 'Thallium Tl mg/kg DL = 0.02',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Thallium Tl mg_kg (Percentile) DL = 0.02.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.02 , label:  '0.02 (2nd)' },
+      { max: 0.04 , label:  '0.04 (5th)' },
+      { max: 0.06 , label:  '0.06 (10th)' },
+      { max: 0.07 , label:  '0.07 (15th)' },
+      { max: 0.08 , label:  '0.08 (25th)' },
+      { max: 0.1 , label:  '0.1 (40th)' },
+      { max: 0.12 , label:  '0.12 (50th)' },
+      { max: 0.13 , label:  '0.13 (60th)' },
+      { max: 0.17 , label:  '0.17 (75th)' },
+      { max: 0.19 , label:  '0.19 (85th)' },
+      { max: 0.22 , label:  '0.22 (90th)' },
+      { max: 0.26 , label:  '0.26 (95th)' },
+      { max: 0.32 , label:  '0.32 (98th)' },
+      { max: 0.37 , label:  '0.37 (99th)' },
+      { max: 0.93 , label:  '0.93 (100th)' },
+    ]
+  },
+  {
+    id : 'Thorium Th mg/kg (Percentile) DL = 0.1',
+ name : 'Thorium Th mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Thorium Th mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.1 , label:  '0.1 (2nd)' },
+      { max: 0.2 , label:  '0.2 (5th)' },
+      { max: 0.5 , label:  '0.5 (10th)' },
+      { max: 0.7 , label:  '0.7 (15th)' },
+      { max: 0.8 , label:  '0.8 (20th)' },
+      { max: 1.0 , label:  '1 (25th)' },
+      { max: 1.5 , label:  '1.5 (40th)' },
+      { max: 1.8 , label:  '1.8 (50th)' },
+      { max: 2.2 , label:  '2.2 (60th)' },
+      { max: 2.9 , label:  '2.9 (75th)' },
+      { max: 3.6 , label:  '3.6 (85th)' },
+      { max: 4.1 , label:  '4.1 (90th)' },
+      { max: 4.9 , label:  '4.9 (95th)' },
+      { max: 6.0 , label:  '6 (98th)' },
+      { max: 7.1 , label:  '7.1 (99th)' },
+      { max: 32.4 , label:  '32.4 (100th)' },
+    ]
+  },
+  {
+    id : 'Tin Sn mg/kg (Percentile) DL = 0.3',
+ name : 'Tin Sn mg/kg DL = 0.3',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Tin Sn mg_kg (Percentile) DL = 0.3.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.3 , label:  '0.3 (1st)' },
+      { max: 0.4 , label:  '0.4 (2nd)' },
+      { max: 0.5 , label:  '0.5 (10th)' },
+      { max: 0.6 , label:  '0.6 (15th)' },
+      { max: 0.7 , label:  '0.7 (25th)' },
+      { max: 0.9 , label:  '0.9 (40th)' },
+      { max: 1.0 , label:  '1 (50th)' },
+      { max: 1.1 , label:  '1.1 (60th)' },
+      { max: 1.5 , label:  '1.5 (75th)' },
+      { max: 1.8 , label:  '1.8 (85th)' },
+      { max: 2.2 , label:  '2.2 (90th)' },
+      { max: 3.0 , label:  '3 (95th)' },
+      { max: 4.7 , label:  '4.7 (98th)' },
+      { max: 6.229 , label:  '6.229 (99th)' },
+      { max: 60.7 , label:  '60.7 (100th)' },
+    ]
+  },
+  {
+    id : 'Titanium Ti % (Percentile) DL = 0.01',
+ name : 'Titanium Ti % DL = 0.01',
+    group: 'Tellus Soils A Aqua Regia',
+cog : 'https://data.better-open-data.com/lidar_zstd/Titanium Ti % (Percentile) DL = 0.01.tif',
+legendunits: '%',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.01 , label:  '0.01 (60th)' },
+      { max: 0.04 , label:  '0.04 (75th)' },
+      { max: 0.07 , label:  '0.07 (85th)' },
+      { max: 0.09 , label:  '0.09 (90th)' },
+      { max: 0.11 , label:  '0.11 (95th)' },
+      { max: 0.14 , label:  '0.14 (98th)' },
+      { max: 0.15 , label:  '0.15 (99th)' },
+      { max: 0.28 , label:  '0.28 (100th)' },
+    ]
+  },
+  {
+    id : 'Tungsten W mg/kg (Percentile) DL = 0.1',
+ name : 'Tungsten W mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Tungsten W mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.1 , label:  '0.1 (90th)' },
+      { max: 0.2 , label:  '0.2 (95th)' },
+      { max: 0.4 , label:  '0.4 (98th)' },
+      { max: 0.5 , label:  '0.5 (99th)' },
+      { max: 5.2 , label:  '5.2 (100th)' },
+    ]
+  },
+  {
+    id : 'Uranium U mg/kg (Percentile) DL = 0.05',
+ name : 'Uranium U mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Uranium U mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.07 , label:  '0.07 (1st)' },
+      { max: 0.09 , label:  '0.09 (2nd)' },
+      { max: 0.14 , label:  '0.14 (5th)' },
+      { max: 0.33 , label:  '0.33 (10th)' },
+      { max: 0.5 , label:  '0.5 (15th)' },
+      { max: 0.61 , label:  '0.61 (20th)' },
+      { max: 0.68 , label:  '0.68 (25th)' },
+      { max: 0.85 , label:  '0.85 (40th)' },
+      { max: 0.95 , label:  '0.95 (50th)' },
+      { max: 1.06 , label:  '1.06 (60th)' },
+      { max: 1.29 , label:  '1.29 (75th)' },
+      { max: 1.56 , label:  '1.56 (85th)' },
+      { max: 1.819 , label:  '1.819 (90th)' },
+      { max: 2.5045 , label:  '2.5045 (95th)' },
+      { max: 4.1258 , label:  '4.1258 (98th)' },
+      { max: 5.9603 , label:  '5.9603 (99th)' },
+      { max: 150.0 , label:  '150 (100th)' },
+    ]
+  },
+  {
+    id : 'Vanadium V mg/kg (Percentile) DL = 1',
+ name : 'Vanadium V mg/kg DL = 1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Vanadium V mg_kg (Percentile) DL = 1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 2.0 , label:  '2 (1st)' },
+      { max: 3.0 , label:  '3 (2nd)' },
+      { max: 5.0 , label:  '5 (5th)' },
+      { max: 10.0 , label:  '10 (10th)' },
+      { max: 16.0 , label:  '16 (15th)' },
+      { max: 20.0 , label:  '20 (20th)' },
+      { max: 24.0 , label:  '24 (25th)' },
+      { max: 32.0 , label:  '32 (40th)' },
+      { max: 38.0 , label:  '38 (50th)' },
+      { max: 45.0 , label:  '45 (60th)' },
+      { max: 65.0 , label:  '65 (75th)' },
+      { max: 112.0 , label:  '112 (85th)' },
+      { max: 133.0 , label:  '133 (90th)' },
+      { max: 156.0 , label:  '156 (95th)' },
+      { max: 177.0 , label:  '177 (98th)' },
+      { max: 191.0 , label:  '191 (99th)' },
+      { max: 327.0 , label:  '327 (100th)' },
+    ]
+  },
+  {
+    id : 'Ytterbium Yb mg/kg (Percentile) DL = 0.1',
+ name : 'Ytterbium Yb mg/kg DL = 0.1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Ytterbium Yb mg_kg (Percentile) DL = 0.1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.1 , label:  '0.1 (5th)' },
+      { max: 0.2 , label:  '0.2 (15th)' },
+      { max: 0.3 , label:  '0.3 (25th)' },
+      { max: 0.4 , label:  '0.4 (40th)' },
+      { max: 0.5 , label:  '0.5 (50th)' },
+      { max: 0.6 , label:  '0.6 (60th)' },
+      { max: 0.8 , label:  '0.8 (75th)' },
+      { max: 1.1 , label:  '1.1 (85th)' },
+      { max: 1.2 , label:  '1.2 (90th)' },
+      { max: 1.5 , label:  '1.5 (95th)' },
+      { max: 1.9 , label:  '1.9 (98th)' },
+      { max: 2.2 , label:  '2.2 (99th)' },
+      { max: 23.6 , label:  '23.6 (100th)' },
+    ]
+  },
+  {
+    id : 'Yttrium Y mg/kg (Percentile) DL = 0.05',
+ name : 'Yttrium Y mg/kg DL = 0.05',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Yttrium Y mg_kg (Percentile) DL = 0.05.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.27 , label:  '0.27 (1st)' },
+      { max: 0.34 , label:  '0.34 (2nd)' },
+      { max: 0.61 , label:  '0.61 (5th)' },
+      { max: 1.94 , label:  '1.94 (10th)' },
+      { max: 2.86 , label:  '2.86 (15th)' },
+      { max: 3.52 , label:  '3.52 (20th)' },
+      { max: 4.02 , label:  '4.02 (25th)' },
+      { max: 5.27 , label:  '5.27 (40th)' },
+      { max: 6.09 , label:  '6.09 (50th)' },
+      { max: 7.13 , label:  '7.13 (60th)' },
+      { max: 9.64 , label:  '9.64 (75th)' },
+      { max: 12.235 , label:  '12.235 (85th)' },
+      { max: 14.1 , label:  '14.1 (90th)' },
+      { max: 17.3 , label:  '17.3 (95th)' },
+      { max: 22.0 , label:  '22 (98th)' },
+      { max: 26.558 , label:  '26.558 (99th)' },
+      { max: 257.0 , label:  '257 (100th)' },
+    ]
+  },
+  {
+    id : 'Zinc Zn mg/kg (Percentile) DL = 1',
+ name : 'Zinc Zn mg/kg DL = 1',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Zinc Zn mg_kg (Percentile) DL = 1.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 10.0 , label:  '10 (1st)' },
+      { max: 14.0 , label:  '14 (2nd)' },
+      { max: 18.0 , label:  '18 (5th)' },
+      { max: 24.0 , label:  '24 (10th)' },
+      { max: 29.0 , label:  '29 (15th)' },
+      { max: 34.0 , label:  '34 (20th)' },
+      { max: 38.0 , label:  '38 (25th)' },
+      { max: 51.0 , label:  '51 (40th)' },
+      { max: 59.0 , label:  '59 (50th)' },
+      { max: 68.0 , label:  '68 (60th)' },
+      { max: 83.0 , label:  '83 (75th)' },
+      { max: 97.0 , label:  '97 (85th)' },
+      { max: 106.0 , label:  '106 (90th)' },
+      { max: 123.0 , label:  '123 (95th)' },
+      { max: 151.58 , label:  '151.58 (98th)' },
+      { max: 185.29 , label:  '185.29 (99th)' },
+      { max: 2300.0 , label:  '2300 (100th)' },
+    ]
+  },
+  {
+    id : 'Zirconium Zr mg/kg (Percentile) DL = 0.5',
+ name : 'Zirconium Zr mg/kg DL = 0.5',
+    group: 'Tellus Soils A Aqua Regia',
+    cog : 'https://data.better-open-data.com/lidar_zstd/Zirconium Zr mg_kg (Percentile) DL = 0.5.tif',
+    legendunits: 'mg/kg',
+    tileSize: 256,
+    resampling: 'bilinear',
+    opacity: 0.5,
+    visible: false,
+    classes: [
+      { max: 0.5 , label:  '0.5 (5th)' },
+      { max: 0.7 , label:  '0.7 (10th)' },
+      { max: 0.8 , label:  '0.8 (15th)' },
+      { max: 1.0 , label:  '1 (20th)' },
+      { max: 1.1 , label:  '1.1 (25th)' },
+      { max: 1.7 , label:  '1.7 (40th)' },
+      { max: 2.2 , label:  '2.2 (50th)' },
+      { max: 2.8 , label:  '2.8 (60th)' },
+      { max: 4.5 , label:  '4.5 (75th)' },
+      { max: 7.2 , label:  '7.2 (85th)' },
+      { max: 9.4 , label:  '9.4 (90th)' },
+      { max: 12.7 , label:  '12.7 (95th)' },
+      { max: 15.9 , label:  '15.9 (98th)' },
+      { max: 18.2 , label:  '18.2 (99th)' },
+      { max: 47.1 , label:  '47.1 (100th)' },
+    ]
+  },
+
+{
+  id: 'Magnetics Residual',
+  name: 'Magnetics Residual',
+  group: 'Tellus Magnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Magnetic (Minc from V3 gdb, cellsize 35m) MAG_RES_cog.tif',
+  legendunits: 'nT',
+  tileSize: 256,
+  opacity: 1,
+  visible: false,
+  hillshade_option: true
+},
+
+{
+  id: 'Magnetics RTP',
+  name: 'Magnetics RTP',
+  group: 'Tellus Magnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Magnetic (Minc from V3 gdb, cellsize 35m) MAG_RES - rtp_cog.tif',
+  legendunits: 'nT',
+  tileSize: 256,
+  opacity: 1,
+  visible: false,
+  hillshade_option: true
+
+},
+
+{
+  id: 'Magnetics RTP Tilt Derivative',
+  name: 'Magnetics RTP Tilt Derivative',
+  group: 'Tellus Magnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Magnetic (Minc from V3 gdb, cellsize 35m) MAG_RES - rtp - TiltD_cog.tif',
+  legendunits: 'nT',
+  tileSize: 256,
+  opacity: 1,
+  visible: false,
+  hillshade_option: true
+
+},
+
+{
+  id: 'Magnetics Pseudo Gravity',
+  name: 'Magnetics Pseudo Gravity',
+  group: 'Tellus Magnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Magnetic (Minc from V3 gdb, cellsize 35m) MAG_RES - psg_cog.tif',
+  legendunits: 'nT',
+  tileSize: 256,
+  opacity: 1,
+  visible: false
+},
+
+{
+  id: 'Magnetics Pseudo Gravity Tilt Derivative',
+  name: 'Magnetics Pseudo Gravity Tilt Derivative',
+  group: 'Tellus Magnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Magnetic (Minc from V3 gdb, cellsize 35m) MAG_RES - psg - TiltD_cog.tif',
+  legendunits: 'nT',
+  tileSize: 256,
+  opacity: 1,
+  visible: false
+},
+
+{
+  id: 'High Frequency EM',
+  name: 'High Frequency (14kHz) EM',
+  group: 'Tellus Electromagnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Electromagnetic (Minc from V3 gdb, cellsize 35m) 14KHz_Acon_FLT_cog.tif',
+  legendunits: 'mS/m',
+  tileSize: 256,
+  opacity: 1,
+  visible: false,
+  hillshade_option: true
+},
+
+{
+  id: 'Low Frequency EM',
+  name: 'Low Frequency (3kHz) EM',
+  group: 'Tellus Electromagnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Electromagnetic (Minc from V3 gdb, cellsize 35m) 3KHz_Acon_FLT_cog.tif',
+  legendunits: 'mS/m',
+  tileSize: 256,
+  opacity: 1,
+  visible: false,
+  hillshade_option: true
+},
+
+{
+  id: 'Uranium',
+  name: 'Uranium',
+  group: 'Tellus Radiometrics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Radiometric (Minc from V3 gdb, cellsize 35m) D_URA_1.tif',
+  legendunits: 'ppm',
+  tileSize: 256,
+  opacity: 1,
+  visible: false
+},
+
+{
+  id: 'tellus_thorium',
+  name: 'Thorium',
+  group: 'Tellus Radiometrics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Radiometric (Minc from V3 gdb, cellsize 35m) D_THO_1.tif',
+  legendunits: 'ppm',
+  tileSize: 256,
+  opacity: 1,
+  visible: false
+},
+
+{
+  id: 'tellus_potassium',
+  name: 'Potassium',
+  group: 'Tellus Radiometrics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Radiometric (Minc from V3 gdb, cellsize 35m) D_KAL_1.tif',
+  legendunits: '%',
+  tileSize: 256,
+  opacity: 1,
+  visible: false
+},
+
+{
+  id: 'tellus_total_count',
+  name: 'Total Count',
+  group: 'Tellus Radiometrics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/TELLUS_Radiometric (Minc from V3 gdb, cellsize 35m) D_TOT_CPS.tif',
+  legendunits: 'cps',
+  tileSize: 256,
+  opacity: 1,
+  visible: false,
+  hillshade_option: true
+},
+
+
+///////////////////////////////////////////////////////////////////////////
+//  10K Layers
+///////////////////////////////////////////////////////////////////////////
+
+{ id: '10K_landform', name: 'Landform', group: 'Geology (10K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '1', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: '10K_linear', name: 'Linear', group: 'Geology (10K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '2', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: '10K_mass_movement', name: 'Mass Movement', group: 'Geology (10K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '3', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: '10K_artificial', name: 'Artificial', group: 'Geology (10K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '4', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: '10K_superficial', name: 'Superficial', group: 'Geology (10K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '5', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: '10K_bedrock', name: 'Bedrock', group: 'Geology (10K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '6', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+
+///////////////////////////////////////////////////////////////////////////
+//  250K Layers
+///////////////////////////////////////////////////////////////////////////
+
+{ id: '250K_linear', name: 'Linear', group: 'Geology (250K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '8', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: '250K_superficial', name: 'Superficial', group: 'Geology (250K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '9', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: '250K_bedrock', name: 'Bedrock', group: 'Geology (250K) WMS',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geology_Landsat_WMS/MapServer/',
+layers: '10', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+
+///////////////////////////////////////////////////////////////////////////
+//  Hydro Layers
+///////////////////////////////////////////////////////////////////////////
+{ id: 'Superficial Aquifer', name: 'Superficial Aquifer', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '5', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: 'Bedrock Aquifer', name: 'Bedrock Aquifer', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '4', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: 'Groundwater Vulnerability', name: 'Groundwater Vulnerability', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '6', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+
+///////////////////////////////////////////////////////////////////////////
+//  Geophysics Layers
+///////////////////////////////////////////////////////////////////////////
+
+{ id: 'gsni_residual', name: 'Residual', group: 'Geophysics - Magnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '3', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'gsni_pseudogravity', name: 'Pseudogravity', group: 'Geophysics - Magnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '4', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Pseudogravity - Tilt Derivative ', name: 'Pseudogravity - Tilt Derivative ', group: 'Geophysics - Magnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '5', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Analytic_Signal', name: 'Analytic_Signal', group: 'Geophysics - Magnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '6', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'gsni_rtp', name: 'Reduced to pole', group: 'Geophysics - Magnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '7', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Reduced_to_Pole - Tilt Derivative ', name: 'Reduced_to_Pole - Tilt Derivative', group: 'Geophysics - Magnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '8', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'RTP - Analytic_Signal ', name: 'RTP - Analytic_Signal', group: 'Geophysics - Magnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '9', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+
+{ id: 'High Frequency Apparent Conductivity', name: 'High Frequency Apparent Conductivity', group: 'Geophysics - Electromagnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '11', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Low Frequency Apparent Conductivity ', name: 'Low Frequency Apparent Conductivity', group: 'Geophysics - Electromagnetics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '12', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+
+{ id: 'Ratio eTh - K', name: 'Ratio eTh - K', group: 'Geophysics - Radiometrics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '14', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Ratio eU - eTh', name: 'Ratio eU - eTh', group: 'Geophysics - Radiometrics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '15', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Ratio eU - K', name: 'Ratio eU - K', group: 'Geophysics - Radiometrics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '16', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Ternary K - Th - U', name: 'Ternary K - Th - U', group: 'Geophysics - Radiometrics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '17', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Potassium', name: 'Potassium', group: 'Geophysics - Radiometrics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '18', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Thorium', name: 'Thorium', group: 'Geophysics - Radiometrics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '19', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+{ id: 'Total Count', name: 'Total Count', group: 'Geophysics - Radiometrics',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Geophysics/MapServer/',
+layers: '10', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+
+///////////////////////////////////////////////////////////////////////////
+//  Imagery Layers
+///////////////////////////////////////////////////////////////////////////
+
+ { id: 'lot1_ortho_ni', name: 'NI Coastal Orthophotography', group: 'Imagery',
+tiles: 'https://tiles-eu1.arcgis.com/kswen6BYexuc1SUk/arcgis/rest/services/Lot1_Ortho_NI/MapServer/tile/{z}/{y}/{x}?cacheKey=b4dc3f34e50f87a9',
+maxzoom: 23, opacity: 1, visible: false, attribution: '&copy; DAERA, Bluesky' },
+
+{ id: 'esri_world_imagery', name: 'ESRI World Imagery', group: 'Imagery',
+tiles: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+opacity: 0.6, visible: false,
+attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community' }
+],
+///////////////////////////////////////////////////////////////////////////
+//  Groups
+///////////////////////////////////////////////////////////////////////////
+// Named collections of datasets, vector layers, overlays and other groups, for use in a theme's `groups: [...]`.
+//   'Name': { datasets: [ids], layers: [source-layer names], overlays: [ids], groups: [other group names] }
+///////////////////////////////////////////////////////////////////////////
+
+  groups: {
+    'A Test Group': { overlays: ['gsni_pseudogravity', 'Bedrock Aquifer'] },
+  },
+
+
+///////////////////////////////////////////////////////////////////////////
+//  Linked JSON data
+///////////////////////////////////////////////////////////////////////////
+// Joins JSON files to a vector layer. Matching rows appear in the click popup and as extra tabs in the results table.
+//   'Layer name': { field: attribute on the layer, links: [{ label, file, dataKey (array in the file; default first array), field (column in the file; default = layer field) }] }
+///////////////////////////////////////////////////////////////////////////
+
+  dataLinks: {
+  },
+
+///////////////////////////////////////////////////////////////////////////
+//  Layer Metadata
+///////////////////////////////////////////////////////////////////////////
+// Layer information (the "i" button on a layer). Key = vector layer name as in the legend, or an overlay id.
+//   { metadata: '<record url>' }  -> fetches the JSON record and shows `infoFields`; a link to the record page (without f=json) goes at the bottom.
+//   { metadata, fields: [...] }   -> same, but with this layer's own fields / order.   Optional: linkText, page (override the link target).
+//   'https://…'                   -> just an "About this layer" link inside the layer's panel.
+// The metadata server must allow cross-origin (CORS) requests from the site hosting this page.
+///////////////////////////////////////////////////////////////////////////
+
+  layerInfo: {
+    'Site Reports': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/2bd4d1e5-9401-4da9-9566-f481b84fa110?f=json' },
+    'Boreholes': {metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/09757268-929d-4203-b1fc-56d9391e4688?f=json'} ,
+    'Bedrock Aquifer Classification': {metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/eeee2244-953d-4b81-8124-9e1ce602bf2e?f=json'} ,
+
+  },
+
+  // Group-level information: key = group name exactly as shown in the legend (overlay `group`, or a vector legend group).
+  // Same formats as layerInfo. Every layer in the group shows it unless the layer has its own entry in layerInfo (or `info`).
+  groupInfo: {
+    'Tellus Magnetics': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/43e0d940-c82e-40bb-abc0-a775158500b5?f=json' },
+    'Geophysics - Magnetics': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/43e0d940-c82e-40bb-abc0-a775158500b5?f=json' },
+    'Geophysics - Electromagnetics': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/43e0d940-c82e-40bb-abc0-a775158500b5?f=json' },
+    'Geophysics - Radiometrics': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/43e0d940-c82e-40bb-abc0-a775158500b5?f=json' },
+    'Tellus Soils': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/062d0e21-a0b2-41f4-a39f-56381c8db86c?f=json' },
+    'Tellus Soils A Aqua Regia': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/062d0e21-a0b2-41f4-a39f-56381c8db86c?f=json' },
+  
+  },
+
+  
+  // What to show from the record, in this order. Each item:
+  //   label  – heading shown above the value (leave out for none)
+  //   path   – where the value is in the JSON, e.g. 'properties.title' or 'properties.contacts[0].emails[0].value'
+  //   format – optional: 'title' | 'date' | 'daterange' | 'scale' | 'list' | 'lines' | 'email' | 'link',
+  //            or a function (value, wholeRecord) => text.  Plain text is the default; web addresses become links.
+  // Items with no value in the record are skipped. Delete, reorder or add lines freely.
+  infoFields: [
+    { path: 'properties.title', format: 'title' },
+    { label: 'Description', path: 'properties.description' },
+    { label: 'Data period', path: 'time.interval', format: 'daterange' },
+    { label: 'Last updated', path: 'properties.updated', format: 'date' },
+    { label: 'Scale', path: 'properties.gn-elastic-index-record.resolutionScaleDenominator[0]', format: 'scale' },
+    { label: 'Keywords', path: 'properties.keywords', format: 'list' },
+    { label: 'Licence', path: 'properties.gn-elastic-index-record.otherProperties.licenseObject', format: 'lines' },
+    { label: 'Contact', path: 'properties.contacts[0].organization' },
+    { label: 'Email', path: 'properties.contacts[0].emails[0].value', format: 'email' }
+  ],
+  classToggles: { '*': true, 'Geology (Digital 10K)': false },   // tick boxes on each class, per layer ('*' = default). false = classes are shown as a key only; the layer's own box still controls it
+  legendInView: 12,           // layers with more classes than this only list the classes present in the map view (0 = always list all)
+  legendOther: false,         // true = also list the 'fallback' colour of a class-coloured layer as "Other"
+  collapseLayers: false,      // true = start with each layer's classes collapsed
+  search: { countrycodes: 'gb,ie', limit: 5 },   // place search (OpenStreetMap Nominatim); grid refs need no service
+
+///////////////////////////////////////////////////////////////////////////
+// Theme Configuration
+///////////////////////////////////////////////////////////////////////////
+// Themes: pick which layers are on. `layers` = source-layer names,
+// `groups` = style groups, overlay groups, or named themes; `datasets` = dataset ids,
+// and `overlays` = overlay ids. Anything not listed is switched off. A theme with no keys shows everything.
+// Groups may name a style group, configured overlay group, or named theme.
+// Examples: ['Geotechnical'], ['Geology (10K) WMS'], or ['Geology WMS'].
+// `showResults: true` opens the results table when the theme loads (default off; queries always open it).
+///////////////////////////////////////////////////////////////////////////
+
+    themes: [
+      { name: 'Site Investigations', 
+      overlays: ['Geotechnical', 'esri_world_imagery', 'lot1_ortho_ni'] },
+      { name: 'Geology WMS',
+      overlays: ['10K_bedrock', '10K_superficial', '10K_linear', '10K_mass_movement', '10K_artificial','10K_landform', '250K_bedrock', '250K_superficial', '250K_linear','esri_world_imagery'] },
+      { name: 'Geophysics WMS', 
+      overlays: ['Geophysics - Magnetics','Geophysics - Electromagnetics','Geophysics - Radiometrics', 'esri_world_imagery'] },
+      { name: 'Tellus Geophysics', 
+      overlays: ['Tellus Magnetics', 'Tellus Electromagnetics','Tellus Radiometrics','esri_world_imagery'] },
+      { name: 'Tellus Geochemistry', 
+      overlays: ['Tellus Waters','Hydro','Tellus Soils','Tellus Soils A Aqua Regia','esri_world_imagery'] },      
+      { name: 'Hydrogeology', 
+      overlays: ['Bedrock Aquifer Classification','Bedrock Aquifer', 'Groundwater Vulnerability', 'Superficial Aquifer', 'esri_world_imagery'] },
+  ],
+
+
+///////////////////////////////////////////////////////////////////////////
+//  Default theme when the project loads
+///////////////////////////////////////////////////////////////////////////
+  defaultTheme: 0,
+
+///////////////////////////////////////////////////////////////////////////
+//  Set Visibility for pmtiles layers
+///////////////////////////////////////////////////////////////////////////
+  layerZooms: {},             // optional tile-zoom range per layer, e.g. { Boreholes: [10, 14] }
+
+///////////////////////////////////////////////////////////////////////////
+//  Nice Legend Labels - might remove these when the pmtiles style.json is configured
+///////////////////////////////////////////////////////////////////////////
+
+  legendLabels: {
+    Boreholes_rule0: '0 – 5 m', Boreholes_rule2_3: '5 – 10 m', Boreholes_rule4_5: '10 – 20 m',
+    Boreholes_rule6_7: '20 – 100 m', Boreholes_rule8_9: '> 100 m',
+    Site_Reports_rule0: 'Site reports'
+  },
+
+///////////////////////////////////////////////////////////////////////////
+//  Terrain Models
+///////////////////////////////////////////////////////////////////////////
+// 3D view + hillshade from Cloud Optimised GeoTIFFs: one band of elevation (metres), EPSG:3857, tiled with overviews.
+// Add models for a user-selectable list; each needs a unique id, display name and COG path.
+// The page must be served over http(s) (not opened from disk). Remove `terrain` to switch the 3D button and hillshade off.
+///////////////////////////////////////////////////////////////////////////
+
+  terrain: {
+    models: [
+      { id: '10m', name: 'Open 10m DEM', cog: 'https://data.better-open-data.com/lidar_zstd/DTM.tif', tileSize: 512 },
+      { id: 'Ardquin_DSM', name: 'Ardquin_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Ardquin_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ardquin_DTM', name: 'Ardquin_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ardquin_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ardstraw_02_02_2012_DSM', name: 'Ardstraw_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Ardstraw_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ardstraw_02_02_2012_DTM', name: 'Ardstraw_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ardstraw_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ardtole_DSM', name: 'Ardtole_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Ardtole_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ardtole_DTM', name: 'Ardtole_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ardtole_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Armagh-Dungannon-Coalisland_15_03_2010_DTM', name: 'Armagh-Dungannon-Coalisland_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Armagh-Dungannon-Coalisland_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballinamallard_05_03_2012_DSM', name: 'Ballinamallard_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballinamallard_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballinamallard_05_03_2012_DTM', name: 'Ballinamallard_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballinamallard_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballycastle_15_03_2010_DTM', name: 'Ballycastle_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballycastle_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballyclare_23_04_2009_DTM', name: 'Ballyclare_23_04_2009_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballyclare_23_04_2009_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballygalley_15_03_2010_DTM', name: 'Ballygalley_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballygalley_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballygowan_15_03_2010_DTM', name: 'Ballygowan_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballygowan_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballymena_23_04_2009_DSM', name: 'Ballymena_23_04_2009_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballymena_23_04_2009_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballymena_23_04_2009_DTM', name: 'Ballymena_23_04_2009_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballymena_23_04_2009_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballynahinch_15_03_2010_DTM', name: 'Ballynahinch_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballynahinch_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ballynavally_04_04_2007_DTM', name: 'Ballynavally_04_04_2007_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ballynavally_04_04_2007_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Banbridge_15_03_2010_DTM', name: 'Banbridge_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Banbridge_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Bangor_04_04_2007_DTM', name: 'Bangor_04_04_2007_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Bangor_04_04_2007_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Bangor_Extension_05_03_2012_DSM', name: 'Bangor_Extension_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Bangor_Extension_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Bangor_Extension_05_03_2012_DTM', name: 'Bangor_Extension_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Bangor_Extension_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Belfast_2006_DSM', name: 'Belfast_2006_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Belfast_2006_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Belfast_2006_DTM', name: 'Belfast_2006_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Belfast_2006_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Belleek_05_03_2012_DSM', name: 'Belleek_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Belleek_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Belleek_05_03_2012_DTM', name: 'Belleek_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Belleek_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Beragh_02_02_2012_DSM', name: 'Beragh_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Beragh_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Beragh_02_02_2012_DTM', name: 'Beragh_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Beragh_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Black_Pigs_Dyke_DSM', name: 'Black_Pigs_Dyke_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Black_Pigs_Dyke_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Black_Pigs_Dyke_DTM', name: 'Black_Pigs_Dyke_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Black_Pigs_Dyke_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Blackwater_16_06_2014_DSM', name: 'Blackwater_16_06_2014_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Blackwater_16_06_2014_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Blackwater_16_06_2014_DTM', name: 'Blackwater_16_06_2014_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Blackwater_16_06_2014_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Bonamargy_DSM', name: 'Bonamargy_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Bonamargy_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Bonamargy_DTM', name: 'Bonamargy_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Bonamargy_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Burren_03_03_2012_DSM', name: 'Burren_03_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Burren_03_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Burren_03_03_2012_DTM', name: 'Burren_03_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Burren_03_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Bushmills_15_03_2010_DTM', name: 'Bushmills_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Bushmills_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cahery_DSM', name: 'Cahery_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Cahery_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cahery_DTM', name: 'Cahery_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Cahery_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Camowen_16_06_2014_DSM', name: 'Camowen_16_06_2014_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Camowen_16_06_2014_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Camowen_16_06_2014_DTM', name: 'Camowen_16_06_2014_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Camowen_16_06_2014_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Carrickfergus_04_04_2007_DTM', name: 'Carrickfergus_04_04_2007_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Carrickfergus_04_04_2007_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Carryduff_15_03_2010_DTM', name: 'Carryduff_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Carryduff_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Castlederg_23_05_2004_DSM', name: 'Castlederg_23_05_2004_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Castlederg_23_05_2004_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Castlederg_23_05_2004_DTM', name: 'Castlederg_23_05_2004_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Castlederg_23_05_2004_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Castlereagh_04_04_2007_DTM', name: 'Castlereagh_04_04_2007_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Castlereagh_04_04_2007_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cave_Hill_DSM', name: 'Cave_Hill_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Cave_Hill_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cave_Hill_DTM', name: 'Cave_Hill_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Cave_Hill_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Charlemont_DSM', name: 'Charlemont_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Charlemont_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Charlemont_DTM', name: 'Charlemont_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Charlemont_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Clady_10_03_2009_DSM', name: 'Clady_10_03_2009_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Clady_10_03_2009_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Clady_10_03_2009_DTM', name: 'Clady_10_03_2009_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Clady_10_03_2009_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Clandeboye_DSM', name: 'Clandeboye_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Clandeboye_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Clandeboye_DTM', name: 'Clandeboye_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Clandeboye_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Clogher_DSM', name: 'Clogher_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Clogher_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Clogher_DTM', name: 'Clogher_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Clogher_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cloghmills_16_06_2014_DSM', name: 'Cloghmills_16_06_2014_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Cloghmills_16_06_2014_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cloghmills_16_06_2014_DTM', name: 'Cloghmills_16_06_2014_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Cloghmills_16_06_2014_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Coleraine-Portstewart-Portrush_15_03_2010_DTM', name: 'Coleraine-Portstewart-Portrush_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Coleraine-Portstewart-Portrush_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cookstown_06_06_2013_DSM', name: 'Cookstown_06_06_2013_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Cookstown_06_06_2013_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cookstown_06_06_2013_DTM', name: 'Cookstown_06_06_2013_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Cookstown_06_06_2013_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cornashee_DSM', name: 'Cornashee_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Cornashee_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cornashee_DTM', name: 'Cornashee_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Cornashee_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Crossmurrin_DSM', name: 'Crossmurrin_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Crossmurrin_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Crossmurrin_DTM', name: 'Crossmurrin_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Crossmurrin_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cullybackey_15_03_2010_DTM', name: 'Cullybackey_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Cullybackey_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Cushendall_15_03_2010_DTM', name: 'Cushendall_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Cushendall_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Devenish_DSM', name: 'Devenish_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Devenish_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Devenish_DTM', name: 'Devenish_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Devenish_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dohertys_Tower_DSM', name: 'Dohertys_Tower_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Dohertys_Tower_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dohertys_Tower_DTM', name: 'Dohertys_Tower_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Dohertys_Tower_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Donegore_DSM', name: 'Donegore_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Donegore_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Donegore_DTM', name: 'Donegore_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Donegore_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dougary_02_02_2012_DSM', name: 'Dougary_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Dougary_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dougary_02_02_2012_DTM', name: 'Dougary_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Dougary_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Downpatrick_05_05_2009_DSM', name: 'Downpatrick_05_05_2009_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Downpatrick_05_05_2009_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Downpatrick_05_05_2009_DTM', name: 'Downpatrick_05_05_2009_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Downpatrick_05_05_2009_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dundrum_DSM', name: 'Dundrum_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Dundrum_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dundrum_DTM', name: 'Dundrum_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Dundrum_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dunluce_DSM', name: 'Dunluce_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Dunluce_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dunluce_DTM', name: 'Dunluce_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Dunluce_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dunmull_DSM', name: 'Dunmull_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Dunmull_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dunmull_DTM', name: 'Dunmull_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Dunmull_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dunmurry_04_04_2007_DTM', name: 'Dunmurry_04_04_2007_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Dunmurry_04_04_2007_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dunseverick_DSM', name: 'Dunseverick_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Dunseverick_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Dunseverick_DTM', name: 'Dunseverick_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Dunseverick_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'East Belfast_29_05_2013_DSM', name: 'East Belfast_29_05_2013_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/East Belfast_29_05_2013_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'East Belfast_29_05_2013_DTM', name: 'East Belfast_29_05_2013_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/East Belfast_29_05_2013_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Eglinton_11_12_2012_DSM', name: 'Eglinton_11_12_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Eglinton_11_12_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Eglinton_11_12_2012_DTM', name: 'Eglinton_11_12_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Eglinton_11_12_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Enniskillen_05_03_2012_DSM', name: 'Enniskillen_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Enniskillen_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Enniskillen_05_03_2012_DTM', name: 'Enniskillen_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Enniskillen_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Fintona_02_02_2012_DSM', name: 'Fintona_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Fintona_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Fintona_02_02_2012_DTM', name: 'Fintona_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Fintona_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Folk Park Newtownstewart_02_02_2012_DSM', name: 'Folk Park Newtownstewart_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Folk Park Newtownstewart_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Folk Park Newtownstewart_02_02_2012_DTM', name: 'Folk Park Newtownstewart_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Folk Park Newtownstewart_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Foyle_23_05_2004_DSM', name: 'Foyle_23_05_2004_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Foyle_23_05_2004_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Foyle_23_05_2004_DTM', name: 'Foyle_23_05_2004_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Foyle_23_05_2004_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Garron_DSM', name: 'Garron_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Garron_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Garron_DTM', name: 'Garron_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Garron_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Giants_Sconce_DSM', name: 'Giants_Sconce_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Giants_Sconce_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Giants_Sconce_DTM', name: 'Giants_Sconce_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Giants_Sconce_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Glenavy_02_02_2012_DSM', name: 'Glenavy_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Glenavy_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Glenavy_02_02_2012_DTM', name: 'Glenavy_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Glenavy_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Glynn_DSM', name: 'Glynn_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Glynn_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Glynn_DTM', name: 'Glynn_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Glynn_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Greyabbey_Ballywalter_DSM', name: 'Greyabbey_Ballywalter_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Greyabbey_Ballywalter_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Greyabbey_Ballywalter_DTM', name: 'Greyabbey_Ballywalter_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Greyabbey_Ballywalter_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Inch_Abbey_DSM', name: 'Inch_Abbey_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Inch_Abbey_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Inch_Abbey_DTM', name: 'Inch_Abbey_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Inch_Abbey_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Keady_02_02_2012_DSM', name: 'Keady_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Keady_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Keady_02_02_2012_DTM', name: 'Keady_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Keady_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Killyleagh__15_03_2010_DTM', name: 'Killyleagh__15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Killyleagh__15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Kiltierney_DSM', name: 'Kiltierney_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Kiltierney_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Kiltierney_DTM', name: 'Kiltierney_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Kiltierney_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Larne_15_03_2010_DTM', name: 'Larne_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Larne_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Limavady_23_05_2004_DSM', name: 'Limavady_23_05_2004_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Limavady_23_05_2004_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Limavady_23_05_2004_DTM', name: 'Limavady_23_05_2004_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Limavady_23_05_2004_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Linford_DSM', name: 'Linford_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Linford_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Linford_DTM', name: 'Linford_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Linford_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Lisbellaw_05_03_2012_DSM', name: 'Lisbellaw_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Lisbellaw_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Lisbellaw_05_03_2012_DTM', name: 'Lisbellaw_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Lisbellaw_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Lisburn_15_03_2010_DTM', name: 'Lisburn_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Lisburn_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Londonderry_30_04_2009_DTM', name: 'Londonderry_30_04_2009_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Londonderry_30_04_2009_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'LoughNeagh_2017_DSM', name: 'LoughNeagh_2017_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/LoughNeagh_2017_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'LoughNeagh_2017_DTM', name: 'LoughNeagh_2017_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/LoughNeagh_2017_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'LowerBann_16_06_2014_DSM', name: 'LowerBann_16_06_2014_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/LowerBann_16_06_2014_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'LowerBann_16_06_2014_DTM', name: 'LowerBann_16_06_2014_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/LowerBann_16_06_2014_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Lurgan_05_03_2012_DSM', name: 'Lurgan_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Lurgan_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Lurgan_05_03_2012_DTM', name: 'Lurgan_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Lurgan_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Lyles_Hill_DSM', name: 'Lyles_Hill_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Lyles_Hill_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Lyles_Hill_DTM', name: 'Lyles_Hill_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Lyles_Hill_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Maghera_20_04_2009_DSM', name: 'Maghera_20_04_2009_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Maghera_20_04_2009_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Maghera_20_04_2009_DTM', name: 'Maghera_20_04_2009_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Maghera_20_04_2009_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Magherafelt_15_03_2010_DTM', name: 'Magherafelt_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Magherafelt_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Magheramore_DSM', name: 'Magheramore_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Magheramore_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Magheramore_DTM', name: 'Magheramore_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Magheramore_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Maguiresbridge_05_03_2012_DSM', name: 'Maguiresbridge_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Maguiresbridge_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Maguiresbridge_05_03_2012_DTM', name: 'Maguiresbridge_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Maguiresbridge_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Mobuoy_DSM', name: 'Mobuoy_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Mobuoy_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Mobuoy_DTM', name: 'Mobuoy_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Mobuoy_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Moneymore_05_03_2012_DSM', name: 'Moneymore_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Moneymore_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Moneymore_05_03_2012_DTM', name: 'Moneymore_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Moneymore_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Mossley_05_03_2012_DSM', name: 'Mossley_05_03_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Mossley_05_03_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Mossley_05_03_2012_DTM', name: 'Mossley_05_03_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Mossley_05_03_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Mount_Stewart_DSM', name: 'Mount_Stewart_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Mount_Stewart_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Mount_Stewart_DTM', name: 'Mount_Stewart_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Mount_Stewart_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Navan_DSM', name: 'Navan_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Navan_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Navan_DTM', name: 'Navan_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Navan_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Newcastle_15_03_2010_DTM', name: 'Newcastle_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Newcastle_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Newry_15_03_2010_DTM', name: 'Newry_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Newry_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Newtownabbey_15_03_2010_DTM', name: 'Newtownabbey_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Newtownabbey_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Newtownards_10_06_2008_DSM', name: 'Newtownards_10_06_2008_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Newtownards_10_06_2008_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Newtownards_10_06_2008_DTM', name: 'Newtownards_10_06_2008_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Newtownards_10_06_2008_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Newtownstewart_23_05_2004_DSM', name: 'Newtownstewart_23_05_2004_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Newtownstewart_23_05_2004_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Newtownstewart_23_05_2004_DTM', name: 'Newtownstewart_23_05_2004_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Newtownstewart_23_05_2004_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Omagh_23_05_2004_DSM', name: 'Omagh_23_05_2004_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Omagh_23_05_2004_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Omagh_23_05_2004_DTM', name: 'Omagh_23_05_2004_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Omagh_23_05_2004_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Omagh_Town_11_12_2012_DSM', name: 'Omagh_Town_11_12_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Omagh_Town_11_12_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Omagh_Town_11_12_2012_DTM', name: 'Omagh_Town_11_12_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Omagh_Town_11_12_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Portadown_27_04_2009_DSM', name: 'Portadown_27_04_2009_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Portadown_27_04_2009_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Portadown_27_04_2009_DTM', name: 'Portadown_27_04_2009_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Portadown_27_04_2009_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'PortadownExtension_02_02_2012_DSM', name: 'PortadownExtension_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/PortadownExtension_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'PortadownExtension_02_02_2012_DTM', name: 'PortadownExtension_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/PortadownExtension_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Raholp_DSM', name: 'Raholp_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Raholp_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Raholp_DTM', name: 'Raholp_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Raholp_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Randalstown_15_03_2010_DTM', name: 'Randalstown_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Randalstown_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Redbay3m', name: 'Redbay3m', cog: 'https://data.better-open-data.com/lidar_zstd/Redbay3m.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ringreagh_DSM', name: 'Ringreagh_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Ringreagh_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Ringreagh_DTM', name: 'Ringreagh_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Ringreagh_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Saintfield_02_02_2012_DSM', name: 'Saintfield_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Saintfield_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Saintfield_02_02_2012_DTM', name: 'Saintfield_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Saintfield_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Saul_DSM', name: 'Saul_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Saul_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Saul_DTM', name: 'Saul_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Saul_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Scrabo_DSM', name: 'Scrabo_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Scrabo_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Scrabo_DTM', name: 'Scrabo_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Scrabo_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Sion_Mills_02_02_2012_DSM', name: 'Sion_Mills_02_02_2012_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Sion_Mills_02_02_2012_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Sion_Mills_02_02_2012_DTM', name: 'Sion_Mills_02_02_2012_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Sion_Mills_02_02_2012_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Slemish_DSM', name: 'Slemish_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Slemish_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Slemish_DTM', name: 'Slemish_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Slemish_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Stonyford_16_06_2014_DSM', name: 'Stonyford_16_06_2014_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Stonyford_16_06_2014_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Stonyford_16_06_2014_DTM', name: 'Stonyford_16_06_2014_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Stonyford_16_06_2014_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Strabane_23_05_2004_DSM', name: 'Strabane_23_05_2004_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Strabane_23_05_2004_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Strabane_23_05_2004_DTM', name: 'Strabane_23_05_2004_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Strabane_23_05_2004_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Strangford2m', name: 'Strangford2m', cog: 'https://data.better-open-data.com/lidar_zstd/Strangford2m.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Struell_DSM', name: 'Struell_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Struell_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Struell_DTM', name: 'Struell_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Struell_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Tandragee_15_03_2010_DTM', name: 'Tandragee_15_03_2010_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Tandragee_15_03_2010_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'The_Dorsey_DSM', name: 'The_Dorsey_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/The_Dorsey_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'The_Dorsey_DTM', name: 'The_Dorsey_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/The_Dorsey_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Tirgoland_DSM', name: 'Tirgoland_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Tirgoland_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Tirgoland_DTM', name: 'Tirgoland_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Tirgoland_DTM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Tullaghoge_DSM', name: 'Tullaghoge_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Tullaghoge_DSM.tif', tileSize: 256, maxzoom: 16 },
+      { id: 'Tullaghoge_DTM', name: 'Tullaghoge_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Tullaghoge_DTM.tif', tileSize: 256, maxzoom: 16 },
+
+    ],
+    defaultModel: '10m',       // selected initially; defaults to the first model
+    exaggeration: 1.0,         // vertical exaggeration in the 3D view
+    pitch: 60,                 // tilt when 3D is switched on (0-80)
+    tileSize: 256,             // the COG's internal tile size (256 or 512)
+    hillshade: true,           // add a "Hillshade (DTM)" layer to the legend (id 'hillshade', usable in themes)
+    hillshadeVisible: true,    // start with the hillshade switched on?
+    hillshadeStrength: 0.6,    // 0-1, shading strength at 0% transparency
+    hillshadeStyle: {
+      method: 'combined', direction: 315, altitude: 45, anchor: 'map',
+      shadowColor: '#000000', highlightColor: '#ffffff', accentColor: '#000000'
+    },
+    contours: {
+      visible: false,
+      opacity: 0.5,
+      colors: { minor: '#808384', major: '#30383b' },
+      thresholds: {
+        11: [100, 500],
+        12: [50, 500], 
+        13: [10, 100], 
+        14: [10, 100], 
+        15: [10, 100], 
+        16: [10, 100]
+      }
+    },
+    allThemes: true            // hillshade + 3D tick boxes stay available in every theme (false = hillshade follows themes' `overlays`)
+    // optional: hillshadeName, group, info (link or { metadata }), attribution
+  },
+
+///////////////////////////////////////////////////////////////////////////
+//  Initial View and Zoom
+///////////////////////////////////////////////////////////////////////////
+
+  center: [-6.5, 54.6],       // [lon, lat]
+  zoom: 8
+};
