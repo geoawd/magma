@@ -872,6 +872,8 @@ const fmtFilter = f => {
 const col = (v, d = '#999') => (typeof v === 'string' ? v.replace(/["'<>;]/g, '') : d);
 const layerVisibility = new Map();
 const geojsonLoaders = new Map();
+const geojsonStyleCache = new Map();
+const geojsonAppliedStyles = new WeakMap();
 let geojsonLoadingEnabled = false;
 const GEOJSON_GEOMETRY_KINDS = {
   Point: 'point',
@@ -895,8 +897,8 @@ function geojsonGeometryTypes(data) {
     .forEach(feature => collectGeojsonGeometryTypes(feature?.geometry, types));
   return types;
 }
-function registerLayerVisibility(id, selected) {
-  if (!layerVisibility.has(id)) layerVisibility.set(id, { selected, inTheme: true, groups: new Set() });
+function registerLayerVisibility(id, selected, inTheme = true) {
+  if (!layerVisibility.has(id)) layerVisibility.set(id, { selected, inTheme, groups: new Set() });
   syncLayerVisibility(id);
 }
 function syncLayerVisibility(id) {
@@ -934,6 +936,7 @@ async function loadGeojsonData(id) {
   loader.status = 'loading';
   updateGeojsonLoadStatus(id);
   try {
+    await loadGeojsonStyle(w);
     const response = await fetch(w.url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
@@ -1190,6 +1193,42 @@ function applyGeojsonPaint(w) {
   map.setPaintProperty(w.id, 'line-color', color);
   map.setPaintProperty(`${w.id}-points`, 'circle-stroke-color', color);
   map.setPaintProperty(`${w.id}-points`, 'circle-color', style.fill || color);
+}
+
+async function loadGeojsonStyle(w) {
+  if (!w.styleUrl) return;
+  if (w.geojson !== true) throw new Error(`Overlay "${w.name || w.id}" styleUrl requires a GeoJSON overlay.`);
+  const url = new URL(w.styleUrl, document.baseURI).href;
+  if (geojsonAppliedStyles.get(w) === url) return;
+  if (!geojsonStyleCache.has(url)) {
+    let pending;
+    pending = fetch(url).then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }).then(definition => {
+      if (!definition || typeof definition !== 'object' || Array.isArray(definition) ||
+          !definition.style || typeof definition.style !== 'object' || Array.isArray(definition.style)) {
+        throw new Error('Style file must contain a style object.');
+      }
+      if (definition.legend !== undefined &&
+          (!definition.legend || typeof definition.legend !== 'object' || Array.isArray(definition.legend))) {
+        throw new Error('Style file contains an invalid legend object.');
+      }
+      return definition;
+    }).catch(error => {
+      if (geojsonStyleCache.get(url) === pending) geojsonStyleCache.delete(url);
+      throw error;
+    });
+    geojsonStyleCache.set(url, pending);
+  }
+  const definition = await geojsonStyleCache.get(url);
+  w.style = definition.style;
+  if (definition.legend !== undefined) w.legend = definition.legend;
+  const loader = geojsonLoaders.get(w.id);
+  if (loader) loader.originalStyle = { ...w.style };
+  applyGeojsonPaint(w);
+  renderGeojsonLegend(w);
+  geojsonAppliedStyles.set(w, url);
 }
 
 const isUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u.trim());
@@ -3496,6 +3535,9 @@ function reverseWithinGroups(entries) {
   });
   return [...groups.values()].flatMap(group => group.slice().reverse());
 }
+function overlayInitiallyInTheme(w) {
+  return w.global === true || !Array.isArray(CONFIG.themes) || CONFIG.themes.length === 0;
+}
 ///////////////////////////////////////////////////////////////////////////
 // Adds a configured raster overlay or basemap to the MapLibre style.
 ///////////////////////////////////////////////////////////////////////////
@@ -3524,14 +3566,14 @@ function addGeojsonLayer(w, beforeId) {
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     ...(Number.isFinite(w.minzoom) ? { minzoom: w.minzoom } : {}),
     ...(Number.isFinite(w.maxzoom) ? { maxzoom: w.maxzoom } : {}),
-    layout: { visibility: w.visible === true ? 'visible' : 'none' },
+    layout: { visibility: 'none' },
     paint: { 'fill-color': s.fill || s.color || '#d9480f', 'fill-opacity': w.opacity ?? 1 }
   }, beforeId);
   map.addLayer({
     id: w.id, type: 'line', source: w.id,
     ...(Number.isFinite(w.minzoom) ? { minzoom: w.minzoom } : {}),
     ...(Number.isFinite(w.maxzoom) ? { maxzoom: w.maxzoom } : {}),
-    layout: { visibility: w.visible === true ? 'visible' : 'none', 'line-join': 'round' },
+    layout: { visibility: 'none', 'line-join': 'round' },
     paint: {
       'line-color': s.color || '#d9480f', 'line-width': s.width ?? 2, 'line-opacity': w.opacity ?? 1,
       ...(s.dasharray ? { 'line-dasharray': s.dasharray } : {})
@@ -3543,7 +3585,7 @@ function addGeojsonLayer(w, beforeId) {
     ...(Number.isFinite(w.minzoom) ? { minzoom: w.minzoom } : {}),
     ...(Number.isFinite(w.maxzoom) ? { maxzoom: w.maxzoom } : {}),
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    layout: { visibility: w.visible === true ? 'visible' : 'none' },
+    layout: { visibility: 'none' },
     paint: {
       'circle-radius': s.radius ?? 5, 'circle-color': s.fill || s.color || '#d9480f',
       'circle-stroke-color': s.color || '#d9480f', 'circle-stroke-width': s.width ?? 1,
@@ -3571,9 +3613,10 @@ function addGeojsonLayer(w, beforeId) {
     geometryTypes: null,
     data: null
   });
-  registerLayerVisibility(fillId, w.visible === true);
-  registerLayerVisibility(w.id, w.visible === true);
-  registerLayerVisibility(pointId, w.visible === true);
+  const inTheme = overlayInitiallyInTheme(w);
+  registerLayerVisibility(fillId, w.visible === true, inTheme);
+  registerLayerVisibility(w.id, w.visible === true, inTheme);
+  registerLayerVisibility(pointId, w.visible === true, inTheme);
 }
 let activeGeojsonStyleDialog = null;
 const geojsonStyleDialog = $('geojsonStyleDialog');
@@ -4377,7 +4420,7 @@ function initializeCogRampControls(w, panel, legend) {
     state.controlsInitializing = false;
   });
 }
-function addRasterLayer(w, beforeId) {
+function addRasterLayer(w, beforeId, isBasemap = false) {
   if (w.geojson) return addGeojsonLayer(w, beforeId);
   const cogUrl = w.cog ? new URL(w.cog, location.href).href : null;
   if (w.cog) {
@@ -4442,12 +4485,12 @@ function addRasterLayer(w, beforeId) {
   map.addSource(w.id, source);
   const layer = {
     id: w.id, type: 'raster', source: w.id,
-    layout: { visibility: w.visible === true ? 'visible' : 'none' },
+    layout: { visibility: 'none' },
     paint: { 'raster-opacity': w.opacity ?? 1 }
   };
   if (Number.isFinite(w.minzoom)) layer.minzoom = w.minzoom;
   map.addLayer(layer, beforeId);
-  registerLayerVisibility(w.id, w.visible === true);
+  registerLayerVisibility(w.id, w.visible === true, isBasemap || overlayInitiallyInTheme(w));
 }
 
 function configuredTerrainModels() {
@@ -4838,31 +4881,46 @@ async function updateArcgisLegendInView() {
     }
   }));
 }
-function renderArcgisLegend(container, w) {
-  const request = arcgisLegendRequest(w);
-  if (!request) return;
-  const legend = document.createElement('div');
-  legend.className = 'arcgis-legend';
-  legend.textContent = 'Loading legend…';
-  container.appendChild(legend);
-  const serviceKey = arcgisServiceUrl(request).href;
-  arcgisLegendViews.set(w.id, { legend, serviceKey, notice: '' });
-  if (!arcgisLegendCache.has(request.url)) {
-    arcgisLegendCache.set(request.url, fetch(request.url).then(response => {
+function arcgisLegendData(url) {
+  if (!arcgisLegendCache.has(url)) {
+    let pending;
+    pending = fetch(url).then(response => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
     }).then(data => {
       if (data.error) throw new Error(data.error.message || 'ArcGIS legend request failed');
       return data;
-    }));
+    }).catch(error => {
+      if (arcgisLegendCache.get(url) === pending) arcgisLegendCache.delete(url);
+      throw error;
+    });
+    arcgisLegendCache.set(url, pending);
   }
-  arcgisLegendCache.get(request.url).then(data => {
-    const layers = (data.layers || []).filter(layer => !request.layerIds || request.layerIds.has(String(layer.layerId)));
+  return arcgisLegendCache.get(url);
+}
+function renderArcgisLegend(container, w) {
+  const request = arcgisLegendRequest(w);
+  if (!request) return;
+  const legend = document.createElement('div');
+  legend.className = 'arcgis-legend';
+  legend.textContent = 'Legend loads when this theme is active.';
+  container.appendChild(legend);
+  const serviceKey = arcgisServiceUrl(request).href;
+  arcgisLegendViews.set(w.id, { legend, serviceKey, request, notice: '', loading: false, loaded: false });
+}
+function loadArcgisLegend(w) {
+  const view = arcgisLegendViews.get(w.id);
+  if (!view || view.loading || view.loaded) return;
+  view.loading = true;
+  view.legend.textContent = 'Loading legend…';
+  arcgisLegendData(view.request.url).then(data => {
+    const layers = (data.layers || []).filter(layer => !view.request.layerIds || view.request.layerIds.has(String(layer.layerId)));
     const entries = layers.flatMap(layer => (layer.legend || []).map(entry => ({ layer, entry })))
       .filter(({ entry }) => entry.imageData || entry.url);
-    legend.replaceChildren();
+    view.legend.replaceChildren();
     if (!entries.length) {
-      legend.textContent = 'No legend entries available.';
+      view.legend.textContent = 'No legend entries available.';
+      view.loaded = true;
       return;
     }
     entries.forEach(({ layer, entry }) => {
@@ -4875,20 +4933,55 @@ function renderArcgisLegend(container, w) {
       image.alt = label;
       image.src = entry.imageData
         ? `data:${entry.contentType || 'image/png'};base64,${entry.imageData}`
-        : new URL(entry.url, request.url).href;
+        : new URL(entry.url, view.request.url).href;
       row.appendChild(image);
       if (entry.label) {
         const text = document.createElement('span');
         text.textContent = entry.label;
         row.appendChild(text);
       }
-      legend.appendChild(row);
+      view.legend.appendChild(row);
     });
+    view.loaded = true;
     applyArcgisLegendView(w);
   }).catch(error => {
     console.warn(`Could not load ArcGIS legend for ${w.name || w.id}:`, error);
-    legend.textContent = 'Legend unavailable.';
+    view.legend.textContent = 'Legend unavailable. Toggle the layer off and on to retry.';
+  }).finally(() => {
+    view.loading = false;
   });
+}
+const overlayLegendImages = new Map();
+function loadOverlayLegendImage(w) {
+  const container = overlayLegendImages.get(w.id);
+  if (!container || !w.legendUrl || container.querySelector('img')) return;
+  container.querySelector('.legend-image-error')?.remove();
+  const image = document.createElement('img');
+  image.alt = '';
+  image.style.cssText = 'max-width:100%;margin:2px 0 4px 20px';
+  image.src = w.legendUrl;
+  image.onerror = () => {
+    const message = document.createElement('div');
+    message.className = 'legend-image-error';
+    message.textContent = 'Legend image unavailable. Toggle the layer off and on to retry.';
+    container.appendChild(message);
+    image.remove();
+    console.warn(`Could not load legend image for ${w.name || w.id}: ${w.legendUrl}`);
+  };
+  container.appendChild(image);
+}
+function ensureOverlaySymbology(w) {
+  const state = layerVisibility.get(w.id);
+  const effectivelyVisible = state?.selected && state.inTheme && !state.groups.size;
+  if (w.geojson && w.styleUrl && !effectivelyVisible) {
+    loadGeojsonStyle(w).catch(error => {
+      const message = `Could not load style for ${w.name || w.id}: ${error.message}`;
+      console.error(message, error);
+      toast(message);
+    });
+  }
+  if (w.legendUrl) loadOverlayLegendImage(w);
+  else loadArcgisLegend(w);
 }
 map.on('idle', updateArcgisLegendInView);
 map.on('moveend', updateArcgisLegendInView);
@@ -4980,9 +5073,17 @@ function buildOverlayLegend() {
           initializeVisibleCogControls();
           if (cursorPosition) scheduleCogCursorValues(cursorPosition);
         } else setVis(layerIds, on);
+        if (on && layerVisibility.get(w.id)?.inTheme) ensureOverlaySymbology(w);
       };
       cb.onchange = () => setOverlayVisibility(cb.checked);
-      if (!w.global) ctl.ov[w.id] = { theme: on => setThemeVisibility(layerIds, on), set: setOverlayVisibility, el: d };
+      if (!w.global) ctl.ov[w.id] = {
+        theme: on => {
+          setThemeVisibility(layerIds, on);
+          if (on) ensureOverlaySymbology(w);
+        },
+        set: setOverlayVisibility,
+        el: d
+      };
       const cogControls = w.cogState
         ? `<div class="cog-ramp-controls">
             <div class="cog-ramp-advanced-controls advanced-only"><div class="cog-ramp-status" role="status">Enable this layer to load its COG controls.</div></div>
@@ -5163,9 +5264,10 @@ function buildOverlayLegend() {
       }
       if (w.hillshade) bindHillshadeControls(t.panel);
       if (w.contours) bindContourControls(t.panel);
-      if (w.legendUrl) d.insertAdjacentHTML('beforeend', `<img src="${esc(w.legendUrl)}" alt="" style="max-width:100%;margin:2px 0 4px 20px">`);
+      if (w.legendUrl) overlayLegendImages.set(w.id, d);
       else renderArcgisLegend(d, w);
       body.appendChild(d);
+      if (w.global) ensureOverlaySymbology(w);
       layerIds.forEach(id => group.layerIds.add(id));
       if (w.cogState) w.groupLayerIds = group.layerIds;
     });
@@ -5229,7 +5331,7 @@ map.on('load', async () => {
   originalStyleIds = new Set([...Object.keys(style.sources), ...style.layers.map(l => l.id)]);
   const firstData = style.layers.find(l => l['source-layer']);
   const firstSymbol = style.layers.find(l => l.type === 'symbol');
-  validBasemaps().slice().reverse().forEach(w => addRasterLayer(w, (firstData || firstSymbol || {}).id));
+  validBasemaps().slice().reverse().forEach(w => addRasterLayer(w, (firstData || firstSymbol || {}).id, true));
   const tc = CONFIG.terrain;
   terrainLayerBeforeId = firstData && firstData.id;
   if (tc && terrainModels.length && window.MaplibreCOGProtocol) {

@@ -25,6 +25,52 @@ test('app title and main landmark identify Sliabh Data', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Select by box' })).toHaveAttribute('aria-pressed', 'false');
 });
 
+test('OpenStreetMap basemap remains visible independently of theme membership', async ({ page }) => {
+  const osm = page.getByRole('checkbox', { name: 'OpenStreetMap' });
+  await expect(osm).toBeChecked();
+  await osm.uncheck();
+  await osm.check();
+
+  const visibility = await page.evaluate(() => window.__mapInstance.getLayoutProperty('osm', 'visibility'));
+  expect(visibility).toBe('visible');
+});
+
+test('overlay symbology loads on theme activation and is reused when returning', async ({ page }) => {
+  const startupResources = await page.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name));
+  expect(startupResources.some(url => url.includes('config/hydrostyle.json'))).toBe(false);
+  expect(startupResources.some(url => /\/MapServer\/legend(?:\?|$)/i.test(url))).toBe(false);
+
+  let styleRequests = 0;
+  let legendRequests = 0;
+  await page.route(/\/config\/hydrostyle\.json(?:\?|$)/, async route => {
+    styleRequests++;
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        style: { color: '#123456', fill: '#123456' },
+        legend: { entries: [{ label: 'Test', color: '#123456' }] }
+      })
+    });
+  });
+  await page.route(/\/MapServer\/legend(?:\?|$)/i, async route => {
+    legendRequests++;
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ layers: [] }) });
+  });
+
+  const theme = page.getByRole('combobox', { name: 'Theme' });
+  await theme.selectOption({ label: 'Hydrogeology' });
+  await expect.poll(() => styleRequests).toBe(1);
+  await theme.selectOption({ label: 'Geology WMS' });
+  await expect.poll(() => legendRequests).toBeGreaterThan(0);
+  const initialLegendRequests = legendRequests;
+
+  await theme.selectOption({ label: 'Site Investigations' });
+  await theme.selectOption({ label: 'Hydrogeology' });
+  await theme.selectOption({ label: 'Geology WMS' });
+  expect(styleRequests).toBe(1);
+  expect(legendRequests).toBe(initialLegendRequests);
+});
+
 test('keyboard users can select a map box', async ({ page }) => {
   const boxButton = page.getByRole('button', { name: 'Select by box' });
   const canvas = page.locator('#map canvas');

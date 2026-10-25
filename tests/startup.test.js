@@ -86,6 +86,22 @@ test('config loader selects the requested profile and starts styles after config
   assert.deepEqual(browser.alerts, []);
 });
 
+test('config loader defers GeoJSON styleUrl requests until the overlay is active', async () => {
+  const browser = makeConfigLoaderBrowser();
+  browser.window.CONFIG = {
+    overlays: [{ id: 'inactive', geojson: true, styleUrl: 'config/inactive-style.json' }]
+  };
+  browser.scripts[0].onload();
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.deepEqual(browser.scripts.map(script => script.src), [
+    'config/config.js',
+    'js/styles.js'
+  ]);
+  assert.deepEqual(browser.errors, []);
+  assert.deepEqual(browser.alerts, []);
+});
+
 test('config loader URI-encodes overlay and terrain COG URLs before loading styles', async () => {
   const browser = makeConfigLoaderBrowser();
   browser.window.CONFIG = {
