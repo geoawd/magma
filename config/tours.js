@@ -107,7 +107,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -123,7 +123,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -139,7 +139,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -155,7 +155,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -171,7 +171,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -187,7 +187,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -203,7 +203,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -219,7 +219,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -235,7 +235,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -251,7 +251,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -267,7 +267,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -283,7 +283,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -299,7 +299,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -315,7 +315,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -331,7 +331,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -347,7 +347,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -363,7 +363,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -379,7 +379,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
@@ -395,7 +395,7 @@ window.TOURS = [
         title: 'New tour stop',
         description: 'Describe this stop.',
         target: '#map',
-        theme: "Geology WMS",
+        theme: "Site Investigations",
         layers: {
           overlays: ["esri_world_imagery","lot1_ortho_ni"],
           hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
