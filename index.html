@@ -64,10 +64,20 @@
           <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Help</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
           <div class="lgbody info-copy">
             <p>To help get you started, take a quick, guided look at the map controls.</p>
-            <button id="startTour" class="primary" type="button">Start tour</button>
+            <div class="tour-actions">
+              <button id="startTour" class="primary" type="button">Start tour</button>
+            </div>
+            <div id="interactiveTourControls" class="tour-picker" hidden>
+              <label for="tourSelect">Interactive tour</label>
+              <select id="tourSelect"></select>
+              <div class="tour-actions">
+                <button id="startInteractiveTour" class="primary" type="button">Start selected tour</button>
+                <button id="copyTourLink" type="button">Copy tour link</button>
+              </div>
+            </div>
           </div>
         </section>
-        <!-- Edit tour titles and descriptions here; data-target points to each interface control. -->
+        <!-- Fallback tour used when a configured tour cannot be selected. -->
         <template id="tourSteps">
           <ol>
             <li data-title="Themes" data-target="#themeSel">Choose a theme to switch the map to a different subject or collection. The legend updates to show its available layers.</li>
@@ -218,6 +228,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.22.0/proj4.js" integrity="sha384-RCBbAm8IhfOOoFV7vqUhspSb+BCSvVSd84WJpv5VMq4rNiXJ88VMHtndxQntlbnd" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js" integrity="sha384-f2gK0HoDkM64k6ZBnbv6ZuvMzDqPOwrfTaIU9iv2BN7CWHyyTQJkPC9AoRNuuV39" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+<script src="config/tours.js"></script>
 <script src="js/config-loader.js"></script>
 </body>
 </html>

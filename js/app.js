@@ -274,6 +274,75 @@ if (notificationTypes.length) map.addControl({
     notificationButtons.clear();
   }
 }, 'bottom-right');
+if (CONFIG.copytourlocation === true) map.addControl({
+  onAdd() {
+    const group = document.createElement('div');
+    group.className = 'maplibregl-ctrl maplibregl-ctrl-group tour-copy-control advanced-only';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Copy tour stop';
+    button.title = 'Copy the current map view as a tour stop';
+    button.setAttribute('aria-label', button.title);
+    button.onclick = async () => {
+      const center = map.getCenter();
+      const formatCoordinate = value => Number(value.toFixed(5));
+      const formatCamera = value => Number(value.toFixed(2));
+      const visibleOverlays = [];
+      const hiddenOverlays = [];
+      themeOverlays.forEach(id => {
+        const checkbox = ctl.ov[id]?.el.querySelector('.grprow input[type="checkbox"]');
+        if (checkbox?.checked) visibleOverlays.push(id);
+        else if (checkbox) hiddenOverlays.push(id);
+      });
+      const snippet = [
+        '      {',
+        "        title: 'New tour stop',",
+        "        description: 'Describe this stop.',",
+        "        target: '#map',",
+        `        theme: ${JSON.stringify(activeThemeName)},`,
+        '        layers: {',
+        `          overlays: ${JSON.stringify(visibleOverlays)},`,
+        `          hideOverlays: ${JSON.stringify(hiddenOverlays)}`,
+        '        },',
+        `        center: [${formatCoordinate(center.lng)}, ${formatCoordinate(center.lat)}],`,
+        `        zoom: ${formatCamera(map.getZoom())},`,
+        `        bearing: ${formatCamera(map.getBearing())},`,
+        `        pitch: ${formatCamera(map.getPitch())},`,
+        `        terrain: ${terrainOn},`,
+        '        duration: 1200',
+        '      }'
+      ].join('\n');
+      try {
+        await navigator.clipboard.writeText(snippet);
+      } catch {
+        const textarea = document.createElement('textarea');
+        textarea.value = snippet;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        let copied = false;
+        try {
+          textarea.focus();
+          textarea.select();
+          copied = document.execCommand('copy');
+        } catch (error) {
+          toast(`Could not copy tour stop: ${error.message}`);
+          return;
+        } finally {
+          textarea.remove();
+        }
+        if (!copied) {
+          toast('Could not copy tour stop. Check clipboard permissions and try again.');
+          return;
+        }
+      }
+      toast('Tour stop copied. Paste it into config/tours.js.');
+    };
+    group.appendChild(button);
+    return group;
+  },
+  onRemove() {}
+}, 'top-right');
 notificationForm.addEventListener('input', event => {
   if (event.target === notificationPreview) notificationPreviewEdited = true;
   else notificationPreviewEdited = false;
@@ -583,34 +652,117 @@ function syncAddDataButton() {
 document.querySelectorAll('#rail [data-tool]').forEach(b => b.onclick = () => openTool(b.dataset.tool));
 document.querySelectorAll('.dclose').forEach(b => b.onclick = () => openTool(tool));
 
-const tourSteps = [...$('tourSteps').content.querySelectorAll('li')].map(item => ({
+const fallbackTourSteps = [...$('tourSteps').content.querySelectorAll('li')].map(item => ({
   title: item.dataset.title,
   target: item.dataset.target,
   open: item.dataset.open,
   description: item.textContent.trim().replace(/\s+/g, ' ')
 }));
+const configuredTours = Array.isArray(window.TOURS) ? window.TOURS : [];
+const requestedTourId = new URLSearchParams(location.search).get('tour');
+const requestedTour = configuredTours.find(tour => tour.id === requestedTourId);
+const tourSelect = $('tourSelect');
+configuredTours.forEach(tour => {
+  const option = document.createElement('option');
+  option.value = tour.id;
+  option.textContent = tour.name;
+  tourSelect.appendChild(option);
+});
+$('interactiveTourControls').hidden = configuredTours.length === 0;
+if (requestedTour) tourSelect.value = requestedTour.id;
+let currentTourSteps = fallbackTourSteps;
 let tourPopover = null;
 let tourTarget = null;
 let tourIndex = 0;
+let tourPopup = null;
+let tourPopoverDragged = false;
+function closeTourPopup() {
+  if (tourPopup) tourPopup.remove();
+  tourPopup = null;
+}
+function applyTourStop(stop) {
+  if (!stop || !map.loaded()) return;
+  if (stop.theme && $('themeSel')) {
+    const option = [...$('themeSel').options].find(item =>
+      item.textContent === stop.theme || item.value === stop.theme);
+    if (option) {
+      $('themeSel').value = option.value;
+      $('themeSel').dispatchEvent(new Event('change'));
+    } else console.warn(`Tour theme "${stop.theme}" was not found.`);
+  }
+  const layers = stop.layers || {};
+  if (Array.isArray(layers.show)) setVis(layers.show, true);
+  if (Array.isArray(layers.hide)) setVis(layers.hide, false);
+  if (Array.isArray(layers.overlays)) {
+    layers.overlays.forEach(id => {
+      if (ctl.ov[id]) ctl.ov[id].set(true);
+      else console.warn(`Tour overlay "${id}" was not found.`);
+    });
+  }
+  if (Array.isArray(layers.hideOverlays)) layers.hideOverlays.forEach(id => ctl.ov[id]?.set(false));
+  const camera = {};
+  if (typeof stop.terrain === 'boolean') {
+    setTerrain3D(stop.terrain, true, false);
+    if (!Number.isFinite(stop.pitch)) camera.pitch = stop.terrain ? (CONFIG.terrain?.pitch ?? 60) : 0;
+    if (!Number.isFinite(stop.bearing)) camera.bearing = 0;
+  }
+  if (Array.isArray(stop.center) && stop.center.length === 2 && stop.center.every(Number.isFinite)) {
+    camera.center = stop.center;
+  }
+  ['zoom', 'bearing', 'pitch'].forEach(key => {
+    if (Number.isFinite(stop[key])) camera[key] = stop[key];
+  });
+  if (Object.keys(camera).length) {
+    map.flyTo({ ...camera, duration: Number.isFinite(stop.duration) ? stop.duration : 900 });
+  }
+  closeTourPopup();
+  if (stop.popup && typeof stop.popup === 'object') {
+    tourPopup = new maplibregl.Popup({
+      closeButton: true,
+      maxWidth: stop.popup.maxWidth || '360px'
+    }).setLngLat(stop.popup.lngLat || camera.center || map.getCenter().toArray())
+      .setHTML(String(stop.popup.html || '')).addTo(map);
+  }
+}
+function clampTourPopoverPosition(left, top) {
+  const mapRect = $('map').getBoundingClientRect();
+  const margin = 12;
+  const minLeft = Math.max(margin, mapRect.left + margin);
+  tourPopover.style.maxWidth = `${Math.max(1, Math.min(340, innerWidth - minLeft - margin))}px`;
+  const { width, height } = tourPopover.getBoundingClientRect();
+  return {
+    left: Math.max(minLeft, Math.min(left, innerWidth - width - margin)),
+    top: Math.max(margin, Math.min(top, innerHeight - height - margin))
+  };
+}
 function positionTourPopover() {
   if (!tourPopover) return;
+  if (tourPopoverDragged) {
+    const position = clampTourPopoverPosition(
+      parseFloat(tourPopover.style.left),
+      parseFloat(tourPopover.style.top)
+    );
+    tourPopover.style.left = `${position.left}px`;
+    tourPopover.style.top = `${position.top}px`;
+    return;
+  }
   const rect = tourTarget?.getBoundingClientRect();
   const popover = tourPopover.getBoundingClientRect();
   const margin = 12, gap = 12;
   let left = rect ? rect.right + gap : (innerWidth - popover.width) / 2;
   if (left + popover.width > innerWidth - margin && rect) left = rect.left - popover.width - gap;
-  left = Math.max(margin, Math.min(left, innerWidth - popover.width - margin));
   let top = rect ? rect.top : (innerHeight - popover.height) / 2;
   if (top + popover.height > innerHeight - margin) top = innerHeight - popover.height - margin;
-  top = Math.max(margin, top);
-  tourPopover.style.left = `${left}px`;
-  tourPopover.style.top = `${top}px`;
+  const position = clampTourPopoverPosition(left, top);
+  tourPopover.style.left = `${position.left}px`;
+  tourPopover.style.top = `${position.top}px`;
 }
 function renderTourStep() {
   if (!tourPopover) return;
   tourTarget?.classList.remove('tour-target');
-  const step = tourSteps[tourIndex];
-  const matches = [...document.querySelectorAll(step.target)];
+  const step = currentTourSteps[tourIndex];
+  applyTourStop(step);
+  const matches = step.target ? [...document.querySelectorAll(step.target)] : [];
   let candidate = matches.find(element => element.getClientRects().length);
   if (step.open === 'transparency' && candidate) {
     if (candidate.getAttribute('aria-expanded') !== 'true') candidate.click();
@@ -634,12 +786,12 @@ function renderTourStep() {
   tourTarget?.classList.add('tour-target');
   tourTarget?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   tourPopover.querySelector('.tour-title').textContent = step.title;
-  tourPopover.querySelector('.tour-count').textContent = `${tourIndex + 1} of ${tourSteps.length}`;
+  tourPopover.querySelector('.tour-count').textContent = `${tourIndex + 1} of ${currentTourSteps.length}`;
   tourPopover.querySelector('.tour-description').textContent = step.description;
   const previous = tourPopover.querySelector('.tour-previous');
   const next = tourPopover.querySelector('.tour-next');
   previous.disabled = tourIndex === 0;
-  next.textContent = tourIndex === tourSteps.length - 1 ? 'Finish' : 'Next';
+  next.textContent = tourIndex === currentTourSteps.length - 1 ? 'Finish' : 'Next';
   positionTourPopover();
   setTimeout(positionTourPopover, 220);
 }
@@ -650,6 +802,8 @@ function finishTour() {
   tourPopover.remove();
   tourPopover = null;
   tourTarget = null;
+  tourPopoverDragged = false;
+  closeTourPopup();
   window.removeEventListener('resize', positionTourPopover);
   document.removeEventListener('scroll', positionTourPopover, true);
   document.removeEventListener('keydown', handleTourKeydown);
@@ -659,9 +813,13 @@ function finishTour() {
 function handleTourKeydown(event) {
   if (event.key === 'Escape') { event.preventDefault(); finishTour(); }
 }
-function startTour() {
+function startTour(tour = null) {
   openTool('legend');
+  currentTourSteps = Array.isArray(tour?.stops) && tour.stops.length
+    ? tour.stops.map(stop => ({ ...stop, description: String(stop.description || '') }))
+    : fallbackTourSteps;
   tourIndex = 0;
+  tourPopoverDragged = false;
   const panel = document.createElement('section');
   panel.id = 'tourPopover';
   panel.className = 'tour-popover';
@@ -669,6 +827,38 @@ function startTour() {
   panel.setAttribute('aria-labelledby', 'tourTitle');
   panel.setAttribute('aria-describedby', 'tourDescription');
   const header = document.createElement('header');
+  header.title = 'Drag to move this tour panel';
+  let drag = null;
+  header.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    const rect = panel.getBoundingClientRect();
+    drag = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false
+    };
+    header.setPointerCapture(event.pointerId);
+  });
+  header.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 3) return;
+    drag.moved = true;
+    tourPopoverDragged = true;
+    const position = clampTourPopoverPosition(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
+    panel.style.left = `${position.left}px`;
+    panel.style.top = `${position.top}px`;
+    event.preventDefault();
+  });
+  const endDrag = event => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    drag = null;
+    if (header.hasPointerCapture(event.pointerId)) header.releasePointerCapture(event.pointerId);
+  };
+  header.addEventListener('pointerup', endDrag);
+  header.addEventListener('pointercancel', endDrag);
   const title = document.createElement('strong');
   title.id = 'tourTitle';
   title.className = 'tour-title';
@@ -692,7 +882,7 @@ function startTour() {
   next.type = 'button';
   next.className = 'primary tour-next';
   next.onclick = () => {
-    if (tourIndex === tourSteps.length - 1) finishTour();
+    if (tourIndex === currentTourSteps.length - 1) finishTour();
     else { tourIndex++; renderTourStep(); }
   };
   footer.append(previous, end, next);
@@ -705,7 +895,43 @@ function startTour() {
   renderTourStep();
   next.focus();
 }
-$('startTour').onclick = startTour;
+$('startTour').onclick = () => startTour();
+$('startInteractiveTour').onclick = () => {
+  const tour = configuredTours.find(item => item.id === tourSelect.value);
+  if (tour) startTour(tour);
+};
+$('copyTourLink').onclick = async () => {
+  const tour = configuredTours.find(item => item.id === tourSelect.value);
+  if (!tour) return;
+  const link = new URL(window.location.href);
+  link.searchParams.set('tour', tour.id);
+  link.hash = '';
+  try {
+    await navigator.clipboard.writeText(link.href);
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = link.href;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    let copied = false;
+    try {
+      textarea.focus();
+      textarea.select();
+      copied = document.execCommand('copy');
+    } catch (error) {
+      toast(`Could not copy tour link: ${error.message}`);
+      return;
+    } finally {
+      textarea.remove();
+    }
+    if (!copied) {
+      toast('Could not copy tour link. Check clipboard permissions and try again.');
+      return;
+    }
+  }
+  toast(`Link copied for "${tour.name}".`);
+};
 
 // ---------- Query helpers ----------
 function dataLayers() {
@@ -5769,6 +5995,10 @@ map.on('load', async () => {
   loadScaleInfo().then(updateScaleState);
   populateSearchLayers();
   if (!isMobile()) openTool('legend');   // start with the legend open on desktop only
+  if (requestedTourId) {
+    if (requestedTour) startTour(requestedTour);
+    else toast(`Tour "${requestedTourId}" was not found.`);
+  }
 });
 
 // ---------- Box selection (mouse and touch) ----------
@@ -6285,7 +6515,10 @@ function setTerrain3D(on, syncCheckbox = true, tilt = true) {
   $('terrainBtn').classList.toggle('active', on);
   $('terrainBtn').setAttribute('aria-pressed', String(on));
   if (on) { addTerrainModelSource(activeTerrainModel, 'terrain'); map.setTerrain({ source: activeTerrainModel.sourceId, exaggeration: terrainExaggeration }); if (tilt) map.easeTo({ pitch: tc.pitch ?? 60, duration: 900 }); }
-  else { map.setTerrain(null); map.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }   // everything is draped on the surface automatically
+  else {
+    map.setTerrain(null);
+    if (tilt) map.easeTo({ pitch: 0, bearing: 0, duration: 600 });   // everything is draped on the surface automatically
+  }
 }
 map.on('pitchstart', e => {   // user tilting (right-drag / two-finger swipe) switches 3D on
   if (e.originalEvent && !terrainOn && !terrainGroupHidden && activeTerrainModel) setTerrain3D(true, true, false);

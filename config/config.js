@@ -5,6 +5,7 @@
 window.CONFIG = {
   title: 'MAGMA - Mapping and Analysis of Geospatial Material and Archives',
   showZoom: true, // development helper: show the current zoom level beside the grid reference; set to false for production
+  copytourlocation: true,
   // Map reports are available in Advanced mode. Add report types and fields here.
   notifications: [
     {

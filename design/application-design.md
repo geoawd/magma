@@ -18,10 +18,19 @@ The viewer autosaves a versioned session snapshot to browser `localStorage`. On 
 
 Shared links take precedence over the saved-session prompt. Map-view hashes in `#zoom/latitude/longitude` format initialize the map to that view and drop a location pin; encoded JSON theme links restore their map/filter state without prompting or adding a pin.
 
+## Interactive Tours
+
+`config/tours.js` is loaded independently of the profile config and defines `window.TOURS`. Each tour has a unique `id`, `name`, and `stops` array. Configured tours are selectable in the Information panel, where users can also copy a share link. A URL with `?tour=<id>` starts that configured tour automatically after startup. Each stop can define `title`, `description`, `target` (a UI selector to highlight), `center`, `zoom`, `bearing`, `pitch`, `duration`, and optional boolean `terrain`. Set `terrain: true` or `terrain: false` to enable or disable 3D terrain for that stop; when terrain is specified without a pitch, enabled stops use the configured terrain pitch and disabled stops use a flat pitch. Stops without `terrain` leave the current terrain state unchanged. Optional layer actions are expressed as `layers.show`, `layers.hide`, `layers.overlays`, and `layers.hideOverlays`; overlay IDs use the same IDs as `CONFIG.overlays`. A `theme` selects an existing theme by name or option value. A trusted `popup.html` string and optional `popup.lngLat` can display explanatory HTML, images, or video at a stop. The existing help tour remains available as a fallback.
+
+Set `CONFIG.copytourlocation` to `true` to show the **Copy tour stop** map control in Advanced mode. It copies a paste-ready stop containing the current theme, overlay visibility, camera position, and terrain state; replace its title and description before adding it to `config/tours.js`.
+
+The video-export plugin is intentionally not loaded by default. A future exporter adapter can consume the same stop camera sequence and add the plugin's `VideoExportControl` without changing the map controls or tour schema; this keeps the extra dependency and browser recording permissions opt-in.
+
 ## Directory Layout
 
 - `config/config.js`: public profile's `window.CONFIG` for map defaults, vector datasets, basemaps, raster overlays, themes, legend metadata, search, and terrain.
 - `config/config.internal.js`: internal profile's `window.CONFIG`; present only on the internal branch.
+- `config/tours.js`: independently loaded `window.TOURS` definitions for interactive tours.
 - `js/config-loader.js`: loads the public profile by default, or the internal profile when opened with `?profile=internal`.
 - `config/config_geomaterials.js`: `window.GEOMATERIALS_CONFIG` for the JSON-backed Geomaterials theme: data paths, schemas, filters, links, popups, and depth symbology.
 - `config/*.json`: MapLibre styles and deployment/link configuration.

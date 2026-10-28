@@ -50,10 +50,44 @@
       }
     });
   };
+  const validateTours = tours => {
+    const ids = new Set();
+    tours.forEach((tour, index) => {
+      if (!tour || typeof tour.id !== 'string' || !tour.id ||
+          typeof tour.name !== 'string' || !tour.name || !Array.isArray(tour.stops)) {
+        throw new Error(`Invalid tour at index ${index}.`);
+      }
+      if (ids.has(tour.id)) throw new Error(`Duplicate tour id "${tour.id}".`);
+      ids.add(tour.id);
+      tour.stops.forEach((stop, stopIndex) => {
+        if (!stop || typeof stop.title !== 'string' || !stop.title ||
+            typeof stop.description !== 'string') {
+          throw new Error(`Invalid stop ${stopIndex} in tour "${tour.id}".`);
+        }
+        if (stop.center !== undefined &&
+            (!Array.isArray(stop.center) || stop.center.length !== 2 || !stop.center.every(Number.isFinite))) {
+          throw new Error(`Invalid center in stop ${stopIndex} of tour "${tour.id}".`);
+        }
+        ['zoom', 'bearing', 'pitch', 'duration'].forEach(key => {
+          if (stop[key] !== undefined && !Number.isFinite(stop[key])) {
+            throw new Error(`Invalid ${key} in stop ${stopIndex} of tour "${tour.id}".`);
+          }
+        });
+        if (stop.terrain !== undefined && typeof stop.terrain !== 'boolean') {
+          throw new Error(`Invalid terrain in stop ${stopIndex} of tour "${tour.id}".`);
+        }
+        if (stop.popup !== undefined && (!stop.popup || typeof stop.popup.html !== 'string')) {
+          throw new Error(`Invalid popup in stop ${stopIndex} of tour "${tour.id}".`);
+        }
+      });
+    });
+  };
   loadScript(profileConfigs[profile])
     .then(async () => {
       if (!window.CONFIG) throw new Error(`${profileConfigs[profile]} did not define window.CONFIG.`);
       encodeCogUrls(window.CONFIG);
+      if (!Array.isArray(window.TOURS)) throw new Error('config/tours.js did not define window.TOURS.');
+      validateTours(window.TOURS);
       await loadScript('js/styles.js');
     })
     .catch(error => showError(`Could not start the ${profile} profile: ${error.message}`));

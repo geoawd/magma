@@ -36,6 +36,7 @@ test('application configuration has valid defaults and project bounds', () => {
   assert.ok(config && typeof config === 'object', 'config/config.js must define window.CONFIG');
   assert.equal(typeof config.title, 'string');
   assert.ok(config.title.trim().length > 0);
+  assert.equal(typeof config.copytourlocation, 'boolean');
   assert.ok(Array.isArray(config.themes) && config.themes.length > 0);
   assert.ok(Number.isInteger(config.defaultTheme));
   assert.ok(config.defaultTheme >= 0 && config.defaultTheme < config.themes.length);

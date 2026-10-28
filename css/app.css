@@ -77,9 +77,15 @@
   .dbody.form select, .dbody.form input[type=text] { width: 100%; padding: 6px 8px; border: 1px solid #8a949e; border-radius: 4px; background: #fff; }
   .info-copy { line-height: 1.6; }
   .info-copy p { margin: 0 0 8px; }
+  .tour-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tour-picker { display: grid; gap: 6px; margin-top: 10px; }
+  .tour-picker[hidden] { display: none; }
+  .tour-picker label { font-weight: 600; }
+  .tour-picker select { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid #8a949e; border-radius: 4px; background: #fff; }
   .tour-popover { position: fixed; z-index: 1000; width: min(340px, calc(100vw - 24px)); max-height: min(60vh, 380px); overflow: auto; padding: 12px; border: 1px solid var(--line); border-top: 4px solid #e8590c; border-radius: 6px; background: #fff; color: var(--ink); box-shadow: 0 5px 20px rgba(0,0,0,.25); }
   .tour-popover header, .tour-popover footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .tour-popover header { margin-bottom: 8px; }
+  .tour-popover header { margin-bottom: 8px; cursor: grab; touch-action: none; user-select: none; }
+  .tour-popover header:active { cursor: grabbing; }
   .tour-popover .tour-title { font-size: 14px; }
   .tour-popover .tour-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
   .tour-popover p { margin: 0 0 12px; line-height: 1.5; }
@@ -366,6 +372,7 @@
   .notification-control-group { display: grid; gap: 1px; }
   .maplibregl-ctrl-group.notification-control-group button { width: auto; min-width: 120px; height: auto; min-height: 30px; padding: 5px 8px; text-align: left; white-space: nowrap; }
   .maplibregl-ctrl-group.notification-control-group button[aria-pressed=true] { background: var(--ac); color: #fff; }
+  .maplibregl-ctrl-group.tour-copy-control button { width: auto; min-width: 0; height: auto; min-height: 30px; padding: 5px 8px; white-space: nowrap; }
 
   /* ---- location search ---- */
   #geo { position: absolute; left: 8px; top: 8px; z-index: 6; width: min(360px, calc(100% - 64px)); }

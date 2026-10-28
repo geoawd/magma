@@ -13,7 +13,7 @@ function makeConfigLoaderBrowser(search = '') {
   const scripts = [];
   const alerts = [];
   const errors = [];
-  const window = { location: { search } };
+  const window = { location: { search }, TOURS: [] };
   const document = {
     createElement: tagName => ({
       tagName,
@@ -140,6 +140,22 @@ test('config loader reports a missing config and does not start styles', async (
   assert.deepEqual(browser.scripts.map(script => script.src), ['config/config.js']);
   assert.equal(browser.alerts.length, 1);
   assert.match(browser.alerts[0].textContent, /did not define window\.CONFIG/);
+});
+
+test('config loader rejects non-boolean tour terrain settings', async () => {
+  const browser = makeConfigLoaderBrowser();
+  browser.window.CONFIG = { title: 'Test profile' };
+  browser.window.TOURS = [{
+    id: 'terrain-tour',
+    name: 'Terrain tour',
+    stops: [{ title: 'Stop', description: 'Test stop', terrain: 'enabled' }]
+  }];
+  browser.scripts[0].onload();
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.deepEqual(browser.scripts.map(script => script.src), ['config/config.js']);
+  assert.equal(browser.alerts.length, 1);
+  assert.match(browser.alerts[0].textContent, /Invalid terrain in stop 0 of tour "terrain-tour"/);
 });
 
 test('config loader reports profile script network failures', async () => {
