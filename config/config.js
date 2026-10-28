@@ -1903,7 +1903,7 @@ layers: '10', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
 
  { id: 'lot1_ortho_ni', name: 'NI Coastal Orthophotography', group: 'Imagery',
 tiles: 'https://tiles-eu1.arcgis.com/kswen6BYexuc1SUk/arcgis/rest/services/Lot1_Ortho_NI/MapServer/tile/{z}/{y}/{x}?cacheKey=b4dc3f34e50f87a9',
-maxzoom: 23, opacity: 1, visible: false, attribution: '&copy; DAERA, Bluesky' },
+maxzoom: 23, opacity: 1, visible: true, attribution: '&copy; DAERA, Bluesky' },
 
 { id: 'esri_world_imagery', name: 'ESRI World Imagery', group: 'Imagery',
 tiles: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
