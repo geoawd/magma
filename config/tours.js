@@ -98,7 +98,316 @@ window.TOURS = [
       },
       */
     ]
+  },
+  {
+    id: 'Coastal Sites',
+    name: 'Coastal Sites',
+    stops: [
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.11436, 54.05103],
+        zoom: 13.57,
+        bearing: 90.39,
+        pitch: 44.63,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-5.89141, 54.15104],
+        zoom: 14.1,
+        bearing: -15.97,
+        pitch: 77,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-5.85752, 54.22912],
+        zoom: 14,
+        bearing: -139.21,
+        pitch: 73.49,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-5.83548, 54.7622],
+        zoom: 10.05,
+        bearing: -79.15,
+        pitch: 63.51,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-5.97224, 55.04369],
+        zoom: 14.12,
+        bearing: -89.53,
+        pitch: 56.51,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-5.97326, 55.05008],
+        zoom: 15.32,
+        bearing: -161.57,
+        pitch: 71.07,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.05692, 55.06907],
+        zoom: 12.95,
+        bearing: -162.85,
+        pitch: 58.07,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.0629, 55.19586],
+        zoom: 16.03,
+        bearing: -102.79,
+        pitch: 75.5,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.12712, 55.21642],
+        zoom: 15.8,
+        bearing: -69.76,
+        pitch: 78,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.14125, 55.22509],
+        zoom: 14.97,
+        bearing: -116.25,
+        pitch: 54.49,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.15669, 55.22232],
+        zoom: 14.32,
+        bearing: 127.75,
+        pitch: 66.99,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.28996, 55.2263],
+        zoom: 15.35,
+        bearing: -175.28,
+        pitch: 72.07,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.38496, 55.24079],
+        zoom: 15.94,
+        bearing: -145.49,
+        pitch: 74.04,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.46264, 55.24621],
+        zoom: 16.23,
+        bearing: -89.45,
+        pitch: 61.99,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.51032, 55.24],
+        zoom: 16.71,
+        bearing: 178.89,
+        pitch: 73,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.53569, 55.22522],
+        zoom: 14.9,
+        bearing: 137.25,
+        pitch: 31,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.76368, 55.16575],
+        zoom: 13.98,
+        bearing: 152.23,
+        pitch: 39,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.94366, 55.14748],
+        zoom: 11.69,
+        bearing: 91.43,
+        pitch: 38.51,
+        terrain: true,
+        duration: 1200
+      },
+            {
+        title: 'New tour stop',
+        description: 'Describe this stop.',
+        target: '#map',
+        theme: "Geology WMS",
+        layers: {
+          overlays: ["esri_world_imagery","lot1_ortho_ni"],
+          hideOverlays: ["10K_bedrock","10K_superficial","10K_linear","10K_mass_movement","10K_artificial","10K_landform","250K_bedrock","250K_superficial","250K_linear"]
+        },
+        center: [-6.42538, 54.77582],
+        zoom: 8.14,
+        bearing: 0,
+        pitch: 0.22,
+        terrain: false,
+        duration: 1200
+      }
+
+  ]
   }
 ];
-
-
