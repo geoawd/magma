@@ -14,6 +14,7 @@ import { equalIntervalBreaks, geojsonFieldStats, matchColorExpression, parseManu
 import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition, QGIS_TURBO_COLORS } from './qgis-layer.js';
 import { isJsonThemeShareState, jsonThemeMapView, parseMapViewHash } from './shared-links.js';
 import { buildJsonFeatures, createJsonThemeState, filterJsonRows, hasJsonFilters, jsonGeometryCenter, jsonGeometryIntersectsBounds, loadJsonThemeConfig, loadJsonThemeData } from './json-theme-runtime.js';
+import { createSpaceMouseController } from './spacemouse.js';
 
 window.maplibregl = maplibregl;
 const CONFIG = window.CONFIG;
@@ -60,6 +61,15 @@ const map = new maplibregl.Map({
   bearing: sharedMapView?.bearing || 0,
   pitch: sharedMapView?.pitch || 0,
   maxPitch: 80
+});
+createSpaceMouseController({
+  map,
+  button: $('spaceMouseBtn'),
+  hid: window.navigator?.hid,
+  window,
+  config: CONFIG.spaceMouse,
+  is3d: () => terrainOn,
+  notify: toast
 });
 const notificationDialog = $('notificationDialog');
 const notificationForm = $('notificationForm');
@@ -6447,7 +6457,7 @@ map.on('error', async e => {
   if (dtmChecking) return;
   dtmChecking = true;
   const why = await diagnoseDtm(model);
-  toast('3D / hillshade: ' + (why || `the file is reachable but could not be read${msg ? ' (' + msg + ')' : ''}. It must be a single-band elevation COG in EPSG:3857, tiled, with overviews.`));
+  toast('3D / hillshade: ' + (why || `the file is reachable but could not be read${msg ? ' (' + msg + ')' : ''}. It must be a single-band elevation COG, tiled, with overviews.`));
   setTimeout(() => dtmChecking = false, 15000);
 });
 let terrainOn = false, terrainCb = null, terrainGroupHidden = false;   // checkbox selection is preserved when its group is hidden

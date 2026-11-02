@@ -37,6 +37,11 @@ test('application configuration has valid defaults and project bounds', () => {
   assert.equal(typeof config.title, 'string');
   assert.ok(config.title.trim().length > 0);
   assert.equal(typeof config.copytourlocation, 'boolean');
+  assert.equal(config.spaceMouse?.enabled, true);
+  for (const speed of ['panPixelsPerSecond', 'zoomLevelsPerSecond', 'rotationDegreesPerSecond']) {
+    assert.ok(Number.isFinite(config.spaceMouse[speed]) && config.spaceMouse[speed] > 0,
+      `SpaceMouse ${speed} must be a positive number`);
+  }
   assert.ok(Array.isArray(config.themes) && config.themes.length > 0);
   assert.ok(Number.isInteger(config.defaultTheme));
   assert.ok(config.defaultTheme >= 0 && config.defaultTheme < config.themes.length);

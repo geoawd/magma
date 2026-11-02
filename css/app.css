@@ -55,6 +55,7 @@
   #side { display: flex; flex: none; background: #fff; border-right: 1px solid var(--line); z-index: 6; }
   #rail { width: var(--rail); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; background: var(--rail-bg); }
   #rail button { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: none; border: 0; border-radius: 6px; color: #cfd8de; }
+  #rail button[hidden] { display: none; }
   #rail button:hover { background: rgba(255,255,255,.12); }
   #rail button.active { background: rgba(255,255,255,.2); color: #fff; box-shadow: inset 3px 0 0 #fff; }
   #rail button:focus-visible { outline-color: #fff; }
