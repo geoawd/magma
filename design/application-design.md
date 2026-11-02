@@ -14,7 +14,7 @@ On mobile, the tools drawer opens at 45% of the viewport height, can be dragged 
 
 ## SpaceMouse Navigation
 
-Set `CONFIG.spaceMouse.enabled` to `true` to enable the SpaceMouse connection control. Set `CONFIG.spaceMouse.advancedModeOnly` to `true` to show it only while Advanced mode is on. In a WebHID-capable browser on a secure context, users can connect a 3Dconnexion device from that control; previously authorized devices reconnect automatically. Translation pans and zooms the map, while pitch and heading rotation control the camera when 3D terrain is active. Browsers without WebHID continue to work normally and do not show the control. `panPixelsPerSecond`, `zoomLevelsPerSecond`, and `rotationDegreesPerSecond` configure navigation speed.
+Set `CONFIG.spaceMouse.enabled` to `true` to enable the SpaceMouse connection and preferences controls. Set `CONFIG.spaceMouse.advancedModeOnly` to `true` to show them only while Advanced mode is on. In a WebHID-capable browser on a secure context, users can connect a 3Dconnexion device from the connection control; previously authorized devices reconnect automatically. Translation pans and zooms the map, while pitch and heading rotation control the camera when 3D terrain is active. Browsers without WebHID continue to work normally and do not show the controls. `panPixelsPerSecond`, `zoomLevelsPerSecond`, and `rotationDegreesPerSecond` set the default navigation speeds. The preferences dialog lets users change those speeds and reverse each pan, zoom, pitch, or heading axis independently. User preferences are stored separately from map sessions in browser `localStorage`, scoped to the active profile, and can be reset to the configured defaults.
 
 ## Session Recovery
 

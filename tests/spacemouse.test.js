@@ -26,6 +26,48 @@ function mockButton() {
   };
 }
 
+function mockSettings() {
+  const inputs = new Map(Object.entries({
+    spaceMousePanSpeed: ['number', '500'],
+    spaceMouseZoomSpeed: ['number', '2'],
+    spaceMouseRotationSpeed: ['number', '60'],
+    spaceMouseReversePanX: ['checkbox', false],
+    spaceMouseReversePanY: ['checkbox', false],
+    spaceMouseReverseZoom: ['checkbox', false],
+    spaceMouseReversePitch: ['checkbox', false],
+    spaceMouseReverseRotation: ['checkbox', false]
+  }).map(([id, [type, value]]) => [id, {
+    type,
+    value: type === 'checkbox' ? '' : value,
+    checked: type === 'checkbox' ? value : false,
+    listeners: new Map(),
+    get valueAsNumber() { return Number(this.value); },
+    addEventListener: (name, callback) => inputs.get(id).listeners.set(name, callback),
+    focus() { this.focused = true; }
+  }]));
+  const elements = new Map(inputs);
+  for (const id of ['spaceMouseSettingsDialog', 'spaceMouseSettingsForm', 'spaceMouseSettingsStatus',
+    'spaceMouseCloseSettings', 'spaceMouseResetSettings']) {
+    elements.set(id, {
+      listeners: new Map(),
+      addEventListener(name, callback) { this.listeners.set(name, callback); },
+      showModal() { this.open = true; },
+      close() { this.open = false; },
+      textContent: ''
+    });
+  }
+  return {
+    inputs,
+    elements,
+    document: { getElementById: id => elements.get(id) },
+    settingsButton: mockButton(),
+    get dialog() { return elements.get('spaceMouseSettingsDialog'); },
+    get status() { return elements.get('spaceMouseSettingsStatus'); },
+    get resetButton() { return elements.get('spaceMouseResetSettings'); },
+    get closeButton() { return elements.get('spaceMouseCloseSettings'); }
+  };
+}
+
 test('SpaceMouse reports decode translation and rotation axes', () => {
   assert.deepEqual(decodeSpaceMouseReport(1, report([100, -200, 300])), {
     translation: [100, -200, 300]
@@ -41,6 +83,7 @@ test('SpaceMouse control stays hidden when WebHID is unavailable or disabled', (
   const unavailableButton = mockButton();
   assert.equal(createSpaceMouseController({
     button: unavailableButton,
+    settingsButton: mockButton(),
     config: { enabled: true },
     hid: undefined
   }).enabled, false);
@@ -49,6 +92,7 @@ test('SpaceMouse control stays hidden when WebHID is unavailable or disabled', (
   const disabledButton = mockButton();
   assert.equal(createSpaceMouseController({
     button: disabledButton,
+    settingsButton: mockButton(),
     config: { enabled: false },
     hid: {}
   }).enabled, false);
@@ -57,23 +101,71 @@ test('SpaceMouse control stays hidden when WebHID is unavailable or disabled', (
 
 test('SpaceMouse control can be restricted to advanced mode', () => {
   const hid = { addEventListener() {}, getDevices: async () => [] };
+  const advancedSettings = mockSettings();
   const advancedButton = mockButton();
   createSpaceMouseController({
     button: advancedButton,
+    settingsButton: advancedSettings.settingsButton,
     config: { enabled: true, advancedModeOnly: true },
     hid,
+    window: { localStorage: { getItem: () => null, setItem() {}, removeItem() {} } },
+    document: advancedSettings.document,
     notify() {}
   });
   assert.equal(advancedButton.classes.has('advanced-only'), true);
+  assert.equal(advancedSettings.settingsButton.classes.has('advanced-only'), true);
 
+  const defaultSettings = mockSettings();
   const defaultButton = mockButton();
   createSpaceMouseController({
     button: defaultButton,
+    settingsButton: defaultSettings.settingsButton,
     config: { enabled: true, advancedModeOnly: false },
     hid,
+    window: { localStorage: { getItem: () => null, setItem() {}, removeItem() {} } },
+    document: defaultSettings.document,
     notify() {}
   });
   assert.equal(defaultButton.classes.has('advanced-only'), false);
+  assert.equal(defaultSettings.settingsButton.classes.has('advanced-only'), false);
+});
+
+test('SpaceMouse preferences load, persist, and reset to configured defaults', () => {
+  const settings = mockSettings();
+  const values = new Map([['mapviewer.spacemouse.preferences.v1', JSON.stringify({
+    panPixelsPerSecond: 800,
+    reversePanX: true
+  })]]);
+  const storage = {
+    getItem: key => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: key => values.delete(key)
+  };
+  const hid = { addEventListener() {}, getDevices: async () => [] };
+  createSpaceMouseController({
+    button: mockButton(),
+    settingsButton: settings.settingsButton,
+    config: { enabled: true, panPixelsPerSecond: 400, reversePanY: true },
+    hid,
+    window: { localStorage: storage },
+    document: settings.document,
+    notify() {}
+  });
+
+  assert.equal(settings.inputs.get('spaceMousePanSpeed').value, '800');
+  assert.equal(settings.inputs.get('spaceMouseReversePanX').checked, true);
+  assert.equal(settings.inputs.get('spaceMouseReversePanY').checked, true);
+  settings.inputs.get('spaceMousePanSpeed').value = '900';
+  settings.inputs.get('spaceMousePanSpeed').listeners.get('change')();
+  assert.equal(JSON.parse(values.get('mapviewer.spacemouse.preferences.v1')).panPixelsPerSecond, 900);
+  assert.equal(settings.status.textContent, 'Preferences saved in this browser.');
+
+  settings.resetButton.listeners.get('click')();
+  assert.equal(settings.inputs.get('spaceMousePanSpeed').value, '400');
+  assert.equal(settings.inputs.get('spaceMouseReversePanX').checked, false);
+  assert.equal(settings.inputs.get('spaceMouseReversePanY').checked, true);
+  assert.equal(values.has('mapviewer.spacemouse.preferences.v1'), false);
+  assert.equal(settings.status.textContent, 'Preferences reset to the configured defaults.');
 });
 
 test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async () => {
@@ -81,6 +173,7 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
   const callbacks = new Map();
   let nextFrame = 0;
   const browserWindow = {
+    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     requestAnimationFrame: callback => {
       const id = ++nextFrame;
       callbacks.set(id, callback);
@@ -124,11 +217,14 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
     }
   };
   const messages = [];
+  const settings = mockSettings();
   const controller = createSpaceMouseController({
     map,
     button,
+    settingsButton: settings.settingsButton,
     hid,
     window: browserWindow,
+    document: settings.document,
     config: {
       enabled: true,
       panPixelsPerSecond: 500,

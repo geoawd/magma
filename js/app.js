@@ -65,8 +65,10 @@ const map = new maplibregl.Map({
 createSpaceMouseController({
   map,
   button: $('spaceMouseBtn'),
+  settingsButton: $('spaceMouseSettingsBtn'),
   hid: window.navigator?.hid,
   window,
+  document,
   config: CONFIG.spaceMouse,
   is3d: () => terrainOn,
   notify: toast

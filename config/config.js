@@ -12,7 +12,12 @@ window.CONFIG = {
     advancedModeOnly: true,
     panPixelsPerSecond: 500,
     zoomLevelsPerSecond: 2,
-    rotationDegreesPerSecond: 60
+    rotationDegreesPerSecond: 60,
+    reversePanX: false,
+    reversePanY: false,
+    reverseZoom: false,
+    reversePitch: false,
+    reverseRotation: false
   },
   // Map reports are available in Advanced mode. Add report types and fields here.
   notifications: [

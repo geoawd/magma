@@ -1,6 +1,16 @@
 const SPACE_MOUSE_VENDOR_ID = 0x256f;
 const AXIS_RANGE = 350;
 const DEADZONE = 8;
+const PREFERENCE_FIELDS = {
+  panPixelsPerSecond: { min: 1, max: 2000, input: 'spaceMousePanSpeed' },
+  zoomLevelsPerSecond: { min: 0.1, max: 10, input: 'spaceMouseZoomSpeed' },
+  rotationDegreesPerSecond: { min: 1, max: 180, input: 'spaceMouseRotationSpeed' },
+  reversePanX: { input: 'spaceMouseReversePanX' },
+  reversePanY: { input: 'spaceMouseReversePanY' },
+  reverseZoom: { input: 'spaceMouseReverseZoom' },
+  reversePitch: { input: 'spaceMouseReversePitch' },
+  reverseRotation: { input: 'spaceMouseReverseRotation' }
+};
 
 export function decodeSpaceMouseReport(reportId, data) {
   if ((reportId !== 1 && reportId !== 2) || data.byteLength < 6) return null;
@@ -14,32 +24,162 @@ function normalizeAxis(value) {
   return Math.sign(value) * Math.min(1, (magnitude - DEADZONE) / (AXIS_RANGE - DEADZONE));
 }
 
-function configuredSpeed(config, key, fallback) {
-  const value = config[key];
-  if (value === undefined) return fallback;
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`CONFIG.spaceMouse.${key} must be a positive number.`);
-  }
-  return value;
+function defaultPreferences(config) {
+  const preferences = {};
+  Object.entries(PREFERENCE_FIELDS).forEach(([key, definition]) => {
+    const value = config[key];
+    if (definition.min !== undefined) {
+      const speed = value ?? (key === 'panPixelsPerSecond' ? 500 : key === 'zoomLevelsPerSecond' ? 2 : 60);
+      if (!Number.isFinite(speed) || speed < definition.min || speed > definition.max) {
+        throw new Error(`CONFIG.spaceMouse.${key} must be between ${definition.min} and ${definition.max}.`);
+      }
+      preferences[key] = speed;
+    } else {
+      if (value !== undefined && typeof value !== 'boolean') {
+        throw new Error(`CONFIG.spaceMouse.${key} must be a boolean.`);
+      }
+      preferences[key] = value ?? false;
+    }
+  });
+  return preferences;
 }
 
-export function createSpaceMouseController({ map, button, hid, window, config, is3d, notify }) {
-  if (!button) throw new Error('The SpaceMouse control button is missing.');
+function preferenceStorageKey(window) {
+  const profile = window.CONFIG_PROFILE === 'internal' ? '.internal' : '';
+  return `mapviewer.spacemouse.preferences${profile}.v1`;
+}
+
+function readPreferences(window, key, defaults, notify) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return { ...defaults };
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
+      throw new Error('Saved preferences must be an object.');
+    }
+    const preferences = { ...defaults };
+    Object.keys(PREFERENCE_FIELDS).forEach(name => {
+      if (!(name in saved)) return;
+      const definition = PREFERENCE_FIELDS[name];
+      const value = saved[name];
+      if (definition.min !== undefined) {
+        if (!Number.isFinite(value) || value < definition.min || value > definition.max) {
+          throw new Error(`Saved ${name} is outside the supported range.`);
+        }
+      } else if (typeof value !== 'boolean') {
+        throw new Error(`Saved ${name} must be a boolean.`);
+      }
+      preferences[name] = value;
+    });
+    return preferences;
+  } catch (error) {
+    console.error('Could not load SpaceMouse preferences:', error);
+    notify('SpaceMouse preferences could not be loaded. Using the configured defaults.');
+    return { ...defaults };
+  }
+}
+
+export function createSpaceMouseController({
+  map,
+  button,
+  settingsButton,
+  hid,
+  window,
+  document,
+  config,
+  is3d,
+  notify
+}) {
+  if (!button || !settingsButton) throw new Error('SpaceMouse controls are missing.');
   if (config?.enabled !== true || !hid) {
     button.hidden = true;
+    settingsButton.hidden = true;
     return { enabled: false };
   }
-  button.classList.toggle('advanced-only', config.advancedModeOnly === true);
 
-  const panSpeed = configuredSpeed(config, 'panPixelsPerSecond', 500);
-  const zoomSpeed = configuredSpeed(config, 'zoomLevelsPerSecond', 2);
-  const rotationSpeed = configuredSpeed(config, 'rotationDegreesPerSecond', 60);
+  const defaults = defaultPreferences(config);
+  const storageKey = preferenceStorageKey(window);
+  const preferences = readPreferences(window, storageKey, defaults, notify);
+  const settingsDialog = document.getElementById('spaceMouseSettingsDialog');
+  const settingsForm = document.getElementById('spaceMouseSettingsForm');
+  const settingsStatus = document.getElementById('spaceMouseSettingsStatus');
+  const settingsInputs = Object.fromEntries(Object.entries(PREFERENCE_FIELDS).map(([key, definition]) => [
+    key,
+    document.getElementById(definition.input)
+  ]));
+  if (!settingsDialog || !settingsForm || !settingsStatus ||
+      Object.values(settingsInputs).some(input => !input)) {
+    throw new Error('SpaceMouse preference controls are missing.');
+  }
+
+  button.classList.toggle('advanced-only', config.advancedModeOnly === true);
+  settingsButton.classList.toggle('advanced-only', config.advancedModeOnly === true);
+
   const axes = { translation: [0, 0, 0], rotation: [0, 0, 0] };
   let device = null;
   let animationFrame = null;
   let previousFrameTime = 0;
 
+  function renderPreferences() {
+    Object.entries(settingsInputs).forEach(([key, input]) => {
+      if (input.type === 'checkbox') input.checked = preferences[key];
+      else input.value = String(preferences[key]);
+    });
+  }
+
+  function savePreferences() {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(preferences));
+      settingsStatus.textContent = 'Preferences saved in this browser.';
+    } catch (error) {
+      console.error('Could not save SpaceMouse preferences:', error);
+      settingsStatus.textContent = 'Preferences could not be saved in this browser.';
+    }
+  }
+
+  function updatePreferences() {
+    const updated = { ...preferences };
+    for (const [key, input] of Object.entries(settingsInputs)) {
+      const definition = PREFERENCE_FIELDS[key];
+      if (input.type === 'checkbox') {
+        updated[key] = input.checked;
+        continue;
+      }
+      const value = input.valueAsNumber;
+      if (!Number.isFinite(value) || value < definition.min || value > definition.max) {
+        settingsStatus.textContent = `Enter a value from ${definition.min} to ${definition.max}.`;
+        input.value = String(preferences[key]);
+        input.focus();
+        return;
+      }
+      updated[key] = value;
+    }
+    Object.assign(preferences, updated);
+    savePreferences();
+  }
+
+  renderPreferences();
+  Object.values(settingsInputs).forEach(input => input.addEventListener('change', updatePreferences));
+  settingsForm.addEventListener('submit', event => event.preventDefault());
+  settingsButton.addEventListener('click', () => {
+    settingsStatus.textContent = '';
+    settingsDialog.showModal();
+  });
+  document.getElementById('spaceMouseCloseSettings').addEventListener('click', () => settingsDialog.close());
+  document.getElementById('spaceMouseResetSettings').addEventListener('click', () => {
+    Object.assign(preferences, defaults);
+    renderPreferences();
+    try {
+      window.localStorage.removeItem(storageKey);
+      settingsStatus.textContent = 'Preferences reset to the configured defaults.';
+    } catch (error) {
+      console.error('Could not reset SpaceMouse preferences:', error);
+      settingsStatus.textContent = 'Preferences could not be reset in this browser.';
+    }
+  });
+
   button.hidden = false;
+  settingsButton.hidden = false;
 
   function setButtonState(connected) {
     button.disabled = false;
@@ -70,13 +210,18 @@ export function createSpaceMouseController({ map, button, hid, window, config, i
     const elapsed = previousFrameTime ? Math.min((timestamp - previousFrameTime) / 1000, 0.05) : 0;
     previousFrameTime = timestamp;
 
-    const [x, y, z] = axes.translation;
-    if (elapsed && (x || y)) map.panBy([x * panSpeed * elapsed, -y * panSpeed * elapsed], { duration: 0 });
-    if (elapsed && z) map.setZoom(Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), map.getZoom() + z * zoomSpeed * elapsed)));
+    const [rawX, rawY, rawZ] = axes.translation;
+    const x = rawX * (preferences.reversePanX ? -1 : 1);
+    const y = rawY * (preferences.reversePanY ? -1 : 1);
+    const z = rawZ * (preferences.reverseZoom ? -1 : 1);
+    if (elapsed && (x || y)) map.panBy([x * preferences.panPixelsPerSecond * elapsed, -y * preferences.panPixelsPerSecond * elapsed], { duration: 0 });
+    if (elapsed && z) map.setZoom(Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), map.getZoom() + z * preferences.zoomLevelsPerSecond * elapsed)));
 
     if (elapsed && is3d()) {
-      const pitch = Math.max(0, Math.min(80, map.getPitch() - axes.rotation[1] * rotationSpeed * elapsed));
-      const bearing = map.getBearing() + axes.rotation[2] * rotationSpeed * elapsed;
+      const pitchDirection = preferences.reversePitch ? 1 : -1;
+      const rotationDirection = preferences.reverseRotation ? -1 : 1;
+      const pitch = Math.max(0, Math.min(80, map.getPitch() + axes.rotation[1] * preferences.rotationDegreesPerSecond * elapsed * pitchDirection));
+      const bearing = map.getBearing() + axes.rotation[2] * preferences.rotationDegreesPerSecond * elapsed * rotationDirection;
       if (axes.rotation[1] || axes.rotation[2]) map.jumpTo({ pitch, bearing });
     }
 

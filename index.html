@@ -29,6 +29,8 @@
       <svg viewBox="0 0 24 24"><path d="m3 19 6-11 4 7 3-4 5 8Z"/></svg></button>
     <button id="spaceMouseBtn" title="Connect 3Dconnexion SpaceMouse" aria-label="Connect 3Dconnexion SpaceMouse" aria-pressed="false" hidden>
       <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="5"/><path d="m12 3 2 2m-2-2-2 2m9 7-2 2m2-2-2-2m-7 9 2-2m-2 2-2-2m-7-7 2-2m-2 2 2 2"/></svg></button>
+    <button id="spaceMouseSettingsBtn" class="advanced-only" title="SpaceMouse preferences" aria-label="SpaceMouse preferences" hidden>
+      <svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .9v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.9l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.9-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .9-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.9v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .9l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .9 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.9 3Z"/></svg></button>
     <button id="printBtn" title="Print map and key" aria-label="Print map and key">
       <svg viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="1.500"/><path d="M7 14h10v6H7z"/></svg></button>
     <div class="gap"></div>
@@ -170,6 +172,32 @@
     <button class="primary" type="button" data-session-choice="resume">Resume</button>
     <button type="button" data-session-choice="reset">Reset app</button>
   </div>
+</dialog>
+<dialog id="spaceMouseSettingsDialog" aria-labelledby="spaceMouseSettingsTitle">
+  <form id="spaceMouseSettingsForm">
+    <h2 id="spaceMouseSettingsTitle">SpaceMouse preferences</h2>
+    <p>Adjust navigation speed and reverse individual axes. Preferences are saved in this browser.</p>
+    <label for="spaceMousePanSpeed">Pan speed (pixels per second)</label>
+    <input id="spaceMousePanSpeed" type="number" min="1" max="2000" step="10">
+    <label for="spaceMouseZoomSpeed">Zoom speed (levels per second)</label>
+    <input id="spaceMouseZoomSpeed" type="number" min="0.1" max="10" step="0.1">
+    <label for="spaceMouseRotationSpeed">Rotation speed (degrees per second)</label>
+    <input id="spaceMouseRotationSpeed" type="number" min="1" max="180" step="1">
+    <fieldset>
+      <legend>Reverse direction</legend>
+      <label><input id="spaceMouseReversePanX" type="checkbox"> Horizontal pan</label>
+      <label><input id="spaceMouseReversePanY" type="checkbox"> Vertical pan</label>
+      <label><input id="spaceMouseReverseZoom" type="checkbox"> Zoom</label>
+      <label><input id="spaceMouseReversePitch" type="checkbox"> Pitch</label>
+      <label><input id="spaceMouseReverseRotation" type="checkbox"> Heading rotation</label>
+    </fieldset>
+    <p id="spaceMouseSettingsStatus" role="status" aria-live="polite"></p>
+    <div class="space-mouse-settings-actions">
+      <button id="spaceMouseResetSettings" type="button">Reset to defaults</button>
+      <span></span>
+      <button id="spaceMouseCloseSettings" type="button">Close</button>
+    </div>
+  </form>
 </dialog>
 <dialog id="notificationDialog" aria-labelledby="notificationTitle">
   <form id="notificationForm">
