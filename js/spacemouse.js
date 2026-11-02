@@ -29,6 +29,7 @@ export function createSpaceMouseController({ map, button, hid, window, config, i
     button.hidden = true;
     return { enabled: false };
   }
+  button.classList.toggle('advanced-only', config.advancedModeOnly === true);
 
   const panSpeed = configuredSpeed(config, 'panPixelsPerSecond', 500);
   const zoomSpeed = configuredSpeed(config, 'zoomLevelsPerSecond', 2);

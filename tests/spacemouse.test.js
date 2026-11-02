@@ -19,6 +19,7 @@ function mockButton() {
     title: '',
     listeners,
     attributes,
+    classes,
     classList: { toggle: (name, enabled) => enabled ? classes.add(name) : classes.delete(name) },
     addEventListener: (name, callback) => listeners.set(name, callback),
     setAttribute: (name, value) => attributes.set(name, value)
@@ -52,6 +53,27 @@ test('SpaceMouse control stays hidden when WebHID is unavailable or disabled', (
     hid: {}
   }).enabled, false);
   assert.equal(disabledButton.hidden, true);
+});
+
+test('SpaceMouse control can be restricted to advanced mode', () => {
+  const hid = { addEventListener() {}, getDevices: async () => [] };
+  const advancedButton = mockButton();
+  createSpaceMouseController({
+    button: advancedButton,
+    config: { enabled: true, advancedModeOnly: true },
+    hid,
+    notify() {}
+  });
+  assert.equal(advancedButton.classes.has('advanced-only'), true);
+
+  const defaultButton = mockButton();
+  createSpaceMouseController({
+    button: defaultButton,
+    config: { enabled: true, advancedModeOnly: false },
+    hid,
+    notify() {}
+  });
+  assert.equal(defaultButton.classes.has('advanced-only'), false);
 });
 
 test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async () => {

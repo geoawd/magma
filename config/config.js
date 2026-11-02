@@ -9,6 +9,7 @@ window.CONFIG = {
   // Optional 3Dconnexion SpaceMouse support (requires a WebHID-capable browser and a secure context).
   spaceMouse: {
     enabled: true,
+    advancedModeOnly: true,
     panPixelsPerSecond: 500,
     zoomLevelsPerSecond: 2,
     rotationDegreesPerSecond: 60
