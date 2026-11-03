@@ -1,4 +1,12 @@
 const SPACE_MOUSE_VENDOR_ID = 0x256f;
+const LEGACY_SPACE_MOUSE_VENDOR_ID = 0x046d;
+const MULTI_AXIS_USAGE_PAGE = 0x01;
+const MULTI_AXIS_USAGE = 0x08;
+const SPACE_MOUSE_FILTERS = [
+  { vendorId: SPACE_MOUSE_VENDOR_ID },
+  { vendorId: LEGACY_SPACE_MOUSE_VENDOR_ID, usagePage: MULTI_AXIS_USAGE_PAGE, usage: MULTI_AXIS_USAGE },
+  { usagePage: MULTI_AXIS_USAGE_PAGE, usage: MULTI_AXIS_USAGE }
+];
 const AXIS_RANGE = 350;
 const DEADZONE = 8;
 const PREFERENCE_FIELDS = {
@@ -14,8 +22,18 @@ const PREFERENCE_FIELDS = {
 
 export function decodeSpaceMouseReport(reportId, data) {
   if ((reportId !== 1 && reportId !== 2) || data.byteLength < 6) return null;
-  const axes = [0, 1, 2].map(index => data.getInt16(index * 2, true));
-  return reportId === 1 ? { translation: axes } : { rotation: axes };
+  const axes = offset => [0, 1, 2].map(index => data.getInt16(offset + index * 2, true));
+  if (reportId === 1 && data.byteLength >= 12) {
+    return { translation: axes(0), rotation: axes(6) };
+  }
+  return reportId === 1 ? { translation: axes(0) } : { rotation: axes(0) };
+}
+
+function isSpaceMouseDevice(device) {
+  if (device.vendorId === SPACE_MOUSE_VENDOR_ID) return true;
+  return device.collections?.some(collection =>
+    collection.usagePage === MULTI_AXIS_USAGE_PAGE && collection.usage === MULTI_AXIS_USAGE
+  ) ?? false;
 }
 
 function normalizeAxis(value) {
@@ -232,9 +250,12 @@ export function createSpaceMouseController({
   function onInputReport(event) {
     const report = decodeSpaceMouseReport(event.reportId, event.data);
     if (!report) return;
-    const target = report.translation ? axes.translation : axes.rotation;
-    const values = report.translation || report.rotation;
-    values.forEach((value, index) => { target[index] = normalizeAxis(value); });
+    if (report.translation) {
+      report.translation.forEach((value, index) => { axes.translation[index] = normalizeAxis(value); });
+    }
+    if (report.rotation) {
+      report.rotation.forEach((value, index) => { axes.rotation[index] = normalizeAxis(value); });
+    }
     if (animationFrame === null) animationFrame = window.requestAnimationFrame(updateMap);
   }
 
@@ -249,12 +270,12 @@ export function createSpaceMouseController({
   async function connectFromButton() {
     button.disabled = true;
     try {
-      const [candidate] = await hid.requestDevice({ filters: [{ vendorId: SPACE_MOUSE_VENDOR_ID }] });
+      const [candidate] = await hid.requestDevice({ filters: SPACE_MOUSE_FILTERS });
       if (!candidate) {
         notify('No SpaceMouse was selected.');
         return;
       }
-      if (candidate.vendorId !== SPACE_MOUSE_VENDOR_ID) {
+      if (!isSpaceMouseDevice(candidate)) {
         throw new Error('The selected device is not a supported 3Dconnexion SpaceMouse.');
       }
       await openDevice(candidate);
@@ -295,7 +316,7 @@ export function createSpaceMouseController({
   });
 
   hid.getDevices().then(devices => {
-    const authorizedDevice = devices.find(item => item.vendorId === SPACE_MOUSE_VENDOR_ID);
+    const authorizedDevice = devices.find(isSpaceMouseDevice);
     if (authorizedDevice) return openDevice(authorizedDevice);
   }).catch(error => {
     console.error('Could not check for an authorized SpaceMouse:', error);

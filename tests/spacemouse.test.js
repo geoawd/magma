@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createSpaceMouseController, decodeSpaceMouseReport } from '../js/spacemouse.js';
 
 function report(values) {
-  const buffer = new ArrayBuffer(6);
+  const buffer = new ArrayBuffer(values.length * 2);
   const data = new DataView(buffer);
   values.forEach((value, index) => data.setInt16(index * 2, value, true));
   return data;
@@ -73,6 +73,10 @@ test('SpaceMouse reports decode translation and rotation axes', () => {
     translation: [100, -200, 300]
   });
   assert.deepEqual(decodeSpaceMouseReport(2, report([-10, 20, -30])), {
+    rotation: [-10, 20, -30]
+  });
+  assert.deepEqual(decodeSpaceMouseReport(1, report([100, -200, 300, -10, 20, -30])), {
+    translation: [100, -200, 300],
     rotation: [-10, 20, -30]
   });
   assert.equal(decodeSpaceMouseReport(3, report([1, 2, 3])), null);
@@ -183,7 +187,8 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
   };
   const deviceListeners = new Map();
   const device = {
-    vendorId: 0x256f,
+    vendorId: 0x046d,
+    collections: [{ usagePage: 0x01, usage: 0x08 }],
     opened: false,
     async open() { this.opened = true; },
     async close() { this.opened = false; },
@@ -195,7 +200,11 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
     addEventListener: (name, callback) => hidListeners.set(name, callback),
     getDevices: async () => [],
     requestDevice: async options => {
-      assert.deepEqual(options, { filters: [{ vendorId: 0x256f }] });
+      assert.deepEqual(options, { filters: [
+        { vendorId: 0x256f },
+        { vendorId: 0x046d, usagePage: 0x01, usage: 0x08 },
+        { usagePage: 0x01, usage: 0x08 }
+      ] });
       return [device];
     }
   };
@@ -240,8 +249,7 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(button.attributes.get('aria-pressed'), 'true');
 
-  deviceListeners.get('inputreport')({ reportId: 1, data: report([350, 350, 350]) });
-  deviceListeners.get('inputreport')({ reportId: 2, data: report([0, 350, 350]) });
+  deviceListeners.get('inputreport')({ reportId: 1, data: report([350, 350, 350, 0, 350, 350]) });
   const frame = timestamp => {
     const pending = [...callbacks.values()];
     callbacks.clear();
