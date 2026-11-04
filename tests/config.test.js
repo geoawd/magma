@@ -47,6 +47,16 @@ test('application configuration has valid defaults and project bounds', () => {
     assert.equal(typeof config.spaceMouse[direction], 'boolean',
       `SpaceMouse ${direction} must be a boolean`);
   }
+  assert.equal(config.spaceMouse.reversePanY, true);
+  assert.equal(config.spaceMouse.reversePitch, true);
+  assert.deepEqual([
+    config.spaceMouse.translationX,
+    config.spaceMouse.translationY,
+    config.spaceMouse.translationZ,
+    config.spaceMouse.rotationX,
+    config.spaceMouse.rotationY,
+    config.spaceMouse.rotationZ
+  ], ['panX', 'panY', 'zoom', 'pitch', 'none', 'heading']);
   assert.ok(Array.isArray(config.themes) && config.themes.length > 0);
   assert.ok(Number.isInteger(config.defaultTheme));
   assert.ok(config.defaultTheme >= 0 && config.defaultTheme < config.themes.length);

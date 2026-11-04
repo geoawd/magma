@@ -17,7 +17,7 @@
   #spaceMouseSettingsForm { display: grid; gap: 8px; padding: 20px; }
   #spaceMouseSettingsForm h2 { margin: 0; font-size: 18px; }
   #spaceMouseSettingsForm > p { margin: 0; color: var(--muted); }
-  #spaceMouseSettingsForm > input { width: 100%; min-height: 36px; padding: 6px 8px; border: 1px solid #8a949e; border-radius: 5px; background: #fff; }
+  #spaceMouseSettingsForm > input, #spaceMouseSettingsForm select { width: 100%; min-height: 36px; padding: 6px 8px; border: 1px solid #8a949e; border-radius: 5px; background: #fff; }
   #spaceMouseSettingsForm fieldset { display: grid; gap: 5px; margin: 4px 0; padding: 8px 10px 10px; border: 1px solid var(--line); border-radius: 5px; }
   #spaceMouseSettingsForm fieldset label { display: flex; align-items: center; gap: 7px; }
   #spaceMouseSettingsStatus { min-height: 1.3em; font-size: 12px; }

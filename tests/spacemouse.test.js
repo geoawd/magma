@@ -35,7 +35,13 @@ function mockSettings() {
     spaceMouseReversePanY: ['checkbox', false],
     spaceMouseReverseZoom: ['checkbox', false],
     spaceMouseReversePitch: ['checkbox', false],
-    spaceMouseReverseRotation: ['checkbox', false]
+    spaceMouseReverseRotation: ['checkbox', false],
+    spaceMouseTranslationX: ['select-one', 'panX'],
+    spaceMouseTranslationY: ['select-one', 'panY'],
+    spaceMouseTranslationZ: ['select-one', 'zoom'],
+    spaceMouseRotationX: ['select-one', 'pitch'],
+    spaceMouseRotationY: ['select-one', 'none'],
+    spaceMouseRotationZ: ['select-one', 'heading']
   }).map(([id, [type, value]]) => [id, {
     type,
     value: type === 'checkbox' ? '' : value,
@@ -149,7 +155,7 @@ test('SpaceMouse preferences load, persist, and reset to configured defaults', (
   createSpaceMouseController({
     button: mockButton(),
     settingsButton: settings.settingsButton,
-    config: { enabled: true, panPixelsPerSecond: 400, reversePanY: true },
+    config: { enabled: true, panPixelsPerSecond: 400, reversePanY: true, reversePitch: true },
     hid,
     window: { localStorage: storage },
     document: settings.document,
@@ -159,6 +165,16 @@ test('SpaceMouse preferences load, persist, and reset to configured defaults', (
   assert.equal(settings.inputs.get('spaceMousePanSpeed').value, '800');
   assert.equal(settings.inputs.get('spaceMouseReversePanX').checked, true);
   assert.equal(settings.inputs.get('spaceMouseReversePanY').checked, true);
+  assert.equal(settings.inputs.get('spaceMouseReversePitch').checked, true);
+  assert.equal(settings.inputs.get('spaceMouseTranslationX').value, 'panX');
+  assert.equal(settings.inputs.get('spaceMouseTranslationY').value, 'panY');
+  assert.equal(settings.inputs.get('spaceMouseTranslationZ').value, 'zoom');
+  assert.equal(settings.inputs.get('spaceMouseRotationX').value, 'pitch');
+  assert.equal(settings.inputs.get('spaceMouseRotationY').value, 'none');
+  assert.equal(settings.inputs.get('spaceMouseRotationZ').value, 'heading');
+  settings.inputs.get('spaceMouseTranslationX').value = 'panY';
+  settings.inputs.get('spaceMouseTranslationX').listeners.get('change')();
+  assert.equal(JSON.parse(values.get('mapviewer.spacemouse.preferences.v1')).translationX, 'panY');
   settings.inputs.get('spaceMousePanSpeed').value = '900';
   settings.inputs.get('spaceMousePanSpeed').listeners.get('change')();
   assert.equal(JSON.parse(values.get('mapviewer.spacemouse.preferences.v1')).panPixelsPerSecond, 900);
@@ -168,6 +184,9 @@ test('SpaceMouse preferences load, persist, and reset to configured defaults', (
   assert.equal(settings.inputs.get('spaceMousePanSpeed').value, '400');
   assert.equal(settings.inputs.get('spaceMouseReversePanX').checked, false);
   assert.equal(settings.inputs.get('spaceMouseReversePanY').checked, true);
+  assert.equal(settings.inputs.get('spaceMouseReversePitch').checked, true);
+  assert.equal(settings.inputs.get('spaceMouseTranslationX').value, 'panX');
+  assert.equal(settings.inputs.get('spaceMouseRotationX').value, 'pitch');
   assert.equal(values.has('mapviewer.spacemouse.preferences.v1'), false);
   assert.equal(settings.status.textContent, 'Preferences reset to the configured defaults.');
 });
@@ -238,7 +257,15 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
       enabled: true,
       panPixelsPerSecond: 500,
       zoomLevelsPerSecond: 2,
-      rotationDegreesPerSecond: 60
+      rotationDegreesPerSecond: 60,
+      reversePanY: true,
+      reversePitch: true,
+      translationX: 'panX',
+      translationY: 'panY',
+      translationZ: 'zoom',
+      rotationX: 'pitch',
+      rotationY: 'none',
+      rotationZ: 'heading'
     },
     is3d: () => true,
     notify: message => messages.push(message)
@@ -249,7 +276,7 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(button.attributes.get('aria-pressed'), 'true');
 
-  deviceListeners.get('inputreport')({ reportId: 1, data: report([350, 350, 350, 0, 350, 350]) });
+  deviceListeners.get('inputreport')({ reportId: 1, data: report([350, 350, 350, 350, 350, 350]) });
   const frame = timestamp => {
     const pending = [...callbacks.values()];
     callbacks.clear();
@@ -258,13 +285,96 @@ test('SpaceMouse navigation pans, zooms, and rotates an active 3D map', async ()
   frame(1000);
   frame(1016);
 
-  assert.deepEqual(movements[0], ['pan', [8, -8], { duration: 0 }]);
+  assert.deepEqual(movements[0], ['pan', [8, 8], { duration: 0 }]);
   assert.ok(Math.abs(map.zoom - 5.032) < 0.00001);
-  assert.ok(Math.abs(map.pitch - 59.04) < 0.00001);
+  assert.ok(Math.abs(map.pitch - 60.96) < 0.00001);
   assert.ok(Math.abs(map.bearing - 0.96) < 0.00001);
 
   await controller.disconnect();
   assert.equal(button.attributes.get('aria-pressed'), 'false');
   assert.equal(device.opened, false);
   assert.deepEqual(messages, []);
+});
+
+test('SpaceMouse rotation axis assignments drive pitch and heading and preferences persist', async () => {
+  const callbacks = new Map();
+  const storageValues = new Map();
+  let nextFrame = 0;
+  const browserWindow = {
+    localStorage: {
+      getItem: key => storageValues.get(key) || null,
+      setItem: (key, value) => storageValues.set(key, value),
+      removeItem: key => storageValues.delete(key)
+    },
+    requestAnimationFrame: callback => {
+      const id = ++nextFrame;
+      callbacks.set(id, callback);
+      return id;
+    },
+    cancelAnimationFrame: id => callbacks.delete(id)
+  };
+  const deviceListeners = new Map();
+  const device = {
+    vendorId: 0x256f,
+    opened: false,
+    async open() { this.opened = true; },
+    async close() { this.opened = false; },
+    addEventListener: (name, callback) => deviceListeners.set(name, callback),
+    removeEventListener: name => deviceListeners.delete(name)
+  };
+  const hid = {
+    addEventListener() {},
+    getDevices: async () => [],
+    requestDevice: async () => [device]
+  };
+  const map = {
+    pitch: 40,
+    bearing: 0,
+    getPitch() { return this.pitch; },
+    getBearing() { return this.bearing; },
+    jumpTo({ pitch, bearing }) {
+      this.pitch = pitch;
+      this.bearing = bearing;
+    }
+  };
+  const settings = mockSettings();
+  const button = mockButton();
+  createSpaceMouseController({
+    map,
+    button,
+    settingsButton: settings.settingsButton,
+    hid,
+    window: browserWindow,
+    document: settings.document,
+    config: {
+      enabled: true,
+      reversePanY: true,
+      reversePitch: true,
+      rotationX: 'pitch',
+      rotationY: 'none',
+      rotationZ: 'heading'
+    },
+    is3d: () => true,
+    notify() {}
+  });
+  const rotationYInput = settings.inputs.get('spaceMouseRotationY');
+  assert.equal(rotationYInput.value, 'none');
+  rotationYInput.value = 'heading';
+  rotationYInput.listeners.get('change')();
+  assert.equal(JSON.parse(storageValues.get('mapviewer.spacemouse.preferences.v1')).rotationY, 'heading');
+  rotationYInput.value = 'none';
+  rotationYInput.listeners.get('change')();
+
+  await button.listeners.get('click')();
+  await new Promise(resolve => setImmediate(resolve));
+  deviceListeners.get('inputreport')({ reportId: 1, data: report([0, 0, 0, 350, 350, 350]) });
+  const frame = timestamp => {
+    const pending = [...callbacks.values()];
+    callbacks.clear();
+    pending.forEach(callback => callback(timestamp));
+  };
+  frame(1000);
+  frame(1016);
+  assert.ok(Math.abs(map.pitch - 40.96) < 0.00001);
+  assert.ok(Math.abs(map.bearing - 0.96) < 0.00001);
 });

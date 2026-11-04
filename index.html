@@ -176,13 +176,58 @@
 <dialog id="spaceMouseSettingsDialog" aria-labelledby="spaceMouseSettingsTitle">
   <form id="spaceMouseSettingsForm">
     <h2 id="spaceMouseSettingsTitle">SpaceMouse preferences</h2>
-    <p>Adjust navigation speed and reverse individual axes. Preferences are saved in this browser.</p>
+    <p>Assign SpaceMouse axes to map controls, adjust navigation speed, and reverse directions. Preferences are saved in this browser.</p>
     <label for="spaceMousePanSpeed">Pan speed (pixels per second)</label>
     <input id="spaceMousePanSpeed" type="number" min="1" max="2000" step="10">
     <label for="spaceMouseZoomSpeed">Zoom speed (levels per second)</label>
     <input id="spaceMouseZoomSpeed" type="number" min="0.1" max="10" step="0.1">
     <label for="spaceMouseRotationSpeed">Rotation speed (degrees per second)</label>
     <input id="spaceMouseRotationSpeed" type="number" min="1" max="180" step="1">
+    <fieldset>
+      <legend>Translation axes</legend>
+      <label for="spaceMouseTranslationX">X (left/right)</label>
+      <select id="spaceMouseTranslationX">
+        <option value="panX">Horizontal pan</option>
+        <option value="panY">Vertical pan</option>
+        <option value="zoom">Zoom</option>
+        <option value="none">Unassigned</option>
+      </select>
+      <label for="spaceMouseTranslationY">Y (forward/back)</label>
+      <select id="spaceMouseTranslationY">
+        <option value="panX">Horizontal pan</option>
+        <option value="panY">Vertical pan</option>
+        <option value="zoom">Zoom</option>
+        <option value="none">Unassigned</option>
+      </select>
+      <label for="spaceMouseTranslationZ">Z (up/down)</label>
+      <select id="spaceMouseTranslationZ">
+        <option value="panX">Horizontal pan</option>
+        <option value="panY">Vertical pan</option>
+        <option value="zoom">Zoom</option>
+        <option value="none">Unassigned</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>Rotation axes</legend>
+      <label for="spaceMouseRotationX">X rotation (forward/back tilt)</label>
+      <select id="spaceMouseRotationX">
+        <option value="pitch">Pitch</option>
+        <option value="heading">Heading</option>
+        <option value="none">Unassigned</option>
+      </select>
+      <label for="spaceMouseRotationY">Y rotation (side-to-side tilt)</label>
+      <select id="spaceMouseRotationY">
+        <option value="pitch">Pitch</option>
+        <option value="heading">Heading</option>
+        <option value="none">Unassigned</option>
+      </select>
+      <label for="spaceMouseRotationZ">Z rotation (twist)</label>
+      <select id="spaceMouseRotationZ">
+        <option value="pitch">Pitch</option>
+        <option value="heading">Heading</option>
+        <option value="none">Unassigned</option>
+      </select>
+    </fieldset>
     <fieldset>
       <legend>Reverse direction</legend>
       <label><input id="spaceMouseReversePanX" type="checkbox"> Horizontal pan</label>

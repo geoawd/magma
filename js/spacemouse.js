@@ -19,6 +19,14 @@ const PREFERENCE_FIELDS = {
   reversePitch: { input: 'spaceMouseReversePitch' },
   reverseRotation: { input: 'spaceMouseReverseRotation' }
 };
+const AXIS_MAPPING_FIELDS = {
+  translationX: { input: 'spaceMouseTranslationX', default: 'panX', options: ['panX', 'panY', 'zoom', 'none'] },
+  translationY: { input: 'spaceMouseTranslationY', default: 'panY', options: ['panX', 'panY', 'zoom', 'none'] },
+  translationZ: { input: 'spaceMouseTranslationZ', default: 'zoom', options: ['panX', 'panY', 'zoom', 'none'] },
+  rotationX: { input: 'spaceMouseRotationX', default: 'pitch', options: ['pitch', 'heading', 'none'] },
+  rotationY: { input: 'spaceMouseRotationY', default: 'none', options: ['pitch', 'heading', 'none'] },
+  rotationZ: { input: 'spaceMouseRotationZ', default: 'heading', options: ['pitch', 'heading', 'none'] }
+};
 
 export function decodeSpaceMouseReport(reportId, data) {
   if ((reportId !== 1 && reportId !== 2) || data.byteLength < 6) return null;
@@ -59,6 +67,13 @@ function defaultPreferences(config) {
       preferences[key] = value ?? false;
     }
   });
+  Object.entries(AXIS_MAPPING_FIELDS).forEach(([key, definition]) => {
+    const value = config[key] ?? definition.default;
+    if (!definition.options.includes(value)) {
+      throw new Error(`CONFIG.spaceMouse.${key} must be one of ${definition.options.join(', ')}.`);
+    }
+    preferences[key] = value;
+  });
   return preferences;
 }
 
@@ -86,6 +101,14 @@ function readPreferences(window, key, defaults, notify) {
         }
       } else if (typeof value !== 'boolean') {
         throw new Error(`Saved ${name} must be a boolean.`);
+      }
+      preferences[name] = value;
+    });
+    Object.entries(AXIS_MAPPING_FIELDS).forEach(([name, definition]) => {
+      if (!(name in saved)) return;
+      const value = saved[name];
+      if (!definition.options.includes(value)) {
+        throw new Error(`Saved ${name} is not a supported axis mapping.`);
       }
       preferences[name] = value;
     });
@@ -124,7 +147,10 @@ export function createSpaceMouseController({
   const settingsInputs = Object.fromEntries(Object.entries(PREFERENCE_FIELDS).map(([key, definition]) => [
     key,
     document.getElementById(definition.input)
-  ]));
+  ]).concat(Object.entries(AXIS_MAPPING_FIELDS).map(([key, definition]) => [
+    key,
+    document.getElementById(definition.input)
+  ])));
   if (!settingsDialog || !settingsForm || !settingsStatus ||
       Object.values(settingsInputs).some(input => !input)) {
     throw new Error('SpaceMouse preference controls are missing.');
@@ -159,6 +185,17 @@ export function createSpaceMouseController({
     const updated = { ...preferences };
     for (const [key, input] of Object.entries(settingsInputs)) {
       const definition = PREFERENCE_FIELDS[key];
+      const axisMapping = AXIS_MAPPING_FIELDS[key];
+      if (axisMapping) {
+        if (!axisMapping.options.includes(input.value)) {
+          settingsStatus.textContent = 'Select a supported SpaceMouse axis mapping.';
+          input.value = preferences[key];
+          input.focus();
+          return;
+        }
+        updated[key] = input.value;
+        continue;
+      }
       if (input.type === 'checkbox') {
         updated[key] = input.checked;
         continue;
@@ -222,25 +259,35 @@ export function createSpaceMouseController({
     return axes.translation.some(value => value !== 0) || axes.rotation.some(value => value !== 0);
   }
 
+  function mappedInput(values, keys, action) {
+    const total = keys.reduce((sum, key, index) =>
+      preferences[key] === action ? sum + values[index] : sum, 0);
+    return Math.max(-1, Math.min(1, total));
+  }
+
   function updateMap(timestamp) {
     animationFrame = null;
     if (!device) return resetAxes();
     const elapsed = previousFrameTime ? Math.min((timestamp - previousFrameTime) / 1000, 0.05) : 0;
     previousFrameTime = timestamp;
 
-    const [rawX, rawY, rawZ] = axes.translation;
-    const x = rawX * (preferences.reversePanX ? -1 : 1);
-    const y = rawY * (preferences.reversePanY ? -1 : 1);
-    const z = rawZ * (preferences.reverseZoom ? -1 : 1);
+    const x = mappedInput(axes.translation, ['translationX', 'translationY', 'translationZ'], 'panX') *
+      (preferences.reversePanX ? -1 : 1);
+    const y = mappedInput(axes.translation, ['translationX', 'translationY', 'translationZ'], 'panY') *
+      (preferences.reversePanY ? -1 : 1);
+    const z = mappedInput(axes.translation, ['translationX', 'translationY', 'translationZ'], 'zoom') *
+      (preferences.reverseZoom ? -1 : 1);
     if (elapsed && (x || y)) map.panBy([x * preferences.panPixelsPerSecond * elapsed, -y * preferences.panPixelsPerSecond * elapsed], { duration: 0 });
     if (elapsed && z) map.setZoom(Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), map.getZoom() + z * preferences.zoomLevelsPerSecond * elapsed)));
 
     if (elapsed && is3d()) {
       const pitchDirection = preferences.reversePitch ? 1 : -1;
       const rotationDirection = preferences.reverseRotation ? -1 : 1;
-      const pitch = Math.max(0, Math.min(80, map.getPitch() + axes.rotation[1] * preferences.rotationDegreesPerSecond * elapsed * pitchDirection));
-      const bearing = map.getBearing() + axes.rotation[2] * preferences.rotationDegreesPerSecond * elapsed * rotationDirection;
-      if (axes.rotation[1] || axes.rotation[2]) map.jumpTo({ pitch, bearing });
+      const pitchInput = mappedInput(axes.rotation, ['rotationX', 'rotationY', 'rotationZ'], 'pitch');
+      const headingInput = mappedInput(axes.rotation, ['rotationX', 'rotationY', 'rotationZ'], 'heading');
+      const pitch = Math.max(0, Math.min(80, map.getPitch() + pitchInput * preferences.rotationDegreesPerSecond * elapsed * pitchDirection));
+      const bearing = map.getBearing() + headingInput * preferences.rotationDegreesPerSecond * elapsed * rotationDirection;
+      if (pitchInput || headingInput) map.jumpTo({ pitch, bearing });
     }
 
     if (hasInput()) animationFrame = window.requestAnimationFrame(updateMap);
