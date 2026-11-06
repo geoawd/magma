@@ -5962,7 +5962,7 @@ function buildBasemapLegend() {
   });
 }
 
-map.on('load', async () => {
+map.once('style.load', async () => {
   const startup = await chooseSessionStartup();
   if (mapHashView) {
     const color = getComputedStyle(document.documentElement).getPropertyValue('--ac').trim() || '#1f2a33';

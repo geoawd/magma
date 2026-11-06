@@ -18,7 +18,7 @@ Set `CONFIG.spaceMouse.enabled` to `true` to enable the SpaceMouse connection an
 
 ## Session Recovery
 
-The viewer autosaves a versioned session snapshot to browser `localStorage`. On a later visit, it offers **Resume** or **Reset app** when a valid snapshot exists. Resume restores the active theme, map view, layer visibility and transparency, per-theme overlay visibility, COG display settings, and terrain settings. Reset app clears the saved session and manually added layers, and clears filter state encoded in the URL hash. Internal profile state uses separate storage keys; the public profile retains its existing keys. Nothing is sent to a server.
+The viewer initializes its controls when the map style is ready, without waiting for remote tile sources to finish loading. This lets the app start even when a configured PMTiles archive is unavailable. The viewer autosaves a versioned session snapshot to browser `localStorage`. On a later visit, it offers **Resume** or **Reset app** when a valid snapshot exists. Resume restores the active theme, map view, layer visibility and transparency, per-theme overlay visibility, COG display settings, and terrain settings. Reset app clears the saved session and manually added layers, and clears filter state encoded in the URL hash. Internal profile state uses separate storage keys; the public profile retains its existing keys. Nothing is sent to a server.
 
 Shared links take precedence over the saved-session prompt. Map-view hashes in `#zoom/latitude/longitude` format initialize the map to that view and drop a location pin; encoded JSON theme links restore their map/filter state without prompting or adding a pin.
 
