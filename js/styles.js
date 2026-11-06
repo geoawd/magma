@@ -11,7 +11,12 @@
     })));
     const multi = datasets.length > 1;
     const merged = { version: 8, sources: {}, layers: [], metadata: {} };
-    const usedIds = new Set(), groups = [];
+    const usedIds = new Set(), groups = new Map();
+    const addGroup = group => {
+      const current = groups.get(group.name);
+      if (current) current.layers = [...new Set([...(current.layers || []), ...(group.layers || [])])];
+      else groups.set(group.name, { ...group, layers: [...new Set(group.layers || [])] });
+    };
     datasets.forEach((d, i) => {
       const s = styles[i], rename = {};
       ['glyphs', 'sprite', 'name'].forEach(k => { if (merged[k] === undefined && s[k] !== undefined) merged[k] = s[k]; });
@@ -25,16 +30,28 @@
       s.layers.forEach(l => {
         if (l.type === 'background' && i > 0) return;
         const id = usedIds.has(l.id) ? `${d.id}__${l.id}` : l.id;
+        const layerKey = l['source-layer'] && (l.metadata?.['theme-layer'] || l['source-layer']);
+        const layout = layerKey
+          ? {
+            ...(l.layout || {}),
+            visibility: (C.layerDefaults || {})[layerKey] === true ? 'visible' : 'none'
+          }
+          : l.layout;
         usedIds.add(id);
-        merged.layers.push({ ...l, id, ...(l.source ? { source: rename[l.source] || l.source } : {}) });
-        if (l['source-layer']) names.add(l['source-layer']);
+        merged.layers.push({
+          ...l,
+          id,
+          ...(layout ? { layout } : {}),
+          ...(l.source ? { source: rename[l.source] || l.source } : {})
+        });
+        if (layerKey) names.add(layerKey);
       });
       window.DATASET_LAYERS[d.id] = [...names];
-      const g = s.metadata && s.metadata['mapsplat:legend-groups'];
-      if (g) groups.push(...g);
-      else if (multi) groups.push({ name: d.name || d.id, layers: [...names] });
+      const g = s.metadata && s.metadata['legend-groups'];
+      if (g) g.forEach(addGroup);
+      else if (multi) addGroup({ name: d.name || d.id, layers: [...names] });
     });
-    if (groups.length) merged.metadata['mapsplat:legend-groups'] = groups;
+    if (groups.size) merged.metadata['legend-groups'] = [...groups.values()];
     window.MAP_STYLE = merged;
   }
   const script = document.createElement('script');

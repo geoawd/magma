@@ -248,13 +248,16 @@ test('themes and named groups reference configured layers, datasets, and overlay
     .filter(Boolean)
     .map(readStyle);
   const vectorLayers = new Set(activeStyles.flatMap(style =>
-    style.layers.map(layer => layer['source-layer']).filter(Boolean)
+    style.layers.flatMap(layer => [
+      layer['source-layer'],
+      layer.metadata?.['theme-layer']
+    ]).filter(Boolean)
   ));
   const datasetIds = new Set(config.datasets.map(dataset => dataset.id));
   const overlayIds = new Set(config.overlays.map(overlay => overlay.id));
   const overlayGroups = new Set(config.overlays.map(overlay => overlay.group).filter(Boolean));
   const styleGroups = new Set(allStyles.flatMap(style =>
-    (style.metadata?.['mapsplat:legend-groups'] || []).map(group => group.name)
+    (style.metadata?.['legend-groups'] || []).map(group => group.name)
   ));
   const themeNames = new Set(config.themes.map(theme => theme.name));
   const configuredGroups = config.groups || {};
@@ -295,4 +298,16 @@ test('themes and named groups reference configured layers, datasets, and overlay
   for (const layerName of Object.keys(config.dataLinks || {})) {
     assert.ok(vectorLayers.has(layerName), `dataLinks references unknown vector layer "${layerName}"`);
   }
+});
+
+test('PMTILES theme includes every configured vector dataset and other themes do not', () => {
+  const pmtilesIds = config.datasets.map(dataset => dataset.id);
+  const pmtilesTheme = config.themes.find(theme => theme.name === 'PMTILES');
+
+  assert.ok(pmtilesTheme, 'PMTILES theme must be configured');
+  assert.deepEqual(new Set(pmtilesTheme.datasets), new Set(pmtilesIds));
+  config.themes.filter(theme => theme !== pmtilesTheme).forEach(theme => {
+    assert.ok(!(theme.datasets || []).some(id => pmtilesIds.includes(id)),
+      `theme "${theme.name}" must not include PMTILES datasets`);
+  });
 });

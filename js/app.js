@@ -963,6 +963,8 @@ function queryData(geom) {
   return map.queryRenderedFeatures(geom, { layers }).filter(f => {
     const overlay = (CONFIG.overlays || []).find(w => w.geojson && (w.layerIds || [w.id]).includes(f.layer.id));
     if (overlay) f.sourceLayer = overlay.name || overlay.id;   // popup / table heading
+    else if (f.layer?.metadata?.['theme-layer'])
+      f.sourceLayer = f.layer.metadata['theme-layer'];
     const key = f.source + '|' + (f.sourceLayer || '') + '|' + (f.id ?? '') + '|' + JSON.stringify(f.properties);
     if (seen.has(key)) return false;
     seen.add(key);
@@ -1265,6 +1267,7 @@ const fieldOf = x => Array.isArray(x)
 function colorClasses(l, includeOther = CONFIG.legendOther) {
   const e = (l.paint || {})[COLOR_PROP[l.type]];
   if (!Array.isArray(e)) return null;
+  const legendEntries = l.metadata?.legend?.entries || [];
   const out = [];
   if (e[0] === 'match') {
     const input = e[1], all = [];
@@ -1272,10 +1275,21 @@ function colorClasses(l, includeOther = CONFIG.legendOther) {
       if (typeof e[i + 1] !== 'string') return null;
       const labels = Array.isArray(e[i]) ? e[i] : [e[i]];
       all.push(...labels);
-      out.push({ text: labels.join(', '), color: e[i + 1], test: ['match', input, labels, true, false], labels, field: fieldOf(input) });
+      const legend = legendEntries[out.length];
+      const text = legend?.color === e[i + 1] && typeof legend.label === 'string'
+        ? legend.label : labels.join(', ');
+      out.push({ text, color: e[i + 1], test: ['match', input, labels, true, false], labels, field: fieldOf(input) });
     }
     const fb = e[e.length - 1];
-    if (includeOther && typeof fb === 'string' && !isClear(fb)) out.push({ text: 'Other', color: fb, test: ['!', ['match', input, all, true, false]], other: true, all: new Set(all.map(String)), field: fieldOf(input) });
+    const otherLegend = legendEntries[out.length];
+    if (includeOther && typeof fb === 'string' && !isClear(fb)) out.push({
+      text: otherLegend?.color === fb && typeof otherLegend.label === 'string' ? otherLegend.label : 'Other',
+      color: fb,
+      test: ['!', ['match', input, all, true, false]],
+      other: true,
+      all: new Set(all.map(String)),
+      field: fieldOf(input)
+    });
   } else if (e[0] === 'step') {
     const input = e[1], stops = [-Infinity], cols = [e[2]];
     for (let i = 3; i < e.length - 1; i += 2) { stops.push(e[i]); cols.push(e[i + 1]); }
@@ -1615,7 +1629,7 @@ const OPACITY_PROPS = { fill: ['fill-opacity'], circle: ['circle-opacity', 'circ
 const origOpacity = {};
 function setTransparency(sl, pct) {
   const f = 1 - pct / 100;
-  map.getStyle().layers.filter(l => l['source-layer'] === sl).forEach(l => (OPACITY_PROPS[l.type] || []).forEach(prop => {
+  map.getStyle().layers.filter(l => styleLayerKey(l) === sl).forEach(l => (OPACITY_PROPS[l.type] || []).forEach(prop => {
     const k = l.id + '|' + prop;
     if (!(k in origOpacity)) { const o = map.getPaintProperty(l.id, prop); origOpacity[k] = o == null ? 1 : o; }
     const o = origOpacity[k];
@@ -1743,8 +1757,8 @@ function syncMapLayerOrder() {
   const blocks = groups.reverse().flatMap(group => [...group.querySelector('.lgbody').children].reverse().flatMap(item => {
     const key = item.dataset.orderKey || '';
     if (key.startsWith('layer:')) {
-      const sourceLayer = item.dataset.sl;
-      return map.getStyle().layers.filter(layer => layer['source-layer'] === sourceLayer).map(layer => layer.id);
+      const themeLayer = item.dataset.sl;
+      return map.getStyle().layers.filter(layer => styleLayerKey(layer) === themeLayer).map(layer => layer.id);
     }
     const id = key.replace(/^(overlay|basemap):/, '');
     const overlay = allOverlays().find(entry => entry.id === id);
@@ -3571,14 +3585,21 @@ $('jsonClearBtn').onclick = clearJsonThemeFilters;
 $('jsonCopyBtn').onclick = copyJsonThemeLink;
 $('jsonExcelBtn').onclick = exportJsonThemeExcel;
 const inViewGroups = [];
+function styleLayerKey(layer) {
+  return layer.metadata?.['theme-layer'] || layer['source-layer'];
+}
+function styleLayerLabel(style, key) {
+  const layer = style.layers.find(candidate => styleLayerKey(candidate) === key);
+  return layer?.metadata?.['legend-label'] || key.replace(/_/g, ' ');
+}
 ///////////////////////////////////////////////////////////////////////////
 // Builds vector layer groups and controls from the active MapLibre style.
 ///////////////////////////////////////////////////////////////////////////
 function buildLegend() {
   inViewGroups.length = 0;
   const st = map.getStyle();
-  const sourceLayers = [...new Set(st.layers.filter(l => l['source-layer']).map(l => l['source-layer']))];
-  const groups = (st.metadata && st.metadata['mapsplat:legend-groups']) || [{ name: 'Layers', layers: sourceLayers }];
+  const sourceLayers = [...new Set(st.layers.filter(l => l['source-layer']).map(styleLayerKey))];
+  const groups = (st.metadata && st.metadata['legend-groups']) || [{ name: 'Layers', layers: sourceLayers }];
   window.LEGEND_GROUP_LAYERS = {};
   groups.forEach(group => {
     window.LEGEND_GROUP_LAYERS[group.name] = [...new Set([
@@ -3593,7 +3614,7 @@ function buildLegend() {
     g.layers.forEach(sl => {
       const initialOn = (CONFIG.layerDefaults || {})[sl] === true;
       const entries = [];   // one entry per rule; small black centre-dot layers fold into the previous entry
-      st.layers.filter(l => l['source-layer'] === sl).forEach(l => {
+      st.layers.filter(l => styleLayerKey(l) === sl).forEach(l => {
         const p = l.paint || {};
         const isDot = (l.type === 'circle' && p['circle-color'] === '#000000' && (p['circle-radius'] || 0) < 2.5)
           || (l.type === 'fill' && p['fill-opacity'] === 0);
@@ -3614,10 +3635,11 @@ function buildLegend() {
       gl.dataset.orderKey = `layer:${sl}`;
       gl.classList.toggle('legend-off', !initialOn);
       gl.draggable = true;
-      gl.title = `Drag to reorder ${sl.replace(/_/g, ' ')}`;
+      const layerLabel = styleLayerLabel(st, sl);
+      gl.title = `Drag to reorder ${layerLabel}`;
       const gchk = document.createElement('label');
       gchk.className = 'grp lname';
-      gchk.innerHTML = `<input type="checkbox"${initialOn ? ' checked' : ''}> <span>${esc(sl.replace(/_/g, ' '))}</span><svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>`;
+      gchk.innerHTML = `<input type="checkbox"${initialOn ? ' checked' : ''}> <span>${esc(layerLabel)}</span><svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>`;
       const row = document.createElement('div');
       row.className = 'grprow';
       const tools = layerTools(0, infoFor(sl, g.name), v => setTransparency(sl, v));
@@ -3659,7 +3681,7 @@ function buildLegend() {
         if (!toggleClasses) setVis(classIds, on);
       };
       gcb.onchange = () => setAll(gcb.checked);
-      const ids = [...new Set(st.layers.filter(l => l['source-layer'] === sl).map(l => l.id))];
+      const ids = [...new Set(st.layers.filter(l => styleLayerKey(l) === sl).map(l => l.id))];
       ids.forEach(id => { registerLayerVisibility(id, initialOn); group.layerIds.add(id); });
       ctl.data[sl] = { set: setAll, theme: on => setThemeVisibility(ids, on), el: gl };
       if (initialOn) setAll(true);
@@ -3685,13 +3707,16 @@ async function loadScaleInfo() {
       let vl = md.vector_layers;
       if (!vl && typeof md.json === 'string') vl = JSON.parse(md.json).vector_layers;
       (vl || []).forEach(v => {
-        if (typeof v.minzoom === 'number' || typeof v.maxzoom === 'number')
-          scaleInfo[v.id] = { tile: true, min: v.minzoom ?? 0, max: v.maxzoom ?? Infinity };
+        if (typeof v.minzoom === 'number' || typeof v.maxzoom === 'number') {
+          st.layers.filter(layer => layer['source-layer'] === v.id).forEach(layer => {
+            scaleInfo[styleLayerKey(layer)] = { tile: true, min: v.minzoom ?? 0, max: v.maxzoom ?? Infinity };
+          });
+        }
       });
     }
   } catch (e) { console.warn('Could not read PMTiles metadata', e); }
   const bySl = {};
-  st.layers.filter(l => l['source-layer']).forEach(l => (bySl[l['source-layer']] ||= []).push(l));
+  st.layers.filter(l => l['source-layer']).forEach(l => (bySl[styleLayerKey(l)] ||= []).push(l));
   Object.entries(bySl).forEach(([sl, ls]) => {
     if (ls.some(l => l.minzoom != null || l.maxzoom != null))
       scaleInfo[sl] = { tile: false, min: Math.min(...ls.map(l => l.minzoom ?? 0)), max: Math.max(...ls.map(l => l.maxzoom ?? 24)) };
@@ -6231,8 +6256,11 @@ $('csvBtn').onclick = () => {
 
 // ---------- Search ----------
 function pmtilesSearchLayers() {
-  return [...new Set(map.getStyle().layers.filter(layer => layer['source-layer']).map(layer => layer['source-layer']))]
+  return [...new Set(map.getStyle().layers.filter(layer => layer['source-layer']).map(styleLayerKey))]
     .filter(layer => !themeLayers || themeLayers.includes(layer));
+}
+function pmtilesSearchLabel(layer) {
+  return styleLayerLabel(map.getStyle(), layer);
 }
 function populateSearchLayers() {
   const geojsonLayers = (CONFIG.overlays || []).filter(overlay => overlay.geojson && geojsonLoaders.has(overlay.id) &&
@@ -6240,7 +6268,7 @@ function populateSearchLayers() {
   const pmtilesLayers = pmtilesSearchLayers();
   const options = [
     ...geojsonLayers.map(overlay => `<option value="geojson:${esc(overlay.id)}">${esc(overlay.name || overlay.id)}</option>`),
-    ...pmtilesLayers.map(layer => `<option value="pmtiles:${esc(layer)}">${esc(layer.replace(/_/g, ' '))}</option>`)
+    ...pmtilesLayers.map(layer => `<option value="pmtiles:${esc(layer)}">${esc(pmtilesSearchLabel(layer))}</option>`)
   ];
   $('searchLayer').innerHTML = options.join('');
   updateSearchFields();

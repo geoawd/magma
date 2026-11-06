@@ -41,7 +41,7 @@ class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 class RangeRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP handler with support for Range requests (required for PMTiles)."""
 
-    server_version = "MapSplat"
+    server_version = "PMTilesMapViewer"
     sys_version = ""
 
     def version_string(self):
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     # (a common gotcha — e.g. a leftover server from a deleted export) is obvious.
     _dir = os.getcwd()  # serve.py chdir'd to its own folder above → this is the serving root
     print("=" * 64)
-    print("MapSplat local server")
+    print("PMTiles map viewer local server")
     print(f"  serve.py: {os.path.abspath(__file__)}")
     print(f"  Serving : {_dir}")
     if "Trash" in _dir or ".local/share/Trash" in _dir or "/.Trash" in _dir:
@@ -208,15 +208,13 @@ if __name__ == "__main__":
     try:
         with open(os.path.join(_dir, "style.json"), "r", encoding="utf-8") as _f:
             _style = json.load(_f)
-        _meta = _style.get("metadata", {}) or {}
         _srcs = sorted({L.get("source") for L in _style.get("layers", [])
                         if L.get("source") and L.get("source") != "protomaps"})
-        print(f"  Project: {_meta.get('mapsplat:project') or _style.get('name') or '?'}"
-              f"  (MapSplat {_meta.get('mapsplat:version', '?')})")
+        print(f"  Project: {_style.get('name') or '?'}")
         print(f"  Layers : {len(_style.get('layers', []))} total; "
               f"{len(_srcs)} data source(s): {', '.join(_srcs) if _srcs else '(none)'}")
     except FileNotFoundError:
-        print("  !! No style.json here — is this a MapSplat export folder?")
+        print("  No root style.json; application styles are configured under config/.")
     except Exception as _e:
         print(f"  (could not read style.json: {_e})")
     print(f"  URL    : http://localhost:{PORT}")

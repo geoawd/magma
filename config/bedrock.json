@@ -1,0 +1,2147 @@
+{
+  "version": 8,
+  "name": "Bedrock geology",
+  "sources": {
+    "bedrock": {
+      "type": "vector",
+      "url": "pmtiles://data/bedrock.pmtiles"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f8f9fa"
+      }
+    },
+    {
+      "id": "bedrock",
+      "type": "fill",
+      "source": "bedrock",
+      "source-layer": "mylayer",
+      "metadata": {
+        "theme-layer": "bedrock-pmtiles",
+        "legend-label": "Bedrock geology",
+        "legend": {
+          "title": "LEX_RCS_I",
+          "entries": [
+            {
+              "label": "LOUGHROS GROUP AND FALCARRAGH PELITES (UNDIFFERENTIATED) - QUARTZITE, SEMIPELITE AND PELITE",
+              "color": "#b0edb0"
+            },
+            {
+              "label": "UNNAMED DYKE, PALAEOGENE - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "FALCARRAGH LIMESTONE - METALIMESTONE AND DOLOSTONE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "SLIEVE TOOEY QUARTZITE FORMATION - QUARTZITE",
+              "color": "#ffff00"
+            },
+            {
+              "label": "GALA GROUP - SANDSTONE",
+              "color": "#94dbc9"
+            },
+            {
+              "label": "ARDS QUARTZITE - QUARTZITE",
+              "color": "#ffff00"
+            },
+            {
+              "label": "UNNAMED DYKE, LATE CALEDONIAN - LAMPROPHYRES",
+              "color": "#940000"
+            },
+            {
+              "label": "CAUSEWAY THOLEIITE MEMBER - BASALT",
+              "color": "#ff7500"
+            },
+            {
+              "label": "HIBERNIAN GREENSANDS FORMATION AND ULSTER WHITE LIMESTONE FORMATION (UNDIFFERENTIATED) - CHALK AND S",
+              "color": "#b0ff94"
+            },
+            {
+              "label": "HAWICK GROUP - SANDSTONE",
+              "color": "#dbdbed"
+            },
+            {
+              "label": "WATERLOO MUDSTONE FORMATION - ARGILLACEOUS ROCK AND [SUBEQUAL/SUBORDINATE] LIMESTONE, INTERBEDDED",
+              "color": "#dbb094"
+            },
+            {
+              "label": "CREESLOUGH FORMATION AND ARDS BLACK SCHIST (UNDIFFERENTIATED) - PELITE AND [SUBORDINATE] METALIMESTO",
+              "color": "#b094ed"
+            },
+            {
+              "label": "SESSIAGH-CLONMASS FORMATION AND LOWER FALCARRAGH PELITE FORMATION (UNDIFFERENTIATED) - CALCAREOUS PE",
+              "color": "#c9dbdb"
+            },
+            {
+              "label": "MERCIA MUDSTONE GROUP - ARGILLACEOUS ROCK",
+              "color": "#ffb0b0"
+            },
+            {
+              "label": "PENARTH GROUP - MUDSTONE",
+              "color": "#7575ff"
+            },
+            {
+              "label": "PORTRUSH SILL - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "UNNAMED DYKE, PALAEOGENE - FELSITE",
+              "color": "#ffb033"
+            },
+            {
+              "label": "BELFAST GROUP - ARGILLACEOUS ROCKS WITH SUBORDINATE SANDSTONE AND EVAPORITIC ROCKS",
+              "color": "#edc900"
+            },
+            {
+              "label": "UPPER CRANA QUARTZITE FORMATION - QUARTZITE",
+              "color": "#ffffb0"
+            },
+            {
+              "label": "THORR PLUTON - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "CARBONIFEROUS LIMESTONE SUPERGROUP - LIMESTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERB",
+              "color": "#75ffdb"
+            },
+            {
+              "label": "INISHTRAHULL GNEISS - GNEISS",
+              "color": "#0075ed"
+            },
+            {
+              "label": "LOWER BASALT FORMATION - PYROCLASTIC-ROCK",
+              "color": "#ff75ff"
+            },
+            {
+              "label": "BENBULBEN SHALE FORMATION - MUDSTONE",
+              "color": "#b0c900"
+            },
+            {
+              "label": "INTERBASALTIC FORMATION - BAUXITE-CLAY",
+              "color": "#ffff75"
+            },
+            {
+              "label": "CARBONIFEROUS LIMESTONE SUPERGROUP - TUFF AND LAVA",
+              "color": "#7554b0"
+            },
+            {
+              "label": "SLIEVEBANE GROUP - SANDSTONE AND CONGLOMERATE, INTERBEDDED",
+              "color": "#c9dbc9"
+            },
+            {
+              "label": "MOFFAT SHALE GROUP - MUDSTONE",
+              "color": "#b033ff"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, PRE-CALEDONIAN - METABASALTIC-ROCK",
+              "color": "#00db00"
+            },
+            {
+              "label": "LOWER BASALT FORMATION - BASALT",
+              "color": "#ff75ff"
+            },
+            {
+              "label": "SHERWOOD SANDSTONE GROUP - SANDSTONE",
+              "color": "#ffdbc9"
+            },
+            {
+              "label": "BALLYSHANNON LIMESTONE FORMATION - LIMESTONE",
+              "color": "#75ffdb"
+            },
+            {
+              "label": "UPPER BASALT FORMATION - BASALT",
+              "color": "#ffc9ff"
+            },
+            {
+              "label": "TOORIES PLUTON - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "LONDONDERRY FORMATION - PSAMMITE AND PELITE",
+              "color": "#dbc9ed"
+            },
+            {
+              "label": "DARTRY LIMESTONE FORMATION - LIMESTONE",
+              "color": "#c9ffff"
+            },
+            {
+              "label": "RAVEAGH SANDSTONE FORMATION - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#dbedb0"
+            },
+            {
+              "label": "PORT NA SPANIAGH MEMBER - BAUXITE-CLAY",
+              "color": "#ffff75"
+            },
+            {
+              "label": "TULLAGH POINT PLUTON - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "MULLAGHMORE SANDSTONE FORMATION - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDD",
+              "color": "#ff7500"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, PALAEOGENE - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "NEWRY GRANODIORITE COMPLEX PHASE 2 - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "BARONY GLEN FORMATION - SANDSTONE, CONGLOMERATE AND [SUBORDINATE] ARGILLACEOUS ROCKS",
+              "color": "#0054c9"
+            },
+            {
+              "label": "UNNAMED DYKE, LATE CALEDONIAN - FELSITE",
+              "color": "#ffb033"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, PALAEOGENE - RHYOLITE",
+              "color": "#ffc954"
+            },
+            {
+              "label": "DONEGAL APPINITE SUITE - DIORITE",
+              "color": "#757554"
+            },
+            {
+              "label": "BUNDORAN SHALE FORMATION - MUDSTONE AND LIMESTONE, INTERBEDDED",
+              "color": "#c9db00"
+            },
+            {
+              "label": "DRUMMAN MORE SANDSTONE FORMATION - SANDSTONE",
+              "color": "#ff7500"
+            },
+            {
+              "label": "GORTFINBAR CONGLOMERATE FORMATION - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#ffb075"
+            },
+            {
+              "label": "KNOCKMORE LIMESTONE MEMBER - LIMESTONE, MUDMOUND",
+              "color": "#94b0ff"
+            },
+            {
+              "label": "ARDARA PLUTON PHASE 1 - DIORITE",
+              "color": "#757554"
+            },
+            {
+              "label": "GOWLAUN SHALE FORMATION, LACKAGH SANDSTONE FORMATION AND BENCROY SHALE FORMATION (UNDIFFERENTIATED)",
+              "color": "#ffeddb"
+            },
+            {
+              "label": "OWENCAM FORMATION - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "FANAD PLUTON - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "MURLOUGH BAY FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#dbedc9"
+            },
+            {
+              "label": "GLENCAR LIMESTONE FORMATION - LIMESTONE AND MUDSTONE, INTERBEDDED",
+              "color": "#00b0ff"
+            },
+            {
+              "label": "SLIEVE GULLION COMPLEX - FELSITE",
+              "color": "#ffb033"
+            },
+            {
+              "label": "GREENAN SANDSTONE FORMATION - SANDSTONE",
+              "color": "#db75db"
+            },
+            {
+              "label": "LOWER CRANA QUARTZITE FORMATION - QUARTZITE",
+              "color": "#ffff00"
+            },
+            {
+              "label": "GLENCOLUMBKILLE LIMESTONE - LIMESTONE, DOLOMITIC",
+              "color": "#54ffff"
+            },
+            {
+              "label": "MULLYFA FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#edb0ed"
+            },
+            {
+              "label": "MOURNE MOUNTAINS GRANITE (G2) - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "GLENADE SANDSTONE FORMATION AND BELLAVALLEY FORMATION (UNDIFFERENTIATED) - SANDSTONE WITH SUBORDINAT",
+              "color": "#c9b000"
+            },
+            {
+              "label": "MEENYMORE FORMATION - ARGILLACEOUS ROCK AND [SUBEQUAL/SUBORDINATE] LIMESTONE, INTERBEDDED",
+              "color": "#dbffdb"
+            },
+            {
+              "label": "GILNAHIRK GROUP - SANDSTONE",
+              "color": "#b075b0"
+            },
+            {
+              "label": "CLOGHER VALLEY FORMATION - ARGILLACEOUS ROCK AND [SUBEQUAL/SUBORDINATE] LIMESTONE, INTERBEDDED",
+              "color": "#ededdb"
+            },
+            {
+              "label": "SCAWT HILL PLUG - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "CLAUDY FORMATION - LIMESTONE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "NEWRY GRANODIORITE COMPLEX - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "TEMPLEPATRICK RHYOLITE - RHYOLITE",
+              "color": "#ffc954"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, LATE CALEDONIAN - FELSITE",
+              "color": "#ffb033"
+            },
+            {
+              "label": "HOLYWOOD GROUP - SANDSTONE, CONGLOMERATE AND [SUBORDINATE] ARGILLACEOUS ROCKS",
+              "color": "#0075c9"
+            },
+            {
+              "label": "PORT ASKAIG TILLITE FORMATION - METADIAMICTITE",
+              "color": "#b0c9b0"
+            },
+            {
+              "label": "UNNAMED DYKE, PALAEOGENE - GABBRO",
+              "color": "#b07533"
+            },
+            {
+              "label": "CARLINGFORD COMPLEX - GABBRO",
+              "color": "#b07533"
+            },
+            {
+              "label": "BASAL CLASTICS MEMBER - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDDED",
+              "color": "#edb0b0"
+            },
+            {
+              "label": "TYRONE PLUTONIC GROUP - GABBRO",
+              "color": "#75db54"
+            },
+            {
+              "label": "ENLER GROUP - SANDSTONE",
+              "color": "#ff5400"
+            },
+            {
+              "label": "BELFAST GROUP - DOLOMITIC LIMESTONE AND ARGILLACEOUS ROCKS",
+              "color": "#edc900"
+            },
+            {
+              "label": "LOWER BASALT FORMATION - ANDESITE",
+              "color": "#7533ff"
+            },
+            {
+              "label": "BALLYSHANNON LIMESTONE FORMATION - LIMESTONE, MUDMOUND",
+              "color": "#00ffff"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, EARLY CALEDONIAN - QUARTZ-FELDSPAR-PORPHYRY",
+              "color": "#ffb033"
+            },
+            {
+              "label": "UMMOON FORMATION - PELITE AND SEMIPELITE",
+              "color": "#c9dbdb"
+            },
+            {
+              "label": "ARMAGH GROUP - LIMESTONE, ARGILLACEOUS ROCKS AND SUBORDINATE SANDSTONE, INTERBEDDED",
+              "color": "#33dbb0"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, PRE-CALEDONIAN - SERPENTINITE",
+              "color": "#00ff54"
+            },
+            {
+              "label": "ROSSES CENTRED COMPLEX PHASE 1 - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "FEARNAGHT FORMATION - SANDSTONE AND CONGLOMERATE, INTERBEDDED",
+              "color": "#0075c9"
+            },
+            {
+              "label": "RUNABAY FORMATION - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "BARNESMORE PLUTON (PHASE 3) - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "BOYLE SANDSTONE FORMATION - SANDSTONE",
+              "color": "#0075c9"
+            },
+            {
+              "label": "ARDARA PLUTON PHASE 2 - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "MOURNE MOUNTAINS GRANITE (G1) - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "BARRACK HILL ANDESITE MEMBER - ANDESITE",
+              "color": "#c975ff"
+            },
+            {
+              "label": "BALLYLAGAN MEMBER - BAUXITE-CLAY",
+              "color": "#ffff75"
+            },
+            {
+              "label": "CARLINGFORD COMPLEX - AGGLOMERATE",
+              "color": "#ffb033"
+            },
+            {
+              "label": "LOUGH NEAGH CLAYS GROUP - CLAY AND LIGNITE",
+              "color": "#dbdbb0"
+            },
+            {
+              "label": "SLIEVE GULLION COMPLEX - GRANITE, GRANOPHYRIC",
+              "color": "#ff0000"
+            },
+            {
+              "label": "TEDD FORMATION - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#b07500"
+            },
+            {
+              "label": "MUCKROSS SANDSTONE FORMATION - SANDSTONE",
+              "color": "#edb0b0"
+            },
+            {
+              "label": "ANNACLARE GROUP - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#54c9db"
+            },
+            {
+              "label": "TYRONE VOLCANIC GROUP - RHYOLITE",
+              "color": "#ffc954"
+            },
+            {
+              "label": "BRICKLIEVE LIMESTONE FORMATION - LIMESTONE",
+              "color": "#c9ffff"
+            },
+            {
+              "label": "ULSTER CANAL FORMATION - SANDSTONE WITH SUBORDINATE ARGILLACEOUS ROCKS AND LIMESTONE",
+              "color": "#940054"
+            },
+            {
+              "label": "OWENCAM FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#c9c9ed"
+            },
+            {
+              "label": "BALLYNESS FORMATION - SANDSTONE AND CONGLOMERATE, INTERBEDDED",
+              "color": "#0075c9"
+            },
+            {
+              "label": "OMAGH SANDSTONE GROUP - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#54c9db"
+            },
+            {
+              "label": "ALTAGOAN FORMATION - SANDSTONE AND MUDSTONE",
+              "color": "#ededdb"
+            },
+            {
+              "label": "COOLDARAGH FORMATION - MUDSTONE, SILTY",
+              "color": "#ededdb"
+            },
+            {
+              "label": "UNNAMED DYKE, PALAEOGENE - AGGLOMERATE",
+              "color": "#ffb033"
+            },
+            {
+              "label": "CROAGHGARROW FORMATION - PSAMMITE AND PELITE",
+              "color": "#dbb0ed"
+            },
+            {
+              "label": "DUNGIVEN FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#dbedc9"
+            },
+            {
+              "label": "CLARAGH SANDSTONE FORMATION - SANDSTONE",
+              "color": "#c9c9ff"
+            },
+            {
+              "label": "DUNGIVEN FORMATION - LIMESTONE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "SHANMAGHERY SANDSTONE FORMATION - SANDSTONE",
+              "color": "#ffb075"
+            },
+            {
+              "label": "CARLINGFORD LIMESTONE GROUP - SANDSTONE, CALCAREOUS",
+              "color": "#ffffb0"
+            },
+            {
+              "label": "BRISCLOONAGH SANDSTONE FORMATION - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBED",
+              "color": "#94c975"
+            },
+            {
+              "label": "ENLER GROUP - SANDSTONE AND CONGLOMERATE, INTERBEDDED",
+              "color": "#ff5400"
+            },
+            {
+              "label": "BARNESMORE PLUTON (PHASE 2) - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "MOURNE MOUNTAINS GRANITE (G4) - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "MOURNE MOUNTAINS GRANITE (G5) - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "SLISHWOOD DIVISION - METAMORPHIC ROCK",
+              "color": "#eddb75"
+            },
+            {
+              "label": "TERMON FORMATION - PELITE AND [SUBORDINATE] PSAMMITE",
+              "color": "#c9dbdb"
+            },
+            {
+              "label": "SLIEVE GALLION GRANITE - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "SLIEVE GULLION COMPLEX - GABBRO",
+              "color": "#b07533"
+            },
+            {
+              "label": "FAHAN SLATES - PELITE",
+              "color": "#5454ed"
+            },
+            {
+              "label": "MULLAGHCARN FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#7533db"
+            },
+            {
+              "label": "GLENDUN FORMATION - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "CARRAUN SHALE FORMATION AND DERGVONE SHALE FORMATION (UNDIFFERENTIATED) - MUDSTONE",
+              "color": "#ededed"
+            },
+            {
+              "label": "RINN POINT LIMESTONE FORMATION - LIMESTONE",
+              "color": "#75ffdb"
+            },
+            {
+              "label": "FAHAN GRITS - PSAMMITE, EPIDOTIC",
+              "color": "#dbc9ed"
+            },
+            {
+              "label": "BELFAST GROUP - BRECCIA AND SANDSTONE, INTERBEDDED",
+              "color": "#edc900"
+            },
+            {
+              "label": "DERRYLORAN FORMATION - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#c9b000"
+            },
+            {
+              "label": "BALLYDURNIAN BRECCIA FORMATION - BRECCIA AND SANDSTONE, INTERBEDDED",
+              "color": "#db75db"
+            },
+            {
+              "label": "KILLETER QUARTZITE FORMATION [OBSOLETE CODE: USE DBKQ] - QUARTZITE",
+              "color": "#ffff00"
+            },
+            {
+              "label": "MILLSTONE GRIT GROUP [SEE ALSO MIGR] - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#c9dbc9"
+            },
+            {
+              "label": "GARRISON SILL - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "CARNMORE SANDSTONE MEMBER - SANDSTONE",
+              "color": "#ffdbdb"
+            },
+            {
+              "label": "FINTOWN PELITE - PELITE, GRAPHITIC",
+              "color": "#c9dbff"
+            },
+            {
+              "label": "LITTLE RIVER GROUP - ARGILLACEOUS ROCK",
+              "color": "#b075b0"
+            },
+            {
+              "label": "TYRONE VOLCANIC GROUP - LAVA",
+              "color": "#edc9db"
+            },
+            {
+              "label": "GLENELLY FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#b094ed"
+            },
+            {
+              "label": "COAGH CONGLOMERATE MEMBER - CONGLOMERATE",
+              "color": "#ff75ff"
+            },
+            {
+              "label": "UNNAMED DYKE, LATE CALEDONIAN - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "ENLER GROUP - SANDSTONE AND SUBORDINATE BRECCIA",
+              "color": "#ff5400"
+            },
+            {
+              "label": "COAL MEASURES GROUP [OBSOLETE EXCEPT IN NORTHERN IRELAND: USE PCM, SWCM, CMSC] - SANDSTONE AND [SUBE",
+              "color": "#759494"
+            },
+            {
+              "label": "CLAUDY FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#edb0ed"
+            },
+            {
+              "label": "CLADY LIMESTONE MEMBER - LIMESTONE",
+              "color": "#75ffdb"
+            },
+            {
+              "label": "GLENDUN FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#dbb0ed"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, LATE CALEDONIAN - MONZONITE",
+              "color": "#b000c9"
+            },
+            {
+              "label": "CORVANAGHAN FORMATION - PSAMMITE",
+              "color": "#eddb75"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, LATE CALEDONIAN - DIORITE",
+              "color": "#757554"
+            },
+            {
+              "label": "TORR HEAD LIMESTONE FORMATION - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "OWENGARVE CALCAREOUS FORMATION - LIMESTONE, DOLOMITIC",
+              "color": "#54ffff"
+            },
+            {
+              "label": "BELFAST GROUP - SANDSTONE AND [SUBEQUAL/SUBORDINATE] LIMESTONE, INTERBEDDED",
+              "color": "#edc900"
+            },
+            {
+              "label": "KILBRYAN LIMESTONE FORMATION - LIMESTONE AND MUDSTONE, INTERBEDDED",
+              "color": "#c90094"
+            },
+            {
+              "label": "UPPER BASALT FORMATION - ANDESITE",
+              "color": "#7533ff"
+            },
+            {
+              "label": "KEADEW FORMATION - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDDED",
+              "color": "#75c975"
+            },
+            {
+              "label": "SHANE'S HILL RHYODACITE - FELSITE",
+              "color": "#ffc954"
+            },
+            {
+              "label": "ROSSES CENTRED COMPLEX PHASE 4 - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "TORR HEAD LIMESTONE FORMATION - LIMESTONE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "SLEMISH PLUG - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "SLIEVE LEAGUE FORMATION - PELITE AND [SUBORDINATE] PSAMMITE",
+              "color": "#ffc900"
+            },
+            {
+              "label": "INISCARN FORMATION - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#0075c9"
+            },
+            {
+              "label": "LISGORMAN SHALE FORMATION - MUDSTONE AND LIMESTONE, INTERBEDDED",
+              "color": "#c9db00"
+            },
+            {
+              "label": "AGHYARAN FORMATION - PSAMMITE",
+              "color": "#edc9db"
+            },
+            {
+              "label": "ROCKDALE LIMESTONE FORMATION - LIMESTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDDED",
+              "color": "#33dbb0"
+            },
+            {
+              "label": "CORKEY ROCKS PLUG - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "THORR PLUTON - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "DESERTCREAT GROUP - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDDED",
+              "color": "#94dbc9"
+            },
+            {
+              "label": "UNNAMED SILL, PALAEOGENE - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "QUARRY SANDSTONE - SANDSTONE",
+              "color": "#ffdbdb"
+            },
+            {
+              "label": "AGHYARAN FORMATION - LIMESTONE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "LAGHT HILL TONALITE - TONALITE",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "ROSSMORE MUDSTONE FORMATION - ARGILLACEOUS ROCK",
+              "color": "#ededed"
+            },
+            {
+              "label": "BALLYSTEEN FORMATION - LIMESTONE AND MUDSTONE, INTERBEDDED",
+              "color": "#c90094"
+            },
+            {
+              "label": "LOUGH ESK PSAMMITES - PSAMMITE",
+              "color": "#ffdbc9"
+            },
+            {
+              "label": "CARRICKANESS SANDSTONE FORMATION - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#ffdb54"
+            },
+            {
+              "label": "CROAGHUBRID PELITE FORMATION - PELITE",
+              "color": "#757575"
+            },
+            {
+              "label": "BLACKWATER LIMESTONE FORMATION - LIMESTONE",
+              "color": "#3333ff"
+            },
+            {
+              "label": "NEWRY GRANODIORITE COMPLEX PHASE 3 - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "TRAWENAGH BAY PLUTON - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "DART FORMATION - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "CALHAME LIMESTONE - LIMESTONE",
+              "color": "#75ffdb"
+            },
+            {
+              "label": "CLOGHAN GREEN BEDS - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "ALTMORE FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#b094ed"
+            },
+            {
+              "label": "GLENELLY FORMATION - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "DUNAGHY FORMATION - MUDSTONE AND [SUBEQUAL/SUBORDINATE] CONGLOMERATE",
+              "color": "#dbdbdb"
+            },
+            {
+              "label": "TYRONE GROUP - SANDSTONE WITH SUBORDINATE ARGILLACEOUS ROCKS AND LIMESTONE",
+              "color": "#ffffed"
+            },
+            {
+              "label": "DUNDONALD SILL - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "SOUTHERN HIGHLAND GROUP - PSAMMITE AND PELITE",
+              "color": "#dbc9ed"
+            },
+            {
+              "label": "CULDAFF LIMESTONE - METALIMESTONE AND PELITE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "HELEN'S BAY FORMATION - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDDED",
+              "color": "#c9b075"
+            },
+            {
+              "label": "CARLINGFORD COMPLEX - GRANITE, GRANOPHYRIC",
+              "color": "#ff0000"
+            },
+            {
+              "label": "MAIN DONEGAL GRANITE - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "TREMOGE GLEN GRANITE - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "BALLYRAINEY SILL - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "GAUGHIN QUARTZITE FORMATION - QUARTZITE",
+              "color": "#ffff00"
+            },
+            {
+              "label": "BARNESMORE PLUTON - GRANITE, GRANOPHYRIC",
+              "color": "#ff0000"
+            },
+            {
+              "label": "BOULTYPATRICK GRIT - PSAMMITE",
+              "color": "#ed9494"
+            },
+            {
+              "label": "DRUMGESH SHALE FORMATION - MUDSTONE AND LIMESTONE, INTERBEDDED",
+              "color": "#940075"
+            },
+            {
+              "label": "OAKPORT LIMESTONE FORMATION - LIMESTONE AND MUDSTONE, INTERBEDDED",
+              "color": "#75ffdb"
+            },
+            {
+              "label": "MOY SANDSTONE FORMATION - SANDSTONE, CONGLOMERATE AND [SUBORDINATE] ARGILLACEOUS ROCKS",
+              "color": "#0075c9"
+            },
+            {
+              "label": "CRAIGBARDAHESSIAGH GRANODIORITE - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "SLIEVE GULLION COMPLEX - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "MAYDOWN LIMESTONE FORMATION - LIMESTONE/CEMENTSTONE/CALCILUTITE, ARGILLACEOUS, MUDDY",
+              "color": "#54c9db"
+            },
+            {
+              "label": "DARGAN LIMESTONE FORMATION - LIMESTONE/CEMENTSTONE/CALCILUTITE, ARGILLACEOUS, MUDDY",
+              "color": "#940054"
+            },
+            {
+              "label": "DESERTMARTIN LIMESTONE FORMATION - LIMESTONE, ARGILLACEOUS ROCKS AND SUBORDINATE SANDSTONE, INTERBED",
+              "color": "#33dbb0"
+            },
+            {
+              "label": "CROSS SLIEVE GROUP - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#945433"
+            },
+            {
+              "label": "CRANFORD LIMESTONE - METALIMESTONE AND DOLOSTONE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "SLIEVE GULLION COMPLEX - AGGLOMERATE",
+              "color": "#ffb033"
+            },
+            {
+              "label": "CASTLE ESPIE GROUP - LIMESTONE AND MUDSTONE, INTERBEDDED",
+              "color": "#33dbb0"
+            },
+            {
+              "label": "ALDERWOOD MUDSTONE - MUDSTONE",
+              "color": "#330033"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, PALAEOGENE - GABBRO",
+              "color": "#b07533"
+            },
+            {
+              "label": "COPNEY PILLOW-LAVA FORMATION - BASALT",
+              "color": "#ed94db"
+            },
+            {
+              "label": "KEENAGHAN SHALE FORMATION - MUDSTONE",
+              "color": "#dbffdb"
+            },
+            {
+              "label": "CARRICK O'HARA FORMATION - PELITE AND [SUBORDINATE] PSAMMITE",
+              "color": "#dbb094"
+            },
+            {
+              "label": "LOUGH MOURNE GRIT FORMATION - PSAMMITE, EPIDOTIC",
+              "color": "#dbc9db"
+            },
+            {
+              "label": "CARLINGFORD LIMESTONE GROUP - LIMESTONE",
+              "color": "#75ffdb"
+            },
+            {
+              "label": "BALLYMASTOCKER FORMATION - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#945400"
+            },
+            {
+              "label": "MAGILLIGAN SILL - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "CROSS SLIEVE GROUP - LAVA AND TUFF",
+              "color": "#c975ff"
+            },
+            {
+              "label": "CUSHENDALL PORPHYRY - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "BALLYGAWLY GNEISS - GNEISS",
+              "color": "#dbc975"
+            },
+            {
+              "label": "DART FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#c9b0ed"
+            },
+            {
+              "label": "FAIR HEAD SILL - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "NAVAN GROUP - LIMESTONE AND MUDSTONE, INTERBEDDED",
+              "color": "#00ffff"
+            },
+            {
+              "label": "GLENGAWNA FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#dbb0ed"
+            },
+            {
+              "label": "BALLYKELLY FORMATION - LIMESTONE",
+              "color": "#54ffff"
+            },
+            {
+              "label": "SHANAGHY GREEN BEDS - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "BANNAGHER SANDSTONE FORMATION - SANDSTONE",
+              "color": "#edb0b0"
+            },
+            {
+              "label": "STROKESTOWN GROUP - SANDSTONE",
+              "color": "#c9dbdb"
+            },
+            {
+              "label": "GLENCOLUMBKILLE PELITE FORMATION - PELITE",
+              "color": "#ffc9c9"
+            },
+            {
+              "label": "EDERGOLE FORMATION - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#54c9db"
+            },
+            {
+              "label": "ARDNAMONA SANDSTONE FORMATION - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDDED",
+              "color": "#54c9db"
+            },
+            {
+              "label": "LISBELLAW CONGLOMERATE FORMATION - ARGILLACEOUS ROCKS AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBED",
+              "color": "#b075b0"
+            },
+            {
+              "label": "NEWRY GRANODIORITE COMPLEX - DIORITE",
+              "color": "#b000c9"
+            },
+            {
+              "label": "BALLINAMALLARD MUDSTONE FORMATION - MUDSTONE",
+              "color": "#ffffc9"
+            },
+            {
+              "label": "SCRABO SILL - MICROGABBRO",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "BALLYREAGH CONGLOMERATE FORMATION - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#ffdbb0"
+            },
+            {
+              "label": "RED ARCH FORMATION - CONGLOMERATE AND [SUBEQUAL/SUBORDINATE] SANDSTONE, INTERBEDDED",
+              "color": "#b07500"
+            },
+            {
+              "label": "REELAN FORMATION - CALCAREOUS PELITE, METALIMESTONE AND QUARTZITE",
+              "color": "#75b0db"
+            },
+            {
+              "label": "POMEROY GRANITE - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "CARRICKMORE GRANITE - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "BERAGH GRANITE - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "GREENCASTLE GREEN BEDS - METALAVA AND METATUFF",
+              "color": "#b0ff33"
+            },
+            {
+              "label": "UNNAMED IGNEOUS INTRUSION, EARLY CALEDONIAN - TONALITE",
+              "color": "#ff00ff"
+            },
+            {
+              "label": "RUNABAY FORMATION - PSAMMITE AND SEMIPELITE",
+              "color": "#c9b0ed"
+            },
+            {
+              "label": "ROSSES CENTRED COMPLEX PHASE 3 - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "NEWTOWNSTEWART FORMATION - PSAMMITE",
+              "color": "#ffff00"
+            },
+            {
+              "label": "BALLYKELLY FORMATION - PSAMMITE AND PELITE",
+              "color": "#dbc9ed"
+            },
+            {
+              "label": "ROSSES CENTRED COMPLEX PHASE 2 - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "MOURNE MOUNTAINS GRANITE (G3) - GRANITE",
+              "color": "#ff7575"
+            },
+            {
+              "label": "TARDREE RHYOLITE COMPLEX - RHYOLITE",
+              "color": "#ffc954"
+            },
+            {
+              "label": "SHANMULLAGH FORMATION - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#b07500"
+            },
+            {
+              "label": "ARDARA PLUTON PHASE 3 - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "TOPPED MOUNTAIN SANDSTONE FORMATION - SANDSTONE, SILTSTONE AND MUDSTONE",
+              "color": "#ffdbb0"
+            },
+            {
+              "label": "OWENKILLEW SANDSTONE GROUP - SANDSTONE AND [SUBEQUAL/SUBORDINATE] ARGILLACEOUS ROCKS, INTERBEDDED",
+              "color": "#54c9db"
+            },
+            {
+              "label": "INISHOWEN HEAD GRITS - PSAMMITE, EPIDOTIC",
+              "color": "#dbc9ed"
+            },
+            {
+              "label": "NEWRY GRANODIORITE COMPLEX PHASE 1 - GRANODIORITE",
+              "color": "#ff75b0"
+            },
+            {
+              "label": "LOUGH DERG GROUP - PSAMMITE",
+              "color": "#eddb75"
+            },
+            {
+              "label": "Other",
+              "color": "#808080"
+            }
+          ]
+        }
+      },
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "LEX_RCS_I"
+          ],
+          "21999999_DALF-QSPP",
+          "#b0edb0",
+          "11399999_UDG-MCGB",
+          "#ff00ff",
+          "21999999_DAFL-MELD",
+          "#54ffff",
+          "21999999_DBSO-QZITE",
+          "#ffff00",
+          "13404399_GALA-SDST",
+          "#94dbc9",
+          "21999999_DAAR-QZITE",
+          "#ffff00",
+          "13599999_UDLC-LMPY",
+          "#940000",
+          "11303999_CTH-BA",
+          "#ff7500",
+          "12101999_HGUW-CHSA",
+          "#b0ff94",
+          "13404999_HWK-SDST",
+          "#dbdbed",
+          "9999999_WAMU-AROCLS",
+          "#dbb094",
+          "21999999_CHAS-PELM",
+          "#b094ed",
+          "21999999_SCLF-CPLQ",
+          "#c9dbdb",
+          "12303999_MMG-ARGL",
+          "#ffb0b0",
+          "12301199_PNG-MDST",
+          "#7575ff",
+          "11399999_PTSI-MCGB",
+          "#ff00ff",
+          "11399999_UDG-FELS",
+          "#ffb033",
+          "13102999_BELF-ARSE",
+          "#edc900",
+          "21999999_DBCA-QZITE",
+          "#ffffb0",
+          "13303999_THOP-GD",
+          "#ff75b0",
+          "13229999_CL-LMAR",
+          "#75ffdb",
+          "23999999_INGN-GNSS",
+          "#0075ed",
+          "11303999_LBF-PYRR",
+          "#ff75ff",
+          "13222149_BBSF-MDST",
+          "#b0c900",
+          "11303999_IB-BUXCLY",
+          "#ffff75",
+          "13229999_CL-TULA",
+          "#7554b0",
+          "13212499_SLI-SCON",
+          "#c9dbc9",
+          "13502999_MFS-MDST",
+          "#b033ff",
+          "39999999_UIPC-MBAR",
+          "#00db00",
+          "11303999_LBF-BA",
+          "#ff75ff",
+          "13102999_SSG-SDST",
+          "#ffdbc9",
+          "13222151_BAL-LMST",
+          "#75ffdb",
+          "11303999_UBF-BA",
+          "#ffc9ff",
+          "9999999_TOOP-GD",
+          "#ff75b0",
+          "21999999_DCLY-PSPE",
+          "#dbc9ed",
+          "13222129_DARL-LMST",
+          "#c9ffff",
+          "13302999_RSF-SDSM",
+          "#dbedb0",
+          "11303999_PSM-BUXCLY",
+          "#ffff75",
+          "13303999_TUPP-GD",
+          "#ff75b0",
+          "13222149_MMS-SDAR",
+          "#ff7500",
+          "11399999_UIG-MCGB",
+          "#ff00ff",
+          "13399999_NEGD2-GD",
+          "#ff75b0",
+          "13222109_BAGL-SCAR",
+          "#0054c9",
+          "13599999_UDLC-FELS",
+          "#ffb033",
+          "11399999_UIG-RY",
+          "#ffc954",
+          "13303399_DONA-DI",
+          "#757554",
+          "13222149_BUNS-MDLM",
+          "#c9db00",
+          "13222109_DRUN-SDST",
+          "#ff7500",
+          "13302999_GOCF-COSD",
+          "#ffb075",
+          "13222129_KNM-LMMD",
+          "#94b0ff",
+          "13303999_ARDP1-DI",
+          "#757554",
+          "13213699_GOLB-MDSA",
+          "#ffeddb",
+          "21999999_DBOF-MLTU",
+          "#b0ff33",
+          "13303999_FANP-GD",
+          "#ff75b0",
+          "21999999_DBMF-PSSP",
+          "#dbedc9",
+          "13222129_GRLF-LSMD",
+          "#00b0ff",
+          "11399999_SGD-FELS",
+          "#ffb033",
+          "13222119_GNNS-SDST",
+          "#db75db",
+          "21999999_DBCQ-QZITE",
+          "#ffff00",
+          "21999999_DAQC-DOLMST",
+          "#54ffff",
+          "21999999_DCMY-PSSP",
+          "#edb0ed",
+          "11303999_MNG2-GN",
+          "#ff7575",
+          "13222129_GSBV-SARL",
+          "#c9b000",
+          "13222129_MEF-AROCLS",
+          "#dbffdb",
+          "13599999_GILN-SDST",
+          "#b075b0",
+          "13223199_CVG-AROCLS",
+          "#ededdb",
+          "11399999_SHP-MCGB",
+          "#ff00ff",
+          "21999999_DCCF-LMST",
+          "#54ffff",
+          "13399999_NEGD-GD",
+          "#ff75b0",
+          "11303999_TPR-RY",
+          "#ffc954",
+          "13499999_UILC-FELS",
+          "#ffb033",
+          "13222109_HOLY-SCAR",
+          "#0075c9",
+          "21999999_DBPT-MDIAMT",
+          "#b0c9b0",
+          "11399999_UDG-GB",
+          "#b07533",
+          "11303999_CAFD-GB",
+          "#b07533",
+          "13222151_BACL-SDAR",
+          "#edb0b0",
+          "13599999_TPG-GB",
+          "#75db54",
+          "13103999_ENLE-SDST",
+          "#ff5400",
+          "13102999_BELF-DLAR",
+          "#edc900",
+          "11303999_LBF-AND",
+          "#7533ff",
+          "13222151_BAL-LMMD",
+          "#00ffff",
+          "13599999_UIEC-QFP",
+          "#ffb033",
+          "21999999_UMMN-PESP",
+          "#c9dbdb",
+          "13222151_ARMA-LMAS",
+          "#33dbb0",
+          "39999999_UIPC-SEPITE",
+          "#00ff54",
+          "9999999_ROCE1-GN",
+          "#ff7575",
+          "13222109_FEAR-SCON",
+          "#0075c9",
+          "21999999_DCRH-MLTU",
+          "#b0ff33",
+          "13303999_BARP3-GN",
+          "#ff7575",
+          "13222109_BYLE-SDST",
+          "#0075c9",
+          "13303999_ARDP2-GD",
+          "#ff75b0",
+          "11303999_MNG1-GN",
+          "#ff7575",
+          "13303999_BHAM-AND",
+          "#c975ff",
+          "11303999_BLE-BUXCLY",
+          "#ffff75",
+          "11303999_CAFD-AGG",
+          "#ffb033",
+          "11301999_LNG-CLLI",
+          "#dbdbb0",
+          "11399999_SGD-GNGP",
+          "#ff0000",
+          "13301199_TEDD-SDSM",
+          "#b07500",
+          "13222149_MUSA-SDST",
+          "#edb0b0",
+          "13222109_ANNA-SDSM",
+          "#54c9db",
+          "13504999_TVG-RY",
+          "#ffc954",
+          "13222129_BRVE-LMST",
+          "#c9ffff",
+          "13222109_ULST-SARL",
+          "#940054",
+          "21999999_DBOF-PSSP",
+          "#c9c9ed",
+          "13223199_BYC-SCON",
+          "#0075c9",
+          "13222109_OMSG-SDSM",
+          "#54c9db",
+          "13223199_AF-STMD",
+          "#ededdb",
+          "13222109_COOH-SLMDST",
+          "#ededdb",
+          "11399999_UDG-AGG",
+          "#ffb033",
+          "21999999_DCCR-PSPE",
+          "#dbb0ed",
+          "21999999_DUNN-PSSP",
+          "#dbedc9",
+          "13222151_CLSG-SDST",
+          "#c9c9ff",
+          "21999999_DUNN-LMST",
+          "#54ffff",
+          "13303999_SMSF-SDST",
+          "#ffb075",
+          "13222151_CDLM-CALSST",
+          "#ffffb0",
+          "13213799_BCS-SDAR",
+          "#94c975",
+          "13103999_ENLE-SCON",
+          "#ff5400",
+          "13303999_BARP2-GN",
+          "#ff7575",
+          "11303999_MNG4-GN",
+          "#ff7575",
+          "11303999_MNG5-GN",
+          "#ff7575",
+          "21999999_SLID-METR",
+          "#eddb75",
+          "21999999_DBMI-PEPS",
+          "#c9dbdb",
+          "13404999_SGGR-GN",
+          "#ff7575",
+          "11399999_SGD-GB",
+          "#b07533",
+          "21999999_DCFS-PEL",
+          "#5454ed",
+          "21999999_MCA-PSSP",
+          "#7533db",
+          "21999999_DCGN-MLTU",
+          "#b0ff33",
+          "13222119_CADV-MDST",
+          "#ededed",
+          "13222151_RIPO-LMST",
+          "#75ffdb",
+          "21999999_DCFG-PSEP",
+          "#dbc9ed",
+          "13102999_BELF-BRSS",
+          "#edc900",
+          "13222199_DLN-COSD",
+          "#c9b000",
+          "13299999_BYDN-BRSS",
+          "#db75db",
+          "21999999_DBKT-QZITE",
+          "#ffff00",
+          "13213999_MG-SDSM",
+          "#c9dbc9",
+          "11399999_GARS-MCGB",
+          "#ff00ff",
+          "13222129_CORE-SDST",
+          "#ffdbdb",
+          "21999999_DAFI-PELGP",
+          "#c9dbff",
+          "13404999_LITG-ARGL",
+          "#b075b0",
+          "13504999_TVG-LAVA",
+          "#edc9db",
+          "21999999_GLLY-PSSP",
+          "#b094ed",
+          "11303999_COCL-CONG",
+          "#ff75ff",
+          "13599999_UDLC-GD",
+          "#ff75b0",
+          "13103999_ENLE-SDBR",
+          "#ff5400",
+          "13212999_CM-SDAR",
+          "#759494",
+          "21999999_DCCF-PSSP",
+          "#edb0ed",
+          "13222151_CLLM-LMST",
+          "#75ffdb",
+          "21999999_DCGN-PSSP",
+          "#dbb0ed",
+          "13499999_UILC-MZ",
+          "#b000c9",
+          "21999999_CORV-PSAMM",
+          "#eddb75",
+          "13499999_UILC-DI",
+          "#757554",
+          "21999999_DBTR-MLTU",
+          "#b0ff33",
+          "21999999_DAOF-DOLMST",
+          "#54ffff",
+          "13102999_BELF-SDLM",
+          "#edc900",
+          "13222109_KNLM-LSMD",
+          "#c90094",
+          "11303999_UBF-AND",
+          "#7533ff",
+          "13303299_KEAD-SDAR",
+          "#75c975",
+          "11303999_SHRD-FELS",
+          "#ffc954",
+          "13303299_ROCE4-GN",
+          "#ff7575",
+          "21999999_DBTR-LMST",
+          "#54ffff",
+          "11399999_SPG-MCGB",
+          "#ff00ff",
+          "21999999_SLLE-PEPS",
+          "#ffc900",
+          "13223199_IS-COSD",
+          "#0075c9",
+          "13222149_LISG-MDLM",
+          "#c9db00",
+          "21999999_DBAF-PSAMM",
+          "#edc9db",
+          "13222129_RCLF-LMAR",
+          "#33dbb0",
+          "11399999_CRD-MCGB",
+          "#ff00ff",
+          "13303999_THOP-GN",
+          "#ff7575",
+          "13502999_DECG-SDAR",
+          "#94dbc9",
+          "11399999_USG-MCGB",
+          "#ff00ff",
+          "13222149_QYS-SDST",
+          "#ffdbdb",
+          "21999999_DBAF-LMST",
+          "#54ffff",
+          "13404999_LHTO-TO",
+          "#ff00ff",
+          "13222119_RMM-ARGL",
+          "#ededed",
+          "13222151_BALN-LSMD",
+          "#c90094",
+          "21999999_DBLS-PSAMM",
+          "#ffdbc9",
+          "13222129_CRSF-SDSM",
+          "#ffdb54",
+          "21999999_DBCS-PEL",
+          "#757575",
+          "13222129_BLWF-LMST",
+          "#3333ff",
+          "13399999_NEGD3-GD",
+          "#ff75b0",
+          "13303999_TRBP-GN",
+          "#ff7575",
+          "21999999_DART-MLTU",
+          "#b0ff33",
+          "13222151_CALM-LMST",
+          "#75ffdb",
+          "21999999_DCCL-MLTU",
+          "#b0ff33",
+          "21999999_DCAF-PSSP",
+          "#b094ed",
+          "21999999_GLLY-MLTU",
+          "#b0ff33",
+          "9999999_DGHY-MDCO",
+          "#dbdbdb",
+          "13222109_TYRO-SARL",
+          "#ffffed",
+          "11399999_DUSI-MCGB",
+          "#ff00ff",
+          "21999999_SOHI-PSPE",
+          "#dbc9ed",
+          "21999999_DBCU-MLPE",
+          "#54ffff",
+          "13502999_HEBA-SDAR",
+          "#c9b075",
+          "11303999_CAFD-GNGP",
+          "#ff0000",
+          "13302299_MDGR-GN",
+          "#ff7575",
+          "13601999_TGGR-GN",
+          "#ff7575",
+          "11399999_BYSI-MCGB",
+          "#ff00ff",
+          "21999999_DBGQ-QZITE",
+          "#ffff00",
+          "13303999_BARP-GNGP",
+          "#ff0000",
+          "21999999_DBBG-PSAMM",
+          "#ed9494",
+          "13222151_DHSH-MDLM",
+          "#940075",
+          "13222151_OKPT-LSMD",
+          "#75ffdb",
+          "13222109_MOYS-SCAR",
+          "#0075c9",
+          "13599999_CRGD-GD",
+          "#ff75b0",
+          "11399999_SGD-MCGB",
+          "#ff00ff",
+          "13222129_MYLF-ARLMST",
+          "#54c9db",
+          "13222109_DALM-ARLMST",
+          "#940054",
+          "13222129_DML-LMAS",
+          "#33dbb0",
+          "13303399_CSSL-COSD",
+          "#945433",
+          "21999999_DBCL-MELD",
+          "#54ffff",
+          "11399999_SGD-AGG",
+          "#ffb033",
+          "13222119_CASP-LSMD",
+          "#33dbb0",
+          "13222119_AMM-MDST",
+          "#330033",
+          "11399999_UIG-GB",
+          "#b07533",
+          "13599999_CPLF-BA",
+          "#ed94db",
+          "13222151_KEEN-MDST",
+          "#dbffdb",
+          "21999999_CKOH-PEPS",
+          "#dbb094",
+          "21999999_LMGR-PSEP",
+          "#dbc9db",
+          "13222151_CDLM-LMST",
+          "#75ffdb",
+          "13303299_BLLY-COSD",
+          "#945400",
+          "11399999_MSI-MCGB",
+          "#ff00ff",
+          "13303399_CSSL-LATU",
+          "#c975ff",
+          "13303199_CUPY-GD",
+          "#ff75b0",
+          "21999999_BYGN-GNSS",
+          "#dbc975",
+          "21999999_DART-PSSP",
+          "#c9b0ed",
+          "11399999_FHS-MCGB",
+          "#ff00ff",
+          "13222109_NAVN-LSMD",
+          "#00ffff",
+          "21999999_GAA-PSSP",
+          "#dbb0ed",
+          "21999999_DCBF-LMST",
+          "#54ffff",
+          "21999999_DCSG-MLTU",
+          "#b0ff33",
+          "13222151_BANN-SDST",
+          "#edb0b0",
+          "13502999_STRO-SDST",
+          "#c9dbdb",
+          "21999999_GLEP-PEL",
+          "#ffc9c9",
+          "13222109_EGS-COSD",
+          "#54c9db",
+          "13222151_AASA-SDAR",
+          "#54c9db",
+          "13404299_LIBC-ARSD",
+          "#b075b0",
+          "13399999_NEGD-DI",
+          "#b000c9",
+          "13222119_BLM-MDST",
+          "#ffffc9",
+          "11399999_SSI-MCGB",
+          "#ff00ff",
+          "13222119_BRC-COSD",
+          "#ffdbb0",
+          "12303999_REDA-COSD",
+          "#b07500",
+          "21999999_REEL-CPLQ",
+          "#75b0db",
+          "13599999_POGR-GN",
+          "#ff7575",
+          "13599999_CMGR-GN",
+          "#ff7575",
+          "13599999_BERG-GN",
+          "#ff7575",
+          "21999999_DCGC-MLTU",
+          "#b0ff33",
+          "13599999_UIEC-TO",
+          "#ff00ff",
+          "21999999_DCRH-PSSP",
+          "#c9b0ed",
+          "13303299_ROCE3-GN",
+          "#ff7575",
+          "21999999_DBNF-PSAMM",
+          "#ffff00",
+          "21999999_DCBF-PSPE",
+          "#dbc9ed",
+          "9999999_ROCE2-GN",
+          "#ff7575",
+          "11303999_MNG3-GN",
+          "#ff7575",
+          "11303999_TDER-RY",
+          "#ffc954",
+          "13301199_SHAN-SDSM",
+          "#b07500",
+          "13303299_ARDP3-GD",
+          "#ff75b0",
+          "13222129_TPMS-SDSM",
+          "#ffdbb0",
+          "13222109_OWSA-SDAR",
+          "#54c9db",
+          "21999999_DCIS-PSEP",
+          "#dbc9ed",
+          "13399999_NEGD1-GD",
+          "#ff75b0",
+          "21999999_MLD-PSAMM",
+          "#eddb75",
+          "#808080"
+        ],
+        "fill-opacity": 0.65,
+        "fill-outline-color": [
+          "match",
+          [
+            "get",
+            "LEX_RCS_I"
+          ],
+          "21999999_DALF-QSPP",
+          "#000000",
+          "11399999_UDG-MCGB",
+          "#000000",
+          "21999999_DAFL-MELD",
+          "#000000",
+          "21999999_DBSO-QZITE",
+          "#000000",
+          "13404399_GALA-SDST",
+          "#000000",
+          "21999999_DAAR-QZITE",
+          "#000000",
+          "13599999_UDLC-LMPY",
+          "#000000",
+          "11303999_CTH-BA",
+          "#000000",
+          "12101999_HGUW-CHSA",
+          "#000000",
+          "13404999_HWK-SDST",
+          "#000000",
+          "9999999_WAMU-AROCLS",
+          "#000000",
+          "21999999_CHAS-PELM",
+          "#000000",
+          "21999999_SCLF-CPLQ",
+          "#000000",
+          "12303999_MMG-ARGL",
+          "#000000",
+          "12301199_PNG-MDST",
+          "#000000",
+          "11399999_PTSI-MCGB",
+          "#000000",
+          "11399999_UDG-FELS",
+          "#000000",
+          "13102999_BELF-ARSE",
+          "#000000",
+          "21999999_DBCA-QZITE",
+          "#000000",
+          "13303999_THOP-GD",
+          "#000000",
+          "13229999_CL-LMAR",
+          "#000000",
+          "23999999_INGN-GNSS",
+          "#000000",
+          "11303999_LBF-PYRR",
+          "#000000",
+          "13222149_BBSF-MDST",
+          "#000000",
+          "11303999_IB-BUXCLY",
+          "#000000",
+          "13229999_CL-TULA",
+          "#000000",
+          "13212499_SLI-SCON",
+          "#000000",
+          "13502999_MFS-MDST",
+          "#000000",
+          "39999999_UIPC-MBAR",
+          "#000000",
+          "11303999_LBF-BA",
+          "#000000",
+          "13102999_SSG-SDST",
+          "#000000",
+          "13222151_BAL-LMST",
+          "#000000",
+          "11303999_UBF-BA",
+          "#000000",
+          "9999999_TOOP-GD",
+          "#000000",
+          "21999999_DCLY-PSPE",
+          "#000000",
+          "13222129_DARL-LMST",
+          "#000000",
+          "13302999_RSF-SDSM",
+          "#000000",
+          "11303999_PSM-BUXCLY",
+          "#000000",
+          "13303999_TUPP-GD",
+          "#000000",
+          "13222149_MMS-SDAR",
+          "#000000",
+          "11399999_UIG-MCGB",
+          "#000000",
+          "13399999_NEGD2-GD",
+          "#000000",
+          "13222109_BAGL-SCAR",
+          "#000000",
+          "13599999_UDLC-FELS",
+          "#000000",
+          "11399999_UIG-RY",
+          "#000000",
+          "13303399_DONA-DI",
+          "#000000",
+          "13222149_BUNS-MDLM",
+          "#000000",
+          "13222109_DRUN-SDST",
+          "#000000",
+          "13302999_GOCF-COSD",
+          "#000000",
+          "13222129_KNM-LMMD",
+          "#000000",
+          "13303999_ARDP1-DI",
+          "#000000",
+          "13213699_GOLB-MDSA",
+          "#000000",
+          "21999999_DBOF-MLTU",
+          "#000000",
+          "13303999_FANP-GD",
+          "#000000",
+          "21999999_DBMF-PSSP",
+          "#000000",
+          "13222129_GRLF-LSMD",
+          "#000000",
+          "11399999_SGD-FELS",
+          "#000000",
+          "13222119_GNNS-SDST",
+          "#000000",
+          "21999999_DBCQ-QZITE",
+          "#000000",
+          "21999999_DAQC-DOLMST",
+          "#000000",
+          "21999999_DCMY-PSSP",
+          "#000000",
+          "11303999_MNG2-GN",
+          "#000000",
+          "13222129_GSBV-SARL",
+          "#000000",
+          "13222129_MEF-AROCLS",
+          "#000000",
+          "13599999_GILN-SDST",
+          "#000000",
+          "13223199_CVG-AROCLS",
+          "#000000",
+          "11399999_SHP-MCGB",
+          "#000000",
+          "21999999_DCCF-LMST",
+          "#000000",
+          "13399999_NEGD-GD",
+          "#000000",
+          "11303999_TPR-RY",
+          "#000000",
+          "13499999_UILC-FELS",
+          "#000000",
+          "13222109_HOLY-SCAR",
+          "#000000",
+          "21999999_DBPT-MDIAMT",
+          "#000000",
+          "11399999_UDG-GB",
+          "#000000",
+          "11303999_CAFD-GB",
+          "#000000",
+          "13222151_BACL-SDAR",
+          "#000000",
+          "13599999_TPG-GB",
+          "#000000",
+          "13103999_ENLE-SDST",
+          "#000000",
+          "13102999_BELF-DLAR",
+          "#000000",
+          "11303999_LBF-AND",
+          "#000000",
+          "13222151_BAL-LMMD",
+          "#000000",
+          "13599999_UIEC-QFP",
+          "#000000",
+          "21999999_UMMN-PESP",
+          "#000000",
+          "13222151_ARMA-LMAS",
+          "#000000",
+          "39999999_UIPC-SEPITE",
+          "#000000",
+          "9999999_ROCE1-GN",
+          "#000000",
+          "13222109_FEAR-SCON",
+          "#000000",
+          "21999999_DCRH-MLTU",
+          "#000000",
+          "13303999_BARP3-GN",
+          "#000000",
+          "13222109_BYLE-SDST",
+          "#000000",
+          "13303999_ARDP2-GD",
+          "#000000",
+          "11303999_MNG1-GN",
+          "#000000",
+          "13303999_BHAM-AND",
+          "#000000",
+          "11303999_BLE-BUXCLY",
+          "#000000",
+          "11303999_CAFD-AGG",
+          "#000000",
+          "11301999_LNG-CLLI",
+          "#000000",
+          "11399999_SGD-GNGP",
+          "#000000",
+          "13301199_TEDD-SDSM",
+          "#000000",
+          "13222149_MUSA-SDST",
+          "#000000",
+          "13222109_ANNA-SDSM",
+          "#000000",
+          "13504999_TVG-RY",
+          "#000000",
+          "13222129_BRVE-LMST",
+          "#000000",
+          "13222109_ULST-SARL",
+          "#000000",
+          "21999999_DBOF-PSSP",
+          "#000000",
+          "13223199_BYC-SCON",
+          "#000000",
+          "13222109_OMSG-SDSM",
+          "#000000",
+          "13223199_AF-STMD",
+          "#000000",
+          "13222109_COOH-SLMDST",
+          "#000000",
+          "11399999_UDG-AGG",
+          "#000000",
+          "21999999_DCCR-PSPE",
+          "#000000",
+          "21999999_DUNN-PSSP",
+          "#000000",
+          "13222151_CLSG-SDST",
+          "#000000",
+          "21999999_DUNN-LMST",
+          "#000000",
+          "13303999_SMSF-SDST",
+          "#000000",
+          "13222151_CDLM-CALSST",
+          "#000000",
+          "13213799_BCS-SDAR",
+          "#000000",
+          "13103999_ENLE-SCON",
+          "#000000",
+          "13303999_BARP2-GN",
+          "#000000",
+          "11303999_MNG4-GN",
+          "#000000",
+          "11303999_MNG5-GN",
+          "#000000",
+          "21999999_SLID-METR",
+          "#000000",
+          "21999999_DBMI-PEPS",
+          "#000000",
+          "13404999_SGGR-GN",
+          "#000000",
+          "11399999_SGD-GB",
+          "#000000",
+          "21999999_DCFS-PEL",
+          "#000000",
+          "21999999_MCA-PSSP",
+          "#000000",
+          "21999999_DCGN-MLTU",
+          "#000000",
+          "13222119_CADV-MDST",
+          "#000000",
+          "13222151_RIPO-LMST",
+          "#000000",
+          "21999999_DCFG-PSEP",
+          "#000000",
+          "13102999_BELF-BRSS",
+          "#000000",
+          "13222199_DLN-COSD",
+          "#000000",
+          "13299999_BYDN-BRSS",
+          "#000000",
+          "21999999_DBKT-QZITE",
+          "#000000",
+          "13213999_MG-SDSM",
+          "#000000",
+          "11399999_GARS-MCGB",
+          "#000000",
+          "13222129_CORE-SDST",
+          "#000000",
+          "21999999_DAFI-PELGP",
+          "#000000",
+          "13404999_LITG-ARGL",
+          "#000000",
+          "13504999_TVG-LAVA",
+          "#000000",
+          "21999999_GLLY-PSSP",
+          "#000000",
+          "11303999_COCL-CONG",
+          "#000000",
+          "13599999_UDLC-GD",
+          "#000000",
+          "13103999_ENLE-SDBR",
+          "#000000",
+          "13212999_CM-SDAR",
+          "#000000",
+          "21999999_DCCF-PSSP",
+          "#000000",
+          "13222151_CLLM-LMST",
+          "#000000",
+          "21999999_DCGN-PSSP",
+          "#000000",
+          "13499999_UILC-MZ",
+          "#000000",
+          "21999999_CORV-PSAMM",
+          "#000000",
+          "13499999_UILC-DI",
+          "#000000",
+          "21999999_DBTR-MLTU",
+          "#000000",
+          "21999999_DAOF-DOLMST",
+          "#000000",
+          "13102999_BELF-SDLM",
+          "#000000",
+          "13222109_KNLM-LSMD",
+          "#000000",
+          "11303999_UBF-AND",
+          "#000000",
+          "13303299_KEAD-SDAR",
+          "#000000",
+          "11303999_SHRD-FELS",
+          "#000000",
+          "13303299_ROCE4-GN",
+          "#000000",
+          "21999999_DBTR-LMST",
+          "#000000",
+          "11399999_SPG-MCGB",
+          "#000000",
+          "21999999_SLLE-PEPS",
+          "#000000",
+          "13223199_IS-COSD",
+          "#000000",
+          "13222149_LISG-MDLM",
+          "#000000",
+          "21999999_DBAF-PSAMM",
+          "#000000",
+          "13222129_RCLF-LMAR",
+          "#000000",
+          "11399999_CRD-MCGB",
+          "#000000",
+          "13303999_THOP-GN",
+          "#000000",
+          "13502999_DECG-SDAR",
+          "#000000",
+          "11399999_USG-MCGB",
+          "#000000",
+          "13222149_QYS-SDST",
+          "#000000",
+          "21999999_DBAF-LMST",
+          "#000000",
+          "13404999_LHTO-TO",
+          "#000000",
+          "13222119_RMM-ARGL",
+          "#000000",
+          "13222151_BALN-LSMD",
+          "#000000",
+          "21999999_DBLS-PSAMM",
+          "#000000",
+          "13222129_CRSF-SDSM",
+          "#000000",
+          "21999999_DBCS-PEL",
+          "#000000",
+          "13222129_BLWF-LMST",
+          "#000000",
+          "13399999_NEGD3-GD",
+          "#000000",
+          "13303999_TRBP-GN",
+          "#000000",
+          "21999999_DART-MLTU",
+          "#000000",
+          "13222151_CALM-LMST",
+          "#000000",
+          "21999999_DCCL-MLTU",
+          "#000000",
+          "21999999_DCAF-PSSP",
+          "#000000",
+          "21999999_GLLY-MLTU",
+          "#000000",
+          "9999999_DGHY-MDCO",
+          "#000000",
+          "13222109_TYRO-SARL",
+          "#000000",
+          "11399999_DUSI-MCGB",
+          "#000000",
+          "21999999_SOHI-PSPE",
+          "#000000",
+          "21999999_DBCU-MLPE",
+          "#000000",
+          "13502999_HEBA-SDAR",
+          "#000000",
+          "11303999_CAFD-GNGP",
+          "#000000",
+          "13302299_MDGR-GN",
+          "#000000",
+          "13601999_TGGR-GN",
+          "#000000",
+          "11399999_BYSI-MCGB",
+          "#000000",
+          "21999999_DBGQ-QZITE",
+          "#000000",
+          "13303999_BARP-GNGP",
+          "#000000",
+          "21999999_DBBG-PSAMM",
+          "#000000",
+          "13222151_DHSH-MDLM",
+          "#000000",
+          "13222151_OKPT-LSMD",
+          "#000000",
+          "13222109_MOYS-SCAR",
+          "#000000",
+          "13599999_CRGD-GD",
+          "#000000",
+          "11399999_SGD-MCGB",
+          "#000000",
+          "13222129_MYLF-ARLMST",
+          "#000000",
+          "13222109_DALM-ARLMST",
+          "#000000",
+          "13222129_DML-LMAS",
+          "#000000",
+          "13303399_CSSL-COSD",
+          "#000000",
+          "21999999_DBCL-MELD",
+          "#000000",
+          "11399999_SGD-AGG",
+          "#000000",
+          "13222119_CASP-LSMD",
+          "#000000",
+          "13222119_AMM-MDST",
+          "#000000",
+          "11399999_UIG-GB",
+          "#000000",
+          "13599999_CPLF-BA",
+          "#000000",
+          "13222151_KEEN-MDST",
+          "#000000",
+          "21999999_CKOH-PEPS",
+          "#000000",
+          "21999999_LMGR-PSEP",
+          "#000000",
+          "13222151_CDLM-LMST",
+          "#000000",
+          "13303299_BLLY-COSD",
+          "#000000",
+          "11399999_MSI-MCGB",
+          "#000000",
+          "13303399_CSSL-LATU",
+          "#000000",
+          "13303199_CUPY-GD",
+          "#000000",
+          "21999999_BYGN-GNSS",
+          "#000000",
+          "21999999_DART-PSSP",
+          "#000000",
+          "11399999_FHS-MCGB",
+          "#000000",
+          "13222109_NAVN-LSMD",
+          "#000000",
+          "21999999_GAA-PSSP",
+          "#000000",
+          "21999999_DCBF-LMST",
+          "#000000",
+          "21999999_DCSG-MLTU",
+          "#000000",
+          "13222151_BANN-SDST",
+          "#000000",
+          "13502999_STRO-SDST",
+          "#000000",
+          "21999999_GLEP-PEL",
+          "#000000",
+          "13222109_EGS-COSD",
+          "#000000",
+          "13222151_AASA-SDAR",
+          "#000000",
+          "13404299_LIBC-ARSD",
+          "#000000",
+          "13399999_NEGD-DI",
+          "#000000",
+          "13222119_BLM-MDST",
+          "#000000",
+          "11399999_SSI-MCGB",
+          "#000000",
+          "13222119_BRC-COSD",
+          "#000000",
+          "12303999_REDA-COSD",
+          "#000000",
+          "21999999_REEL-CPLQ",
+          "#000000",
+          "13599999_POGR-GN",
+          "#000000",
+          "13599999_CMGR-GN",
+          "#000000",
+          "13599999_BERG-GN",
+          "#000000",
+          "21999999_DCGC-MLTU",
+          "#000000",
+          "13599999_UIEC-TO",
+          "#000000",
+          "21999999_DCRH-PSSP",
+          "#000000",
+          "13303299_ROCE3-GN",
+          "#000000",
+          "21999999_DBNF-PSAMM",
+          "#000000",
+          "21999999_DCBF-PSPE",
+          "#000000",
+          "9999999_ROCE2-GN",
+          "#000000",
+          "11303999_MNG3-GN",
+          "#000000",
+          "11303999_TDER-RY",
+          "#000000",
+          "13301199_SHAN-SDSM",
+          "#000000",
+          "13303299_ARDP3-GD",
+          "#000000",
+          "13222129_TPMS-SDSM",
+          "#000000",
+          "13222109_OWSA-SDAR",
+          "#000000",
+          "21999999_DCIS-PSEP",
+          "#000000",
+          "13399999_NEGD1-GD",
+          "#000000",
+          "21999999_MLD-PSAMM",
+          "#000000",
+          "#808080"
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "legend-groups": [
+      {
+        "name": "PMTILES",
+        "layers": [
+          "bedrock-pmtiles"
+        ]
+      }
+    ]
+  }
+}

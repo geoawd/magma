@@ -1,0 +1,35 @@
+{
+  "version": 8,
+  "name": "Geological linear features",
+  "sources": {
+    "linear": {
+      "type": "vector",
+      "url": "pmtiles://data/linear.pmtiles"
+    }
+  },
+  "layers": [
+    {
+      "id": "linear",
+      "type": "line",
+      "source": "linear",
+      "source-layer": "mylayer",
+      "metadata": {
+        "theme-layer": "linear-pmtiles",
+        "legend-label": "Geological linear features"
+      },
+      "paint": {
+        "line-color": "#666666",
+        "line-width": 1.5,
+        "line-opacity": 0.9
+      }
+    }
+  ],
+  "metadata": {
+    "legend-groups": [
+      {
+        "name": "PMTILES",
+        "layers": ["linear-pmtiles"]
+      }
+    ]
+  }
+}

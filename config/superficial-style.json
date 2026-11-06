@@ -1,0 +1,35 @@
+{
+  "version": 8,
+  "name": "Superficial geology",
+  "sources": {
+    "superficial": {
+      "type": "vector",
+      "url": "pmtiles://data/superficial.pmtiles"
+    }
+  },
+  "layers": [
+    {
+      "id": "superficial",
+      "type": "fill",
+      "source": "superficial",
+      "source-layer": "mylayer",
+      "metadata": {
+        "theme-layer": "superficial-pmtiles",
+        "legend-label": "Superficial geology"
+      },
+      "paint": {
+        "fill-color": "#c6c6c6",
+        "fill-opacity": 0.55,
+        "fill-outline-color": "#6f6f6f"
+      }
+    }
+  ],
+  "metadata": {
+    "legend-groups": [
+      {
+        "name": "PMTILES",
+        "layers": ["superficial-pmtiles"]
+      }
+    ]
+  }
+}

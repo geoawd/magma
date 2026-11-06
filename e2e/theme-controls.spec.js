@@ -493,6 +493,24 @@ test('saved-session prompt offers only Resume and Reset app', async ({ page }) =
   await expect(reset).toBeFocused();
 });
 
+test('PMTiles stay hidden while the saved-session prompt is open', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('mapviewer.session.v1', JSON.stringify({
+      version: 1,
+      view: { center: [-6, 54], zoom: 8 }
+    }));
+  });
+  await page.reload();
+
+  await expect(page.getByRole('dialog', { name: 'Resume your previous session?' })).toBeVisible();
+  const visibilities = await page.evaluate(() => window.MAP_STYLE.layers
+    .filter(layer => ['bedrock-pmtiles', 'linear-pmtiles', 'superficial-pmtiles']
+      .includes(layer.metadata?.['theme-layer']))
+    .map(layer => layer.layout?.visibility));
+  expect(visibilities).toHaveLength(3);
+  expect(visibilities.every(visibility => visibility === 'none')).toBe(true);
+});
+
 test('resuming a saved terrain model updates its model dropdown', async ({ page }) => {
   const savedSession = {
     version: 1,
@@ -597,6 +615,47 @@ test('Site Investigations exposes its vector layers and updates their map visibi
       call.layerId.startsWith('Site_Reports') && call.visibility === 'none'
     )
   )).toBe(true);
+});
+
+test('PMTILES theme activates its layers and Add Data can add them to another theme', async ({ page }) => {
+  const theme = page.getByRole('combobox', { name: 'Theme' });
+  const labels = ['Bedrock geology', 'Geological linear features', 'Superficial geology'];
+  await theme.selectOption({ label: 'PMTILES' });
+
+  for (const label of labels) {
+    const layer = page.getByRole('checkbox', { name: label, exact: true });
+    await expect(layer).toBeVisible();
+    await expect(layer).toBeChecked();
+  }
+  const bedrockStyle = await page.evaluate(() => {
+    const layer = window.__mapInstance.getStyle().layers.find(
+      candidate => candidate.metadata?.['theme-layer'] === 'bedrock-pmtiles'
+    );
+    return {
+      fillExpression: layer.paint['fill-color'][0],
+      firstLegendLabel: layer.metadata.legend.entries[0].label
+    };
+  });
+  expect(bedrockStyle).toEqual({
+    fillExpression: 'match',
+    firstLegendLabel: 'LOUGHROS GROUP AND FALCARRAGH PELITES (UNDIFFERENTIATED) - QUARTZITE, SEMIPELITE AND PELITE'
+  });
+
+  await theme.selectOption({ label: 'Site Investigations' });
+  for (const label of labels) {
+    await expect(page.getByRole('checkbox', { name: label, exact: true })).toBeHidden();
+  }
+
+  await page.getByRole('button', { name: 'Add data to the current theme' }).click();
+  const group = page.locator('#addDataList fieldset[data-group-name="PMTILES"]');
+  await expect(group).toBeVisible();
+  await group.getByRole('button', { name: 'Expand PMTILES' }).click();
+  const superficial = group.locator('input[data-kind="layer"][data-id="superficial-pmtiles"]');
+  await superficial.check();
+  await page.getByRole('button', { name: 'Add selected' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Superficial geology', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Bedrock geology', exact: true })).toBeHidden();
+  await expect(page.getByRole('checkbox', { name: 'Geological linear features', exact: true })).toBeHidden();
 });
 
 test('Tellus Geophysics exposes its raster groups and toggles a COG layer', async ({ page }) => {

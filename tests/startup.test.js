@@ -178,7 +178,7 @@ test('styles merge datasets, rewrite sources, and hand off to the app module', a
         { id: 'background', type: 'background' },
         { id: 'shared', type: 'circle', source: 'tiles', 'source-layer': 'FirstLayer' }
       ],
-      metadata: { 'mapsplat:legend-groups': [{ name: 'First group', layers: ['FirstLayer'] }] }
+      metadata: { 'legend-groups': [{ name: 'First group', layers: ['FirstLayer'] }] }
     },
     'second-style.json': {
       version: 8,
@@ -187,7 +187,7 @@ test('styles merge datasets, rewrite sources, and hand off to the app module', a
         { id: 'background', type: 'background' },
         { id: 'shared', type: 'circle', source: 'tiles', 'source-layer': 'SecondLayer' }
       ],
-      metadata: { 'mapsplat:legend-groups': [{ name: 'Second group', layers: ['SecondLayer'] }] }
+      metadata: { 'legend-groups': [{ name: 'Second group', layers: ['SecondLayer'] }] }
     }
   };
   const fetchCalls = [];
@@ -219,7 +219,7 @@ test('styles merge datasets, rewrite sources, and hand off to the app module', a
     'second__shared'
   ]);
   assert.equal(browser.window.MAP_STYLE.layers[2].source, 'second__tiles');
-  assert.deepEqual(plain(browser.window.MAP_STYLE.metadata['mapsplat:legend-groups']), [
+  assert.deepEqual(plain(browser.window.MAP_STYLE.metadata['legend-groups']), [
     { name: 'First group', layers: ['FirstLayer'] },
     { name: 'Second group', layers: ['SecondLayer'] }
   ]);
@@ -227,6 +227,80 @@ test('styles merge datasets, rewrite sources, and hand off to the app module', a
     src: script.src,
     type: script.type
   })), [{ src: 'js/app.js', type: 'module' }]);
+  assert.deepEqual(browser.errors, []);
+});
+
+test('styles preserve per-dataset styles, merge legend groups, and apply initial visibility', async () => {
+  const fillExpression = ['match', ['get', 'LEX_RCS_I'], 'formation-a', '#b0edb0', '#808080'];
+  const lineColor = '#666666';
+  const responses = {
+    'bedrock-style.json': {
+      version: 8,
+      sources: { bedrock: { type: 'vector', url: 'original-bedrock' } },
+      layers: [{
+        id: 'bedrock',
+        type: 'fill',
+        source: 'bedrock',
+        'source-layer': 'mylayer',
+        metadata: { 'theme-layer': 'bedrock-pmtiles' },
+        paint: { 'fill-color': fillExpression }
+      }],
+      metadata: {
+        'legend-groups': [{ name: 'PMTILES', layers: ['bedrock-pmtiles'] }]
+      }
+    },
+    'linear-style.json': {
+      version: 8,
+      sources: { linear: { type: 'vector', url: 'original-linear' } },
+      layers: [{
+        id: 'linear',
+        type: 'line',
+        source: 'linear',
+        'source-layer': 'mylayer',
+        metadata: { 'theme-layer': 'linear-pmtiles' },
+        paint: { 'line-color': lineColor }
+      }],
+      metadata: {
+        'legend-groups': [{ name: 'PMTILES', layers: ['linear-pmtiles'] }]
+      }
+    }
+  };
+  const fetchCalls = [];
+  const browser = makeStylesBrowser({
+    layerDefaults: {
+      'bedrock-pmtiles': false,
+      'linear-pmtiles': true
+    },
+    datasets: [{
+      id: 'bedrock-pmtiles',
+      style: 'bedrock-style.json',
+      pmtiles: 'data/bedrock.pmtiles'
+    }, {
+      id: 'linear-pmtiles',
+      style: 'linear-style.json',
+      pmtiles: 'data/linear.pmtiles'
+    }]
+  }, async url => {
+    fetchCalls.push(url);
+    return { ok: true, json: async () => responses[url] };
+  });
+
+  assert.equal(await browser.startup, 'app');
+  assert.deepEqual(fetchCalls, ['bedrock-style.json', 'linear-style.json']);
+  assert.deepEqual(plain(browser.window.DATASET_LAYERS), {
+    'bedrock-pmtiles': ['bedrock-pmtiles'],
+    'linear-pmtiles': ['linear-pmtiles']
+  });
+  assert.equal(browser.window.MAP_STYLE.sources['bedrock-pmtiles__bedrock'].url, 'pmtiles://data/bedrock.pmtiles');
+  assert.equal(browser.window.MAP_STYLE.sources['linear-pmtiles__linear'].url, 'pmtiles://data/linear.pmtiles');
+  assert.deepEqual(plain(browser.window.MAP_STYLE.layers[0].paint['fill-color']), fillExpression);
+  assert.equal(browser.window.MAP_STYLE.layers[1].paint['line-color'], lineColor);
+  assert.equal(browser.window.MAP_STYLE.layers[0].layout.visibility, 'none');
+  assert.equal(browser.window.MAP_STYLE.layers[1].layout.visibility, 'visible');
+  assert.deepEqual(plain(browser.window.MAP_STYLE.metadata['legend-groups']), [{
+    name: 'PMTILES',
+    layers: ['bedrock-pmtiles', 'linear-pmtiles']
+  }]);
   assert.deepEqual(browser.errors, []);
 });
 

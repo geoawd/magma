@@ -74,14 +74,33 @@ window.CONFIG = {
 //  Datasets - PMTILES
 ///////////////////////////////////////////////////////////////////////////
 // Vector datasets: each has its own .pmtiles and style.json. Layers from all datasets share one legend.
-//   id (unique) | style (style.json path) | pmtiles (optional: overrides the file named in that style) | name (optional legend group if the style has none)
+//   id | style (complete MapLibre style) | pmtiles (overrides the style URL) | name (optional legend group)
 // Themes can use `datasets: ['geol']` to switch on every layer from a dataset, and/or `
 // layers: [...]` for individual layers.
 // Remove `datasets` to use `styleUrl` alone.
 ///////////////////////////////////////////////////////////////////////////
 
   datasets: [
+    {
+      id: 'linear-pmtiles',
+      style: 'config/linear-style.json',
+      pmtiles: 'data/linear.pmtiles',
+      name: 'Linear features'
+    },
+    {
+      id: 'superficial-pmtiles',
+      style: 'config/superficial-style.json',
+      pmtiles: 'data/superficial.pmtiles',
+      name: 'Superficial geology'
+    },
+    {
+      id: 'bedrock-pmtiles',
+      style: 'config/bedrock.json',
+      pmtiles: 'data/bedrock.pmtiles',
+      name: 'Bedrock geology'
+    },
   ],
+  
   styleUrl: 'config/style.json',
 
   // Applied to COGs without configured classes, including Tellus Magnetics.
@@ -119,7 +138,11 @@ window.CONFIG = {
 //  Layer Visibility on startup
 ///////////////////////////////////////////////////////////////////////////
   
-  layerDefaults: {}, // vector source-layer names enabled at startup, e.g. { Boreholes: true }
+  layerDefaults: {
+    'bedrock-pmtiles': false,
+    'linear-pmtiles': false,
+    'superficial-pmtiles': false
+  },
 
 ///////////////////////////////////////////////////////////////////////////
 //  Overlays XYZ / WMS etc
@@ -1933,7 +1956,7 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
 //  Groups
 ///////////////////////////////////////////////////////////////////////////
 // Named collections of datasets, vector layers, overlays and other groups, for use in a theme's `groups: [...]`.
-//   'Name': { datasets: [ids], layers: [source-layer names], overlays: [ids], groups: [other group names] }
+//   'Name': { datasets: [ids], layers: [source-layer names or theme-layer keys], overlays: [ids], groups: [other group names] }
 ///////////////////////////////////////////////////////////////////////////
 
   groups: {
@@ -2006,7 +2029,7 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
 ///////////////////////////////////////////////////////////////////////////
 // Theme Configuration
 ///////////////////////////////////////////////////////////////////////////
-// Themes: pick which layers are on. `layers` = source-layer names,
+// Themes: pick which layers are on. `layers` = source-layer names or style metadata keys,
 // `groups` = style groups, overlay groups, or named themes; `datasets` = dataset ids,
 // and `overlays` = overlay ids. Anything not listed is switched off. A theme with no keys shows everything.
 // Groups may name a style group, configured overlay group, or named theme.
@@ -2015,8 +2038,10 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
 ///////////////////////////////////////////////////////////////////////////
 
     themes: [
-      { name: 'Site Investigations', 
+      { name: 'Site Investigations',
       overlays: ['Geotechnical', 'esri_world_imagery', 'lot1_ortho_ni'] },
+      { name: 'Vector PMTiles',
+      datasets: ['linear-pmtiles', 'superficial-pmtiles', 'bedrock-pmtiles', ] },
       { name: 'Geology WMS',
       overlays: ['10K_bedrock', '10K_superficial', '10K_linear', '10K_mass_movement', '10K_artificial','10K_landform', '250K_bedrock', '250K_superficial', '250K_linear','esri_world_imagery'] },
       { name: 'Geophysics WMS', 
