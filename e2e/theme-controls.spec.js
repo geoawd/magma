@@ -131,10 +131,15 @@ test('enabled single-band COGs create configured contour layers lazily', async (
   contourIds)).toEqual(['match', ['get', 'level'], 1, '#30383b', '#123456']);
 });
 
-test('selecting a range-enabled DEM updates the visible hillshade source', async ({ page }) => {
+test('selecting a range-enabled DEM enables it without zooming until requested', async ({ page }) => {
   await page.getByRole('button', { name: 'Advanced mode' }).click();
   await page.locator('.terrain-tools').click();
+  await expect.poll(() => page.evaluate(() => !!window.__mapInstance)).toBe(true);
   const modelId = 'Ardtole_DTM';
+  const initialView = await page.evaluate(() => ({
+    center: window.__mapInstance.getCenter().toArray(),
+    zoom: window.__mapInstance.getZoom()
+  }));
   const sourceId = await page.evaluate(id =>
     `dtm-hillshade-${window.CONFIG.terrain.models.findIndex(model => model.id === id)}`, modelId);
   const rangeResponse = page.waitForResponse(response =>
@@ -146,15 +151,19 @@ test('selecting a range-enabled DEM updates the visible hillshade source', async
   await expect.poll(() => page.evaluate(() =>
     window.__mapInstance?.getLayoutProperty('hillshade', 'visibility'))).toBe('visible');
   await rangeResponse;
-  const extentCenter = await page.evaluate(async id => {
-    const model = window.CONFIG.terrain.models.find(item => item.id === id);
-    const { bbox } = await window.MaplibreCOGProtocol.getCogMetadata(new URL(model.cog, location.href).href);
-    return [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2];
-  }, modelId);
+  const selectedView = await page.evaluate(() => ({
+    center: window.__mapInstance.getCenter().toArray(),
+    zoom: window.__mapInstance.getZoom()
+  }));
+  expect(selectedView).toEqual(initialView);
+
+  const extentCenter = [-7.25, 54.25];
+  await page.evaluate(() => {
+    window.MaplibreCOGProtocol.getCogMetadata = async () => ({ bbox: [-7.3, 54.2, -7.2, 54.3] });
+  });
+  await page.getByRole('button', { name: 'Zoom to selected DEM extent' }).click();
   await expect.poll(() => page.evaluate(center =>
     window.__mapInstance.getBounds().contains(center), extentCenter)).toBe(true);
-  await expect.poll(() => page.evaluate(() =>
-    window.__mapInstance.getZoom())).toBeGreaterThan(8);
 });
 
 test('terrain refuses a DEM server that ignores byte-range requests', async ({ page }) => {

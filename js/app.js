@@ -1527,6 +1527,7 @@ async function loadGeojsonStyle(w) {
 
 const isUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u.trim());
 const ICON_SLIDERS = '<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>';
+const ICON_ZOOM = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M4 4l6 6M20 15v5h-5m5 0-6-6"/></svg>';
 const ICON_COLOR_RAMP = '<svg viewBox="0 0 24 24"><path d="M3 20h18M4 20V5M20 20V3"/><rect x="7" y="13" width="3" height="7" rx=".5" style="fill:#3288bd;stroke:none"/><rect x="12" y="9" width="3" height="11" rx=".5" style="fill:#66c2a5;stroke:none"/><rect x="17" y="5" width="2" height="15" rx=".5" style="fill:#d7191c;stroke:none"/></svg>';
 const ICON_INFO = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 const ICON_EYE = '<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -3592,6 +3593,103 @@ function styleLayerLabel(style, key) {
   const layer = style.layers.find(candidate => styleLayerKey(candidate) === key);
   return layer?.metadata?.['legend-label'] || key.replace(/_/g, ' ');
 }
+function normalizeDatasetBounds(bounds) {
+  const extent = Array.isArray(bounds) && bounds.length === 2 && bounds.every(point =>
+    Array.isArray(point) && point.length === 2)
+    ? [bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1]]
+    : bounds;
+  return Array.isArray(extent) && extent.length === 4 && extent.every(Number.isFinite) &&
+    extent[0] >= -180 && extent[2] <= 180 && extent[1] >= -90 && extent[3] <= 90 &&
+    extent[0] <= extent[2] && extent[1] <= extent[3] ? extent : null;
+}
+function geojsonBounds(data) {
+  const bounds = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = coordinates => {
+    if (!Array.isArray(coordinates)) return;
+    if (coordinates.length >= 2 && Number.isFinite(coordinates[0]) && Number.isFinite(coordinates[1])) {
+      bounds[0] = Math.min(bounds[0], coordinates[0]);
+      bounds[1] = Math.min(bounds[1], coordinates[1]);
+      bounds[2] = Math.max(bounds[2], coordinates[0]);
+      bounds[3] = Math.max(bounds[3], coordinates[1]);
+      return;
+    }
+    coordinates.forEach(visit);
+  };
+  const visitGeometry = geometry => {
+    if (geometry?.type === 'GeometryCollection') geometry.geometries?.forEach(visitGeometry);
+    else visit(geometry?.coordinates);
+  };
+  (data?.features || []).forEach(feature => visitGeometry(feature.geometry));
+  return normalizeDatasetBounds(bounds);
+}
+function zoomToDatasetExtent(getBounds, label, maxZoom) {
+  Promise.resolve().then(getBounds).then(bounds => {
+    const extent = normalizeDatasetBounds(bounds);
+    if (!extent) throw new Error('No valid geographic extent is available for this dataset.');
+    const zoomLimit = typeof maxZoom === 'function' ? maxZoom() : maxZoom;
+    if (extent[0] === extent[2] || extent[1] === extent[3]) {
+      map.flyTo({ center: [(extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2],
+        zoom: Number.isFinite(zoomLimit) ? zoomLimit : 14, duration: 700 });
+    } else {
+      map.fitBounds([[extent[0], extent[1]], [extent[2], extent[3]]], {
+        padding: 40, maxZoom: Number.isFinite(zoomLimit) ? zoomLimit : 17, duration: 700
+      });
+    }
+  }).catch(error => {
+    const message = `Could not zoom to ${label}: ${error.message}`;
+    console.error(message, error);
+    toast(message);
+  });
+}
+function zoomButton(label, getBounds, maxZoom) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'tbtn dataset-zoom';
+  button.innerHTML = ICON_ZOOM;
+  button.title = `Zoom to ${label} extent`;
+  button.setAttribute('aria-label', button.title);
+  button.onclick = event => {
+    event.stopPropagation();
+    zoomToDatasetExtent(getBounds, label, maxZoom);
+  };
+  return button;
+}
+function vectorLayerBounds(layer, style) {
+  const source = style.sources[layer.source];
+  if (source?.bounds) return normalizeDatasetBounds(source.bounds);
+  if (!/^pmtiles:\/\//.test(source?.url || '')) {
+    throw new Error('Add bounds to the map source configuration to enable zoom-to-extent.');
+  }
+  const url = new URL(source.url.replace('pmtiles://', ''), location.href).href;
+  return new pmtiles.PMTiles(url).getHeader().then(header =>
+    normalizeDatasetBounds([header.minLon, header.minLat, header.maxLon, header.maxLat]));
+}
+async function overlayBounds(overlay) {
+  if (overlay.bounds) return normalizeDatasetBounds(overlay.bounds);
+  if (overlay.hillshade || overlay.contours) {
+    if (!activeTerrainModel) throw new Error('No DEM is selected.');
+    const metadata = await window.MaplibreCOGProtocol.getCogMetadata(
+      new URL(activeTerrainModel.cog, location.href).href
+    );
+    return normalizeDatasetBounds(metadata.bbox);
+  }
+  if (overlay.cog) {
+    const metadata = await window.MaplibreCOGProtocol.getCogMetadata(new URL(overlay.cog, location.href).href);
+    return normalizeDatasetBounds(metadata.bbox);
+  }
+  if (overlay.geojson) {
+    await loadGeojsonData(overlay.id);
+    const loader = geojsonLoaders.get(overlay.id);
+    if (loader?.status !== 'loaded') throw new Error(`Could not load ${overlay.name || overlay.id} to determine its extent.`);
+    return geojsonBounds(loader.data);
+  }
+  throw new Error('Add geographic bounds to this layer configuration to enable zoom-to-extent.');
+}
+function overlayHasZoomableExtent(overlay) {
+  if (arcgisLegendRequest(overlay)) return false;
+  return !!normalizeDatasetBounds(overlay.bounds) || !!overlay.cog || !!overlay.geojson ||
+    !!overlay.hillshade || !!overlay.contours;
+}
 ///////////////////////////////////////////////////////////////////////////
 // Builds vector layer groups and controls from the active MapLibre style.
 ///////////////////////////////////////////////////////////////////////////
@@ -3643,7 +3741,10 @@ function buildLegend() {
       const row = document.createElement('div');
       row.className = 'grprow';
       const tools = layerTools(0, infoFor(sl, g.name), v => setTransparency(sl, v));
-      row.append(collapser(gl, CONFIG.collapseLayers), gchk, ...(tools.infoBtn ? [tools.infoBtn] : []), tools.btn);
+      const sourceLayer = st.layers.find(layer => styleLayerKey(layer) === sl);
+      const extentButton = zoomButton(layerLabel, () => vectorLayerBounds(sourceLayer, st));
+      row.append(collapser(gl, CONFIG.collapseLayers), gchk, extentButton,
+        ...(tools.infoBtn ? [tools.infoBtn] : []), tools.btn);
       gl.append(row, ...(tools.infoPanel ? [tools.infoPanel] : []), tools.panel);
       const boxes = [];
       const clsEntries = expanded.filter(e => e.cls);
@@ -5655,9 +5756,18 @@ function buildOverlayLegend() {
           ? '<label class="trow">Model <select class="terrain-model">' + terrainModels.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('') + '</select></label>'
           : '';
         d.innerHTML = '<div class="grprow"><span class="cspace"></span><label class="lname"><input type="checkbox"> <span>' + esc(w.name) + '</span></label>' +
-          '<button class="tbtn terrain-tools advanced-only" type="button" title="Terrain settings" aria-label="Terrain settings" aria-expanded="false">' + ICON_SLIDERS + '</button></div>' +
-          '<div class="lpanel terrain-panel advanced-only" hidden>' + (modelSelect ? modelSelect : '') + '<label class="trow">Exaggeration <input class="terrain-exaggeration" type="range" min="1" max="3" step="0.1" value="' + terrainExaggeration + '"><span class="tval"></span></label></div>';
-        terrainCb = d.querySelector('input');
+            '<button class="tbtn terrain-zoom" type="button"></button>' +
+            '<button class="tbtn terrain-tools advanced-only" type="button" title="Terrain settings" aria-label="Terrain settings" aria-expanded="false">' + ICON_SLIDERS + '</button></div>' +
+            '<div class="lpanel terrain-panel advanced-only" hidden>' + (modelSelect ? modelSelect : '') + '<label class="trow">Exaggeration <input class="terrain-exaggeration" type="range" min="1" max="3" step="0.1" value="' + terrainExaggeration + '"><span class="tval"></span></label></div>';
+          const terrainZoom = zoomButton('selected DEM', () => {
+            if (!activeTerrainModel) throw new Error('No DEM is selected.');
+            return window.MaplibreCOGProtocol.getCogMetadata(
+              new URL(activeTerrainModel.cog, location.href).href
+            ).then(metadata => metadata.bbox);
+          }, () => activeTerrainModel?.maxzoom);
+          terrainZoom.classList.add('terrain-zoom');
+          d.querySelector('.terrain-zoom').replaceWith(terrainZoom);
+          terrainCb = d.querySelector('input');
         terrainCb.onchange = () => setTerrain3D(terrainCb.checked && !terrainGroupHidden, false);
         const modelPicker = d.querySelector('.terrain-model');
         if (modelPicker) {
@@ -5781,6 +5891,9 @@ function buildOverlayLegend() {
         w.hillshade ? hillshadeControlsMarkup() : w.contours ? contourControlsMarkup() : geojsonControls || cogControls);
       const rowEl = d.querySelector('.grprow');
       if (w.legendUrl || arcgisLegendRequest(w)) rowEl.prepend(collapser(d, CONFIG.collapseLayers)); else rowEl.insertAdjacentHTML('afterbegin', '<span class="cspace"></span>');
+      if (overlayHasZoomableExtent(w)) {
+        rowEl.appendChild(zoomButton(w.name || w.id, () => overlayBounds(w), w.maxzoom));
+      }
       if (geojsonLoader) {
         const classifyButton = document.createElement('button');
         classifyButton.type = 'button';
@@ -6523,22 +6636,6 @@ async function setTerrainModel(id) {
   }
   if (hillshadeLayerExists || hillshadeVisible) addHillshadeLayer(model, terrainLayerBeforeId, hillshadeVisible);
   setupTerrainContours(model, terrainLayerBeforeId);
-  try {
-    const metadata = await window.MaplibreCOGProtocol.getCogMetadata(new URL(model.cog, location.href).href);
-    const bounds = metadata.bbox;
-    if (!Array.isArray(bounds) || bounds.length !== 4 || !bounds.every(Number.isFinite)) {
-      throw new Error('The DEM does not provide a valid geographic extent.');
-    }
-    map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], {
-      padding: 40,
-      maxZoom: Number.isFinite(model.maxzoom) ? model.maxzoom : 16,
-      duration: 700
-    });
-  } catch (error) {
-    const message = `Could not zoom to ${model.name || model.id}: ${error.message}`;
-    console.error(message, error);
-    toast(message);
-  }
 }
 ///////////////////////////////////////////////////////////////////////////
 // Enables or disables 3D terrain and synchronizes map pitch and controls.

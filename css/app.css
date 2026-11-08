@@ -299,6 +299,7 @@
   .grprow .lname { flex: 1; min-width: 0; }
   .tbtn { width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 0; background: none; border-radius: 4px; color: var(--muted); flex: none; }
   .tbtn:hover, .tbtn[aria-expanded=true] { background: var(--hover); color: var(--ink); }
+  .tbtn.dataset-zoom, .tbtn.terrain-zoom { color: #234b6b; }
   .tbtn svg, .lpanel a svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
   .infopanel .ititle { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
   .infopanel .irow { margin-top: 7px; overflow-wrap: anywhere; }

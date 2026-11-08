@@ -149,7 +149,8 @@ window.CONFIG = {
 ///////////////////////////////////////////////////////////////////////////
 // WMS:  { id: 'w1', name: 'My WMS', url: 'https://example.org/wms', layers: 'geology_50k', version: '1.3.0' },
 // XYZ:  { id: 'x1', name: 'My tiles', tiles: 'https://example.org/{z}/{x}/{y}.png', maxzoom: 18 },
-// Optional on any overlay: group, opacity (0-1), visible (true/false), attribution, minzoom, maxzoom, legendUrl (image),
+// Optional on any overlay: group, opacity (0-1), visible (true/false), attribution, minzoom, maxzoom, WGS84 bounds [west, south, east, north],
+//   legendUrl (image),
 //   info (https link shown as an 'i' link in the layer's panel)
 // For COGs, set resampling to 'nearest' or 'bilinear' (default: nearest for color rasters);
 //   hillshade controls are hidden by default; set hillshade_option: true to show them and enable hillshade initially.
