@@ -27,8 +27,10 @@ test('map viewer exposes a logical heading hierarchy', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'MAGMA geoscience map viewer' })).toBeVisible();
+  await expect(page.locator('#legendPage')).toHaveClass(/active/);
   await expect(page.getByRole('heading', { level: 2, name: 'Legend' })).toBeVisible();
   await page.getByRole('button', { name: 'Information', exact: true }).click();
+  await expect(page.locator('#aboutPage')).toHaveClass(/active/);
   await expect(page.getByRole('heading', { level: 2, name: 'Information' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 3, name: 'Help' })).toBeVisible();
 });
