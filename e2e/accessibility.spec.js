@@ -1,5 +1,17 @@
 import { expect, test } from '@playwright/test';
 
+test('skip link is first in tab order and focuses the main map region', async ({ page }) => {
+  await page.route('https://tile.openstreetmap.org/**', route => route.abort());
+  await page.goto('/');
+
+  const skipLink = page.getByRole('link', { name: 'Skip to map' });
+  await page.keyboard.press('Tab');
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeInViewport();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main')).toBeFocused();
+});
+
 test('location search suggestions are announced and keyboard operable', async ({ page }) => {
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
   await page.route('https://nominatim.openstreetmap.org/search**', route => route.fulfill({
