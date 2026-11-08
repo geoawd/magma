@@ -135,7 +135,8 @@
         <input id="geoIn" type="search" placeholder="Place or grid ref, e.g. J 3374 7396" aria-label="Search for a place or Irish grid reference" autocomplete="off">
         <button id="geoGo" title="Search" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500"/><path d="m16 16 5 5"/></svg></button>
       </div>
-      <ul id="geoList" hidden></ul>
+      <ul id="geoList" aria-label="Location search results" hidden></ul>
+      <div id="geoStatus" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
     </div>
     <div id="mapinfo">
       <div id="cogValues"></div>

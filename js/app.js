@@ -6668,22 +6668,29 @@ function parseGrid(q) {
 }
 let geoMarker = null;
 const geoList = $('geoList');
-const geoMsg = t => { geoList.innerHTML = `<li class="msg">${esc(t)}</li>`; geoList.hidden = false; };
+const geoStatus = $('geoStatus');
+const geoMsg = text => {
+  geoStatus.textContent = text;
+  geoList.innerHTML = `<li class="msg">${esc(text)}</li>`;
+  geoList.hidden = false;
+};
 function goTo(lngLat, label, bbox) {
   geoList.hidden = true;
+  geoStatus.textContent = `Location selected: ${label}.`;
   if (geoMarker) geoMarker.remove();
   geoMarker = new maplibregl.Marker({ color: '#e8590c' }).setLngLat(lngLat)
     .setPopup(new maplibregl.Popup({ offset: 24 }).setText(label)).addTo(map);
   geoMarker.togglePopup();
   if (bbox) map.fitBounds(bbox, { padding: 40, maxZoom: 17 }); else map.flyTo({ center: lngLat, zoom: 16 });
   if (isMobile() && tool) openTool(tool);
+  $('geoIn').focus();
 }
 ///////////////////////////////////////////////////////////////////////////
 // Resolves a place name, coordinate, or Irish Grid reference and navigates there.
 ///////////////////////////////////////////////////////////////////////////
 async function geoSearch() {
   const q = $('geoIn').value.trim();
-  if (!q) { geoList.hidden = true; return; }
+  if (!q) { geoList.hidden = true; geoStatus.textContent = ''; return; }
   const g = parseGrid(q);
   if (g) {
     const ll = proj4('EPSG:29902', 'EPSG:4326', [g.E, g.N]);
@@ -6702,15 +6709,19 @@ async function geoSearch() {
     const pick = x => goTo([Number(x.lon), Number(x.lat)], x.display_name,
       x.boundingbox && [[Number(x.boundingbox[2]), Number(x.boundingbox[0])], [Number(x.boundingbox[3]), Number(x.boundingbox[1])]]);
     if (res.length === 1) return pick(res[0]);
-    geoList.innerHTML = res.map((x, i) => `<li tabindex="0" data-i="${i}">${esc(x.display_name)}</li>`).join('');
-    geoList.querySelectorAll('li').forEach(li => {
-      li.onclick = () => pick(res[li.dataset.i]);
-      li.onkeydown = e => { if (e.key === 'Enter') pick(res[li.dataset.i]); };
+    geoStatus.textContent = `${res.length} locations found. Choose a result.`;
+    geoList.innerHTML = res.map((x, i) =>
+      `<li><button type="button" class="geo-result" data-i="${i}">${esc(x.display_name)}</button></li>`).join('');
+    geoList.querySelectorAll('.geo-result').forEach(button => {
+      button.onclick = () => pick(res[button.dataset.i]);
     });
   } catch (e) { geoMsg('Search failed. Check your connection and try again.'); }
 }
 $('geoGo').onclick = geoSearch;
-$('geoIn').addEventListener('keydown', e => { if (e.key === 'Enter') geoSearch(); if (e.key === 'Escape') geoList.hidden = true; });
+$('geoIn').addEventListener('keydown', e => {
+  if (e.key === 'Enter') geoSearch();
+  if (e.key === 'Escape') { geoList.hidden = true; geoStatus.textContent = ''; }
+});
 $('geoIn').addEventListener('search', () => { if (!$('geoIn').value) { geoList.hidden = true; if (geoMarker) { geoMarker.remove(); geoMarker = null; } } });
 map.on('click', () => { geoList.hidden = true; });
 
