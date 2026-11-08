@@ -12,6 +12,16 @@ test('skip link is first in tab order and focuses the main map region', async ({
   await expect(page.locator('#main')).toBeFocused();
 });
 
+test('results expose a live count and a labeled dataset button group', async ({ page }) => {
+  await page.route('https://tile.openstreetmap.org/**', route => route.abort());
+  await page.goto('/');
+
+  await expect(page.locator('#count')).toHaveAttribute('role', 'status');
+  await expect(page.locator('#count')).toHaveAttribute('aria-live', 'polite');
+  await expect(page.locator('#tabs')).toHaveAttribute('role', 'group');
+  await expect(page.locator('#tabs')).toHaveAttribute('aria-label', 'Result datasets');
+});
+
 test('location search suggestions are announced and keyboard operable', async ({ page }) => {
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
   await page.route('https://nominatim.openstreetmap.org/search**', route => route.fulfill({

@@ -6464,7 +6464,7 @@ function renderTable(feats, label) {
     tabRows = []; tabCols = [];
   } else {
     $('tabs').innerHTML = names.map(n =>
-      `<button class="tab${n === activeTab ? ' on' : ''}" data-tab="${esc(n)}">${esc(n.replace(/_/g, ' '))} (${groups[n].length})</button>`).join('');
+      `<button type="button" class="tab${n === activeTab ? ' on' : ''}" data-tab="${esc(n)}" aria-pressed="${n === activeTab}">${esc(n.replace(/_/g, ' '))} (${groups[n].length})</button>`).join('');
     document.querySelectorAll('#tabs .tab').forEach(b => b.onclick = () => { activeTab = b.dataset.tab; renderTable(feats, label); });
     const sourceRows = groups[activeTab];
     tabCols = [...new Set(sourceRows.flatMap(f => Object.keys(f.properties)))];

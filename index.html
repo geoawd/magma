@@ -149,7 +149,7 @@
     <div id="panelSplitter" role="separator" aria-label="Resize results panel" aria-orientation="horizontal"
       aria-valuemin="150" aria-valuenow="240" aria-valuemax="600" tabindex="0"></div>
   <div id="panel">
-    <header><span id="count"></span>
+    <header><span id="count" role="status" aria-live="polite" aria-atomic="true"></span>
       <div>
         <button id="csvBtn">Export CSV</button>
         <button id="xlsxBtn" hidden>Export filtered Boreholes to XLSX</button>
@@ -158,7 +158,7 @@
         <button id="closeBtn">Close</button>
       </div>
     </header>
-    <div id="tabs"></div>
+    <div id="tabs" role="group" aria-label="Result datasets"></div>
     <section id="jsonControls" hidden>
       <div id="jsonActiveFilters" role="group" aria-label="Active filters"></div>
     </section>
