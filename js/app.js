@@ -6471,9 +6471,9 @@ function renderTable(feats, label) {
     const searchable = activeThemeName === 'Boreholes' && activeTab === 'Boreholes';
     $('xlsxBtn').hidden = !searchable;
     const filterRow = searchable
-      ? `<tr class="vector-filter-row">${tabCols.map(field => `<th><input class="vector-filter-input" type="search" data-field="${esc(field)}" aria-label="Search ${esc(field)}" placeholder="Search" value="${esc(tableFilters[field] || '')}"></th>`).join('')}</tr>`
+      ? `<tr class="vector-filter-row"><th aria-hidden="true"></th>${tabCols.map(field => `<th><input class="vector-filter-input" type="search" data-field="${esc(field)}" aria-label="Search ${esc(field)}" placeholder="Search" value="${esc(tableFilters[field] || '')}"></th>`).join('')}</tr>`
       : '';
-    wrap.innerHTML = `<table><thead><tr>${tabCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>${filterRow}</thead><tbody></tbody></table>`;
+    wrap.innerHTML = `<table><thead><tr><th scope="col">Zoom</th>${tabCols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr>${filterRow}</thead><tbody></tbody></table>`;
     const renderRows = () => {
       const filters = searchable ? Object.entries(tableFilters).filter(([, value]) => value) : [];
       tabRows = sourceRows.filter(feature => filters.every(([field, value]) =>
@@ -6481,17 +6481,24 @@ function renderTable(feats, label) {
       ));
       const body = wrap.querySelector('tbody');
       body.innerHTML = tabRows.map((feature, index) =>
-        `<tr data-i="${index}" title="Click to zoom to this record">${tabCols.map(field => `<td>${cell(feature.properties[field])}</td>`).join('')}</tr>`
+        `<tr data-i="${index}" title="Click a row to zoom to this record, or use its Zoom button"><td><button type="button" class="json-row-zoom vector-row-zoom" aria-label="Zoom to result ${index + 1}"${feature.geometry ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4.5 4.5"></path></svg></button></td>${tabCols.map(field => `<td>${cell(feature.properties[field])}</td>`).join('')}</tr>`
       ).join('');
-      body.querySelectorAll('tr').forEach(tr => tr.onclick = event => {
-        if (event.target.closest('a')) return;
-        const feature = tabRows[tr.dataset.i];
+      const zoomToFeature = feature => {
         if (!feature.geometry) return;
         const center = centreOf(feature.geometry);
         if (ring) ring.remove();
         const element = document.createElement('div'); element.className = 'ring';
         ring = new maplibregl.Marker({ element }).setLngLat(center).addTo(map);
         map.flyTo({ center, zoom: Math.max(map.getZoom(), 14) });
+      };
+      body.querySelectorAll('.vector-row-zoom').forEach(button => button.onclick = event => {
+        event.stopPropagation();
+        zoomToFeature(tabRows[button.closest('tr').dataset.i]);
+      });
+      body.querySelectorAll('tr').forEach(tr => tr.onclick = event => {
+        if (event.target.closest('a, button')) return;
+        const feature = tabRows[tr.dataset.i];
+        zoomToFeature(feature);
       });
     };
     wrap.querySelectorAll('.vector-filter-input').forEach(input => input.oninput = () => {
