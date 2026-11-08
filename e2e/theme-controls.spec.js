@@ -32,6 +32,90 @@ test('app title and main landmark identify Sliabh Data', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Select by box' })).toHaveAttribute('aria-pressed', 'false');
 });
 
+async function isolateAndRestoreCategory(layerRow) {
+  const buttons = layerRow.locator('.category-isolate');
+  await expect.poll(() => buttons.evaluateAll(items =>
+    items.findIndex(button => button.getClientRects().length > 0))).toBeGreaterThanOrEqual(0);
+  const index = await buttons.evaluateAll(items =>
+    items.findIndex(button => button.getClientRects().length > 0));
+  const isolate = buttons.nth(index);
+  const row = isolate.locator('xpath=ancestor::*[@data-order-key][1]');
+  const name = (await isolate.getAttribute('aria-label')).replace(/^Show only /, '');
+  const before = await row.locator('.ent input').evaluateAll(inputs => inputs.map(input => input.checked));
+
+  await isolate.click();
+  await expect(isolate).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => row.locator('.ent input').evaluateAll(inputs =>
+    inputs.filter(input => input.checked).length)).toBe(1);
+  const status = row.locator('.category-isolation-status');
+  await expect(status).toContainText(`Showing only: ${name}`);
+
+  await status.getByRole('button', { name: 'Restore previous' }).click();
+  await expect(status).toBeHidden();
+  await expect.poll(() => row.locator('.ent input').evaluateAll(inputs =>
+    inputs.map(input => input.checked))).toEqual(before);
+  await expect(isolate).toHaveAttribute('aria-pressed', 'false');
+}
+
+test('GeoJSON and vector categories isolate and restore prior selections', async ({ page }) => {
+  await isolateAndRestoreCategory(page.locator('#legend [data-order-key="overlay:Boreholes"]'));
+
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Vector PMTiles' });
+  const bedrock = page.locator('#legend [data-order-key="layer:bedrock-pmtiles"]');
+  await bedrock.locator('.grprow input[type="checkbox"]').check();
+  await expect.poll(() => bedrock.locator('.category-isolate').count())
+    .toBeGreaterThan(0);
+  await expect.poll(() => bedrock.locator('.ent:not(.nv)').count())
+    .toBeGreaterThan(0);
+  await isolateAndRestoreCategory(bedrock);
+});
+
+test('GeoJSON filterlegend keeps in-view classes through isolation and restore', async ({ page }) => {
+  const features = [
+    { type: 'Feature', properties: { Aquifer: 'Basalts' }, geometry: {
+      type: 'Polygon', coordinates: [[[299900, 369900], [300100, 369900], [300100, 370100], [299900, 370100], [299900, 369900]]]
+    } },
+    { type: 'Feature', properties: { Aquifer: 'Carboniferous Limestones' }, geometry: {
+      type: 'Polygon', coordinates: [[[300200, 369900], [300400, 369900], [300400, 370100], [300200, 370100], [300200, 369900]]]
+    } }
+  ];
+  await page.route('https://data.better-open-data.com/lidar_zstd/hydro.geojson', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/geo+json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({ type: 'FeatureCollection', features })
+    }));
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Hydrogeology' });
+  const layer = page.locator('#legend [data-order-key="overlay:Bedrock Aquifer Classification"]');
+  await layer.locator('.grprow input[type="checkbox"]').check();
+  await page.evaluate(() => {
+    const map = window.__mapInstance;
+    const center = window.proj4('EPSG:29902', 'EPSG:4326', [300150, 370000]);
+    map.jumpTo({ center, zoom: 9 });
+    const bounds = map.getBounds();
+    const square = ([lng, lat], size = 0.005) => [[
+      [lng - size, lat - size], [lng + size, lat - size],
+      [lng + size, lat + size], [lng - size, lat + size], [lng - size, lat - size]
+    ]];
+    const nearby = window.proj4('EPSG:29902', 'EPSG:4326', [300350, 370000]);
+    const outside = [bounds.getEast() + 0.05, (bounds.getSouth() + bounds.getNorth()) / 2];
+    map.getSource('Bedrock Aquifer Classification').setData({
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { Aquifer: 'Basalts' }, geometry: { type: 'Polygon', coordinates: square(center) } },
+        { type: 'Feature', properties: { Aquifer: 'Carboniferous Limestones' }, geometry: { type: 'Polygon', coordinates: square(nearby) } },
+        { type: 'Feature', properties: { Aquifer: 'Dalradian' }, geometry: { type: 'Polygon', coordinates: square(outside) } }
+      ]
+    });
+  });
+  await expect.poll(() => layer.locator('.geojson-class-entry:not(.nv)').count())
+    .toBe(2);
+  await isolateAndRestoreCategory(layer);
+  await expect.poll(() => layer.locator('.geojson-class-entry:not(.nv)').count())
+    .toBe(2);
+});
+
 test('inactive-theme COGs do not make byte-range requests at startup', async ({ page }) => {
   await page.waitForTimeout(500);
   const overlayCogPaths = await page.evaluate(() => window.CONFIG.overlays

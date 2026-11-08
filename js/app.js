@@ -1319,11 +1319,72 @@ function setClassFilters(ids, state) {
 // Switch one legend entry on/off. Class entries work by filtering the layer; hiding every class hides the layer.
 function applyEntry(en, on) {
   if (!en.cls) return setVis(en.ids, on);
+  en.isolationController?.clear();
+  if (en.checkbox) en.checkbox.checked = on;
   const st = en.state;
   on ? st.hidden.delete(en.cls) : st.hidden.add(en.cls);
   setClassFilters(en.ids, st);
   setVis(en.ids, st.hidden.size < st.total);
   updateScaleState();
+}
+function createCategoryIsolationStatus() {
+  const element = document.createElement('div');
+  element.className = 'category-isolation-status';
+  element.hidden = true;
+  element.setAttribute('role', 'status');
+  const message = document.createElement('span');
+  const restore = document.createElement('button');
+  restore.type = 'button';
+  restore.textContent = 'Restore previous';
+  element.append(message, restore);
+  return { element, message, restore };
+}
+function createCategoryIsolationController(status, onChange) {
+  let active = null;
+  const refresh = (record, isolated) => {
+    const { state } = record;
+    setClassFilters(record.ids, state);
+    setVis(record.ids, state.hidden.size < state.total);
+    updateScaleState();
+    record.entries.forEach(entry => {
+      if (entry.checkbox) entry.checkbox.checked = !state.hidden.has(entry.category);
+      if (entry.button) {
+        const selected = isolated && entry.category === record.category;
+        entry.button.setAttribute('aria-pressed', String(selected));
+        entry.button.title = selected
+          ? 'Restore previous category selection'
+          : `Show only ${entry.category.text}`;
+        entry.button.setAttribute('aria-label', entry.button.title);
+      }
+    });
+    status.message.textContent = isolated ? `Showing only: ${record.category.text}` : '';
+    status.element.hidden = !isolated;
+    record.onChange?.();
+  };
+  const restore = () => {
+    if (!active) return;
+    const previous = active;
+    active = null;
+    previous.state.hidden = new Set(previous.hiddenBefore);
+    refresh(previous, false);
+  };
+  status.restore.onclick = restore;
+  return {
+    clear: restore,
+    isolate(category, state, entries, ids, categoryChange) {
+      if (active?.state === state && active.category === category) {
+        restore();
+        return;
+      }
+      const hiddenBefore = active?.state === state
+        ? active.hiddenBefore
+        : new Set(state.hidden);
+      if (active && active.state !== state) restore();
+      active = { category, state, entries, ids, hiddenBefore, onChange: categoryChange };
+      state.hidden = new Set(entries.filter(entry => entry.category !== category).map(entry => entry.category));
+      refresh(active, true);
+    }
+  };
 }
 
 function swatch(l, dot, color) {   // `color` overrides the layer colour (used for data-driven classes)
@@ -1450,6 +1511,8 @@ function renderGeojsonLegend(w) {
     }
     container.appendChild(heading);
   }
+  geojsonInViewGroups.splice(0, geojsonInViewGroups.length,
+    ...geojsonInViewGroups.filter(group => group.sl !== w.id));
   const categories = geojsonLegendCategories(w, loader);
   const filterCategories = categories.filter(category => category.test);
   const ids = w.layerIds || [w.id];
@@ -1460,23 +1523,71 @@ function renderGeojsonLegend(w) {
     orig: loader.originalFilters
   } : null;
   loader.classInputs = [];
+  loader.categoryIsolationController = null;
+  const isolationStatus = filterCategories.length ? createCategoryIsolationStatus() : null;
+  const isolationEntries = [];
+  const inViewItems = [];
+  const filterInView = w.filterlegend === true &&
+    filterCategories.length > 0 && filterCategories.every(category => category.field);
+  let inViewNote = null;
+  if (filterInView) {
+    inViewNote = document.createElement('div');
+    inViewNote.className = 'hint lnote';
+    container.appendChild(inViewNote);
+  }
+  const syncCategoryVisibility = () => {
+    const anyVisible = loader.classState.hidden.size < loader.classState.total;
+    if (loader.rootCheckbox) loader.rootCheckbox.checked = anyVisible;
+    loader.rowElement?.classList.toggle('legend-off', !anyVisible);
+  };
+  if (isolationStatus) {
+    container.appendChild(isolationStatus.element);
+    loader.categoryIsolationController = createCategoryIsolationController(
+      isolationStatus, syncCategoryVisibility
+    );
+  }
   categories.forEach(category => {
-    const entry = document.createElement('label');
+    const entry = document.createElement('div');
     entry.className = 'ent geojson-class-entry';
     if (!category.test) entry.classList.add('static');
-    entry.innerHTML = `${category.test ? '<input type="checkbox" checked>' : ''}${geojsonSwatch(w, category.color, loader.geometryTypes)}<span>${esc(category.text)}</span>`;
-    const input = entry.querySelector('input');
+    const label = document.createElement('label');
+    label.className = 'geojson-class-toggle';
+    label.innerHTML = `${category.test ? '<input type="checkbox" checked>' : ''}${geojsonSwatch(w, category.color, loader.geometryTypes)}<span>${esc(category.text)}</span>`;
+    entry.appendChild(label);
+    const input = label.querySelector('input');
     if (input) {
+      const state = loader.classState;
+      if (filterInView) inViewItems.push({ lab: entry, category, cb: input });
+      const control = { category, checkbox: input, button: null };
+      isolationEntries.push(control);
+      if (loader.categoryIsolationController) {
+        control.button = categoryIsolationButton(
+          category, loader.categoryIsolationController, state, isolationEntries, ids, syncCategoryVisibility
+        );
+        entry.appendChild(control.button);
+      }
       input.onchange = () => {
-        applyEntry({ ids, cls: category, state: loader.classState }, input.checked);
-        const anyVisible = loader.classState.hidden.size < loader.classState.total;
-        if (loader.rootCheckbox) loader.rootCheckbox.checked = anyVisible;
-        loader.rowElement?.classList.toggle('legend-off', !anyVisible);
+        applyEntry({
+          ids, cls: category, state, checkbox: input,
+          isolationController: loader.categoryIsolationController
+        }, input.checked);
+        syncCategoryVisibility();
       };
       loader.classInputs.push(input);
     }
     container.appendChild(entry);
   });
+  if (filterInView) {
+    geojsonInViewGroups.push({
+      sl: w.id,
+      source: w.id,
+      queryLayers: ids,
+      gcb: loader.rootCheckbox,
+      items: inViewItems,
+      note: inViewNote,
+      visibleCategories: new Set()
+    });
+  }
   container.hidden = !container.childElementCount;
 }
 
@@ -1528,10 +1639,26 @@ async function loadGeojsonStyle(w) {
 const isUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u.trim());
 const ICON_SLIDERS = '<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>';
 const ICON_ZOOM = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M4 4l6 6M20 15v5h-5m5 0-6-6"/></svg>';
+const ICON_ISOLATE = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>';
 const ICON_COLOR_RAMP = '<svg viewBox="0 0 24 24"><path d="M3 20h18M4 20V5M20 20V3"/><rect x="7" y="13" width="3" height="7" rx=".5" style="fill:#3288bd;stroke:none"/><rect x="12" y="9" width="3" height="11" rx=".5" style="fill:#66c2a5;stroke:none"/><rect x="17" y="5" width="2" height="15" rx=".5" style="fill:#d7191c;stroke:none"/></svg>';
 const ICON_INFO = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 const ICON_EYE = '<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_EYE_OFF = '<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.2A11 11 0 0112 5c7 0 11 7 11 7a15 15 0 01-4 4.8M6.2 6.2C2.9 8.1 1 12 1 12s4 7 11 7a10 10 0 004.1-.9"/></svg>';
+function categoryIsolationButton(category, controller, state, entries, ids, onChange) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'category-isolate';
+  button.innerHTML = ICON_ISOLATE;
+  button.title = `Show only ${category.text}`;
+  button.setAttribute('aria-label', button.title);
+  button.setAttribute('aria-pressed', 'false');
+  button.onclick = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    controller.isolate(category, state, entries, ids, onChange);
+  };
+  return button;
+}
 // Small per-layer panel: transparency slider + optional info link. Returns { btn, panel }.
 const ICON_EXT = '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 
@@ -3586,6 +3713,7 @@ $('jsonClearBtn').onclick = clearJsonThemeFilters;
 $('jsonCopyBtn').onclick = copyJsonThemeLink;
 $('jsonExcelBtn').onclick = exportJsonThemeExcel;
 const inViewGroups = [];
+const geojsonInViewGroups = [];
 function styleLayerKey(layer) {
   return layer.metadata?.['theme-layer'] || layer['source-layer'];
 }
@@ -3750,25 +3878,50 @@ function buildLegend() {
       const clsEntries = expanded.filter(e => e.cls);
       const classToggles = CONFIG.classToggles || {};
       const toggleClasses = classToggles[sl] ?? classToggles['*'] ?? true;
-      const inView = CONFIG.legendInView && clsEntries.length > CONFIG.legendInView && clsEntries.every(e => e.cls.field);
+      const inView = CONFIG.filterlegend?.[sl] === true &&
+        clsEntries.length > 0 && clsEntries.every(e => e.cls.field);
       const tg = CONFIG.classToggles || {};
       const allowToggle = (sl in tg ? tg[sl] : tg['*']) !== false;
       const items = [];
       let note = null;
       if (inView) { note = document.createElement('div'); note.className = 'hint lnote'; gl.appendChild(note); }
+      const isolationStatus = clsEntries.length ? createCategoryIsolationStatus() : null;
+      const isolationEntries = new Map();
+      const isolationController = isolationStatus
+        ? createCategoryIsolationController(isolationStatus)
+        : null;
+      if (isolationStatus) gl.appendChild(isolationStatus.element);
       expanded.forEach(en => {
-        const lab = document.createElement('label');
+        const lab = document.createElement('div');
         const toggleEntry = !en.cls || toggleClasses;
         lab.className = 'ent' + (toggleEntry ? '' : ' static');
         const L = CONFIG.legendLabels || {};
         const text = en.cls ? (L[`${en.l.id}|${en.cls.text}`] ?? L[en.cls.text] ?? (en.cls.text === '__null__' ? '(no value)' : en.cls.text))
           : (L[en.l.id] || fmtFilter(en.l.filter) || en.l.id);
-        lab.innerHTML = `${toggleEntry ? `<input type="checkbox"${initialOn ? ' checked' : ''}>` : ''}${swatch(en.l, en.dot, en.cls && en.cls.color)}<span>${esc(text)}</span>`;
-        const cb = lab.querySelector('input');
+        const label = document.createElement('label');
+        label.className = 'ent-toggle';
+        label.innerHTML = `${toggleEntry ? `<input type="checkbox"${initialOn ? ' checked' : ''}>` : ''}${swatch(en.l, en.dot, en.cls && en.cls.color)}<span>${esc(text)}</span>`;
+        lab.appendChild(label);
+        const cb = label.querySelector('input');
         if (!allowToggle) lab.classList.add('static');   // key only: the hidden box stays ticked
         if (cb) {
+          en.checkbox = cb;
+          en.isolationController = isolationController;
           cb.onchange = () => applyEntry(en, cb.checked);
           boxes.push({ cb, en });
+        }
+        if (en.cls && cb && allowToggle) {
+          let stateEntries = isolationEntries.get(en.state);
+          if (!stateEntries) {
+            stateEntries = [];
+            isolationEntries.set(en.state, stateEntries);
+          }
+          const control = { category: en.cls, checkbox: cb, button: null };
+          stateEntries.push(control);
+          control.button = categoryIsolationButton(
+            en.cls, isolationController, en.state, stateEntries, Object.keys(en.state.orig)
+          );
+          lab.appendChild(control.button);
         }
         if (inView && en.cls) items.push({ lab, en, cb });
         gl.appendChild(lab);
@@ -3776,6 +3929,7 @@ function buildLegend() {
       const gcb = gchk.querySelector('input');
       const classIds = [...new Set(clsEntries.flatMap(en => en.ids))];
       const setAll = on => {
+        isolationController?.clear();
         gcb.checked = on;
         gl.classList.toggle('legend-off', !on);
         boxes.forEach(b => { b.cb.checked = on; applyEntry(b.en, on); });
@@ -3786,7 +3940,13 @@ function buildLegend() {
       ids.forEach(id => { registerLayerVisibility(id, initialOn); group.layerIds.add(id); });
       ctl.data[sl] = { set: setAll, theme: on => setThemeVisibility(ids, on), el: gl };
       if (initialOn) setAll(true);
-      if (inView) inViewGroups.push({ sl, gcb, items, note });
+      if (inView) {
+        inViewGroups.push({
+          sl, source: clsEntries[0].l.source,
+          queryLayers: ids, gcb, items, note,
+          visibleCategories: new Set()
+        });
+      }
       body.appendChild(gl);
     });
   });
@@ -3853,30 +4013,41 @@ function updateScaleState() {
   document.querySelectorAll('#legend [data-scale-id]').forEach(element => update(element, element.dataset.scaleId));
 }
 map.on('zoom', updateScaleState);
-// Class-coloured layers with many classes: list only the classes that have features in view (unticked ones stay so they can be re-enabled)
+// Per-layer `filterlegend` groups list only categories present in the current view.
 ///////////////////////////////////////////////////////////////////////////
 // Updates data-driven legend classes to reflect features in the current view.
 ///////////////////////////////////////////////////////////////////////////
 function updateInView() {
-  if (!inViewGroups.length || !map.getStyle()) return;
-  const cache = {};
-  const valsFor = (id, field) => cache[id + '|' + field] ||= (() => {
+  const groups = [...inViewGroups, ...geojsonInViewGroups];
+  if (!groups.length || !map.getStyle()) return;
+  const cache = new Map();
+  const valsFor = (layers, field) => {
+    const key = `${layers.join('|')}|${field}`;
+    if (cache.has(key)) return cache.get(key);
     const vals = new Set(), nums = [];
-    map.queryRenderedFeatures({ layers: [id] }).forEach(f => {
-      const v = f.properties[field];
+    map.queryRenderedFeatures({ layers }).forEach(f => {
+      const v = f.properties?.[field];
       vals.add(String(v ?? '__null__'));
       if (v != null && v !== '' && !isNaN(v)) nums.push(Number(v));
     });
-    return { vals, nums };
-  })();
-  inViewGroups.forEach(g => {
-    if (!g.gcb.checked || scaleState(g.sl).hidden) return;   // layer is off or out of scale: leave the list alone
+    const values = { vals, nums };
+    cache.set(key, values);
+    return values;
+  };
+  groups.forEach(g => {
+    const layers = g.queryLayers.filter(id => map.getLayer(id) &&
+      map.getLayoutProperty(id, 'visibility') !== 'none');
+    if (!g.gcb?.checked || scaleState(g.sl).hidden || !layers.length ||
+        (!map.isSourceLoaded(g.source) && !map.queryRenderedFeatures({ layers }).length)) return;
     let any = false;
-    g.items.forEach(({ lab, en, cb }) => {
-      const c = en.cls, { vals, nums } = valsFor(en.ids[0], c.field);
+    g.items.forEach(({ lab, en, category, cb }) => {
+      const c = en?.cls || category;
+      const { vals, nums } = valsFor(layers, c.field);
       const here = c.labels ? c.labels.some(x => vals.has(String(x)))
         : c.other ? [...vals].some(v => !c.all.has(v)) : nums.some(n => n >= c.lo && n < c.hi);
-      const show = here || !!(cb && !cb.checked);
+      if (here) g.visibleCategories.add(c);
+      else if (cb?.checked) g.visibleCategories.delete(c);
+      const show = g.visibleCategories.has(c);
       lab.classList.toggle('nv', !show);
       any = any || show;
     });
@@ -3884,6 +4055,16 @@ function updateInView() {
   });
 }
 map.on('idle', updateInView);
+const clearInViewCategories = () => [...inViewGroups, ...geojsonInViewGroups]
+  .forEach(group => group.visibleCategories.clear());
+map.on('movestart', clearInViewCategories);
+map.on('moveend', () => {
+  clearInViewCategories();
+  updateInView();
+});
+map.on('sourcedata', event => {
+  if ([...inViewGroups, ...geojsonInViewGroups].some(group => group.source === event.sourceId)) updateInView();
+});
 
 // ---------- Overlays (ArcGIS MapServer, WMS or XYZ) ----------
 function wmsTileUrl(w) {
@@ -5824,6 +6005,7 @@ function buildOverlayLegend() {
         if (w.contours) contoursVisible = cb.checked;
         if (w.hillshade && on) addHillshadeLayer(activeTerrainModel, terrainLayerBeforeId, false);
         if (geojsonLoader?.classState) {
+          geojsonLoader.categoryIsolationController?.clear();
           geojsonLoader.classState.hidden.clear();
           if (!on) geojsonLoader.classState.categories.forEach(category => geojsonLoader.classState.hidden.add(category));
           geojsonLoader.classInputs.forEach(input => { input.checked = on; });

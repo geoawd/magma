@@ -175,6 +175,7 @@ window.CONFIG = {
 //   visible: false,           // defaults to hidden
 //   minzoom: 10, maxzoom: 22, // display zoom range; does not defer the data request
 //   attribution: '&copy; Data provider',
+//   filterlegend: true, // only list attribute classes with features in the current view; defaults to false
 //   legendUrl: 'https://example.org/legend.png', // optional legend image
 //   info: 'https://example.org/about'             // optional info link
 // }
@@ -264,12 +265,13 @@ overlays: [
     minzoom: 9, maxzoom: 22,  
   },
 
-{ id: 'Bedrock Aquifer Classification', 
-    name: 'Bedrock Aquifer Classification', 
-    group: 'Bedrock Aquifer Classification', 
-    geojson: true,
-    geometryType: 'MultiPolygon',
-    url: 'https://data.better-open-data.com/lidar_zstd/hydro.geojson',
+{ id: 'Bedrock Aquifer Classification',
+name: 'Bedrock Aquifer Classification',
+group: 'Bedrock Aquifer Classification',
+geojson: true,
+filterlegend: true,
+geometryType: 'MultiPolygon',
+url: 'https://data.better-open-data.com/lidar_zstd/hydro.geojson',
     projection: 'EPSG:29902',
     styleUrl: 'config/hydrostyle.json',
     opacity: 0.7, 
@@ -2022,7 +2024,10 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
     { label: 'Contact', path: 'properties.contacts[0].organization' },
     { label: 'Email', path: 'properties.contacts[0].emails[0].value', format: 'email' }
   ],
-  legendInView: 12,           // layers with more classes than this only list the classes present in the map view (0 = always list all)
+  // Vector style-layer keys to filter by classes present in the current view; omitted keys default to false.
+  filterlegend: {
+    'bedrock-pmtiles': true  // opt in to showing only classes present in the map view; omitted layers default to false
+  },
   legendOther: false,         // true = also list the 'fallback' colour of a class-coloured layer as "Other"
   collapseLayers: false,      // true = start with each layer's classes collapsed
   search: { countrycodes: 'gb,ie', limit: 5 },   // place search (OpenStreetMap Nominatim); grid refs need no service
