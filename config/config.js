@@ -84,19 +84,19 @@ window.CONFIG = {
     {
       id: 'linear-pmtiles',
       style: 'config/linear-style.json',
-      pmtiles: 'data/linear.pmtiles',
+      pmtiles: 'https://data.better-open-data.com/lidar_zstd/linear.pmtiles',
       name: 'Linear features'
     },
     {
       id: 'superficial-pmtiles',
       style: 'config/superficial-style.json',
-      pmtiles: 'data/superficial.pmtiles',
+      pmtiles: 'https://data.better-open-data.com/lidar_zstd/superficial.pmtiles',
       name: 'Superficial geology'
     },
     {
       id: 'bedrock-pmtiles',
       style: 'config/bedrock.json',
-      pmtiles: 'data/bedrock.pmtiles',
+      pmtiles: 'https://data.better-open-data.com/lidar_zstd/bedrock.pmtiles',
       name: 'Bedrock geology'
     },
   ],
