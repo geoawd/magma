@@ -22,6 +22,17 @@ test('results expose a live count and a labeled dataset button group', async ({ 
   await expect(page.locator('#tabs')).toHaveAttribute('aria-label', 'Result datasets');
 });
 
+test('map viewer exposes a logical heading hierarchy', async ({ page }) => {
+  await page.route('https://tile.openstreetmap.org/**', route => route.abort());
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'MAGMA geoscience map viewer' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Legend' })).toBeVisible();
+  await page.getByRole('button', { name: 'Information', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Information' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 3, name: 'Help' })).toBeVisible();
+});
+
 test('location search suggestions are announced and keyboard operable', async ({ page }) => {
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
   await page.route('https://nominatim.openstreetmap.org/search**', route => route.fulfill({

@@ -83,6 +83,7 @@
   .dpage { display: none; width: var(--drawer); height: 100%; flex-direction: column; }
   .dpage.active { display: flex; }
   .dhead { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: 14px; }
+  .dhead .dtitle { margin: 0; font: inherit; }
   .dhead-actions { display: flex; align-items: center; gap: 6px; }
   .dhead > .dclose { border: 0; background: none; font-size: 18px; line-height: 1; padding: 2px 8px; }
   #advancedModeBtn { padding: 4px 8px; font-size: 11px; white-space: nowrap; }

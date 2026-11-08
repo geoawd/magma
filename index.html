@@ -41,7 +41,7 @@
   <div id="drawer">
     <div id="drawerDragHandle" role="separator" aria-label="Resize map tools panel" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="80" aria-valuenow="45" tabindex="0"></div>
     <section id="legendPage" class="dpage">
-      <div class="dhead"><span>Legend</span><div class="dhead-actions"><button id="advancedModeBtn" type="button" aria-label="Advanced mode" aria-pressed="false">Advanced mode</button><button class="dclose" aria-label="Close">&times;</button></div></div>
+      <div class="dhead"><h2 class="dtitle">Legend</h2><div class="dhead-actions"><button id="advancedModeBtn" type="button" aria-label="Advanced mode" aria-pressed="false">Advanced mode</button><button class="dclose" aria-label="Close">&times;</button></div></div>
       <div class="themebar" id="themeBar" hidden><select id="themeSel" aria-label="Theme"></select></div>
       <section id="addDataPanel" hidden aria-label="Add data to theme">
         <div class="add-data-head"><strong>Available data</strong><button id="addDataClose" type="button" aria-label="Close add data">&times;</button></div>
@@ -52,7 +52,7 @@
       <div class="dbody" id="legend"></div>
     </section>
     <section id="searchPage" class="dpage">
-      <div class="dhead"><span>Search</span><button class="dclose" aria-label="Close">&times;</button></div>
+      <div class="dhead"><h2 class="dtitle">Search</h2><button class="dclose" aria-label="Close">&times;</button></div>
       <div class="dbody form">
         <label for="searchLayer">Layer</label><select id="searchLayer"></select>
         <label>Fields to search</label><div id="searchFields"></div>
@@ -62,11 +62,11 @@
       </div>
     </section>
     <section id="aboutPage" class="dpage">
-      <div class="dhead"><span>Information</span><button class="dclose" aria-label="Close">&times;</button></div>
+      <div class="dhead"><h2 class="dtitle">Information</h2><button class="dclose" aria-label="Close">&times;</button></div>
       <div class="dbody">
         <!-- Edit the headings and text below. Add more sections by copying a <section class="lgroup"> block. -->
         <section class="lgroup">
-          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Help</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Help</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody info-copy">
             <p>To help get you started, take a quick, guided look at the map controls.</p>
             <div class="tour-actions">
@@ -99,25 +99,25 @@
           </ol>
         </template>
         <section class="lgroup">
-          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>About</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>About</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody info-copy">
             <p>An unofficial, experimental map viewer for Geological Survey of Northern Ireland datasets. Data is derived from Open Data or consumed via OGL services. The project is available on <a href="https://github.com/geoawd/pmtiles">Github</a></p>
           </div>
         </section>
         <section class="lgroup">
-          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Data Catalogue</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Data Catalogue</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody info-copy">
             <p>Browse GeoJSON and COG datasets, metadata, source URLs, and QGIS exports in the <a id="dataCatalogueLink" href="data-catalogue.html">data catalogue</a>.</p>
           </div>
         </section>
          <section class="lgroup">
-          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Copyright</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Copyright</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody info-copy">
             <p>Data is derived from data available under the OGLV3.</p>
           </div>
         </section>
         <section class="lgroup collapsed">
-          <h4 class="lghead"><button class="lgcollapse" type="button" aria-expanded="false"><span>Third-party notices</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h4>
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="false"><span>Third-party notices</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody"><pre id="thirdPartyNotices" class="notice-copy" aria-live="polite">Open Information to load notices.</pre></div>
         </section>
       </div>
@@ -126,6 +126,7 @@
 </div>
 
 <main id="main" tabindex="-1">
+  <h1 class="visually-hidden">MAGMA geoscience map viewer</h1>
   <div id="mapwrap">
     <div id="map"></div>
     <button id="jsonCopyBtn" class="json-action" type="button" aria-label="Copy a link to this page with filters applied" title="Copy a link to this page with filters applied" hidden>
