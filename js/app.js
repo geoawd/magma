@@ -18,6 +18,42 @@ import { createSpaceMouseController } from './spacemouse.js';
 
 window.maplibregl = maplibregl;
 const CONFIG = window.CONFIG;
+const USER_LAYERS_KEY = `mapviewer.user-layers${window.CONFIG_PROFILE === 'internal' ? '.internal' : ''}.v1`;
+function loadUserLayers() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(USER_LAYERS_KEY) || '[]');
+    if (!Array.isArray(saved)) return;
+    const ids = new Set((CONFIG.overlays || []).map(overlay => overlay.id));
+    saved.forEach(layer => {
+      if (!layer || layer.userAdded !== true || typeof layer.id !== 'string' || ids.has(layer.id) ||
+          typeof layer.name !== 'string' || typeof layer.group !== 'string' ||
+          !['wms', 'xyz', 'esri-rest'].includes(layer.serviceType)) return;
+      const restored = {
+        id: layer.id, name: layer.name, group: layer.group, userAdded: true,
+        serviceType: layer.serviceType, global: false, visible: true
+      };
+      if (layer.serviceType === 'wms' && typeof layer.url === 'string' && typeof layer.layers === 'string') {
+        try { httpServiceUrl(layer.url); } catch { return; }
+        restored.url = layer.url;
+        restored.layers = layer.layers;
+      } else if (layer.serviceType === 'xyz' && typeof layer.tiles === 'string') {
+        try { httpServiceUrl(layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
+        restored.tiles = layer.tiles;
+      } else if (layer.serviceType === 'esri-rest' &&
+          (typeof layer.url === 'string' || typeof layer.tiles === 'string')) {
+        try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
+        if (typeof layer.url === 'string') restored.url = layer.url;
+        if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
+      } else return;
+      ids.add(restored.id);
+      CONFIG.overlays ||= [];
+      CONFIG.overlays.push(restored);
+    });
+  } catch (error) {
+    console.warn('Saved user layers could not be read:', error);
+  }
+}
+loadUserLayers();
 const dataCatalogueLink = document.querySelector('#dataCatalogueLink');
 if (dataCatalogueLink && window.CONFIG_PROFILE === 'internal') {
   dataCatalogueLink.href = 'data-catalogue.html?profile=internal';
@@ -2597,6 +2633,162 @@ function openAddDataPanel() {
 $('addDataBtn').onclick = openAddDataPanel;
 $('addDataClose').onclick = closeAddDataPanel;
 $('addDataApply').onclick = applySelectedThemeData;
+$('addOwnLayerBtn').onclick = () => {
+  $('userLayerError').hidden = true;
+  $('userLayerError').textContent = '';
+  $('userLayerForm').reset();
+  $('userLayerGroup').value = 'user added layers';
+  $('userLayerWmsOptions').hidden = $('userLayerType').value !== 'wms';
+  $('userLayerWmsNames').required = $('userLayerType').value === 'wms';
+  $('userLayerDialog').showModal();
+  $('userLayerUrl').focus();
+};
+$('userLayerType').onchange = () => {
+  const isWms = $('userLayerType').value === 'wms';
+  $('userLayerWmsOptions').hidden = !isWms;
+  $('userLayerWmsNames').required = isWms;
+};
+$('userLayerCancel').onclick = () => $('userLayerDialog').close();
+function httpServiceUrl(value) {
+  let url;
+  try { url = new URL(value); } catch { throw new Error('Enter a complete service URL.'); }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
+    throw new Error('Service URLs must use HTTP or HTTPS and must not contain embedded credentials.');
+  return url;
+}
+const restoreTilePlaceholders = value => value.replace(/%7B(z|x|y)%7D/gi, '{$1}');
+async function validateWmsService(url, layerNames) {
+  const capabilitiesUrl = new URL(url.href);
+  capabilitiesUrl.searchParams.set('service', 'WMS');
+  capabilitiesUrl.searchParams.set('request', 'GetCapabilities');
+  const response = await fetch(capabilitiesUrl);
+  if (!response.ok) throw new Error(`WMS GetCapabilities returned HTTP ${response.status}.`);
+  const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
+  const rootName = xml.documentElement?.localName;
+  if (!['WMS_Capabilities', 'WMT_MS_Capabilities'].includes(rootName))
+    throw new Error('The URL did not return WMS capabilities. Check the service URL and browser access permissions.');
+  const availableNames = new Set();
+  [...xml.getElementsByTagNameNS('*', 'Layer')].forEach(layer => {
+    [...layer.children].find(child => child.localName === 'Name')?.textContent?.trim() &&
+      availableNames.add([...layer.children].find(child => child.localName === 'Name').textContent.trim());
+  });
+  const requestedNames = layerNames.split(',').map(name => name.trim()).filter(Boolean);
+  if (!requestedNames.length || requestedNames.some(name => !availableNames.has(name)))
+    throw new Error('Enter WMS layer name(s) listed by the service capabilities.');
+  return requestedNames.join(',');
+}
+function probeXyzTile(template) {
+  const sampleUrl = template.replace(/\{z\}/g, '0').replace(/\{x\}/g, '0').replace(/\{y\}/g, '0');
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const timeout = setTimeout(() => {
+      image.src = '';
+      reject(new Error('The XYZ test tile did not load in time.'));
+    }, 10000);
+    image.onload = () => {
+      clearTimeout(timeout);
+      resolve();
+    };
+    image.onerror = () => {
+      clearTimeout(timeout);
+      reject(new Error('The XYZ URL did not return a readable image tile.'));
+    };
+    image.src = sampleUrl;
+  });
+}
+async function validateEsriService(inputUrl) {
+  const serviceUrl = new URL(inputUrl.href);
+  const match = decodeURIComponent(serviceUrl.pathname).match(/^(.*\/MapServer)(?:\/\d+)?(?:\/tile\/(?:\{z\}|\d+)\/(?:\{y\}|\d+)\/(?:\{x\}|\d+))?\/?$/i);
+  if (!match) throw new Error('Enter an ArcGIS REST MapServer URL, optionally ending in /tile/{z}/{y}/{x}.');
+  serviceUrl.pathname = match[1];
+  serviceUrl.searchParams.set('f', 'json');
+  const response = await fetch(serviceUrl);
+  if (!response.ok) throw new Error(`ArcGIS REST returned HTTP ${response.status}.`);
+  let metadata;
+  try { metadata = await response.json(); }
+  catch { throw new Error('The ArcGIS REST URL did not return JSON service metadata.'); }
+  if (metadata.error || (!metadata.tileInfo && !Array.isArray(metadata.layers) && metadata.singleFusedMapCache !== true))
+    throw new Error('The URL is not a readable ArcGIS REST MapServer service.');
+  const baseUrl = new URL(inputUrl.href);
+  baseUrl.pathname = match[1];
+  if (metadata.tileInfo) {
+    baseUrl.pathname = `${match[1]}/tile/{z}/{y}/{x}`;
+    return { tiles: restoreTilePlaceholders(baseUrl.href) };
+  }
+  return { url: baseUrl.href };
+}
+function persistUserLayers(layers) {
+  localStorage.setItem(USER_LAYERS_KEY, JSON.stringify(layers));
+}
+async function submitUserLayer(event) {
+  event.preventDefault();
+  const submit = $('userLayerSubmit');
+  const errorOutput = $('userLayerError');
+  errorOutput.hidden = true;
+  errorOutput.textContent = '';
+  submit.disabled = true;
+  try {
+    const type = $('userLayerType').value;
+    const url = httpServiceUrl($('userLayerUrl').value.trim());
+    const name = $('userLayerName').value.trim();
+    const group = $('userLayerGroup').value.trim();
+    if (!name || !group) throw new Error('Enter a title and group for the layer.');
+    let source;
+    if (type === 'wms') {
+      const layers = await validateWmsService(url, $('userLayerWmsNames').value);
+      source = { url: url.href, layers };
+    } else if (type === 'xyz') {
+      const template = restoreTilePlaceholders(url.href);
+      if (!/\{z\}/.test(template) || !/\{x\}/.test(template) || !/\{y\}/.test(template))
+        throw new Error('XYZ tile URLs must contain {z}, {x}, and {y} placeholders.');
+      await probeXyzTile(template);
+      source = { tiles: template };
+    } else {
+      source = await validateEsriService(url);
+    }
+    const overlay = {
+      id: `user-layer-${crypto.randomUUID()}`, name, group, serviceType: type,
+      userAdded: true, global: false, visible: true, opacity: 1, ...source
+    };
+    const userLayers = [...(CONFIG.overlays || []).filter(layer => layer.userAdded), overlay];
+    persistUserLayers(userLayers);
+    CONFIG.overlays ||= [];
+    CONFIG.overlays.push(overlay);
+    try {
+      const firstSymbol = map.getStyle().layers.find(layer => layer.type === 'symbol');
+      addRasterLayer(overlay, firstSymbol?.id);
+      buildOverlayLegend([overlay]);
+    } catch (error) {
+      CONFIG.overlays = CONFIG.overlays.filter(layer => layer !== overlay);
+      if (map.getLayer(overlay.id)) map.removeLayer(overlay.id);
+      if (map.getSource(overlay.id)) map.removeSource(overlay.id);
+      persistUserLayers(userLayers.slice(0, -1));
+      throw error;
+    }
+    if (activeThemeName) {
+      const additions = themeAdditions.get(activeThemeName) || { layers: new Set(), overlays: new Set(), overlayGroups: new Set() };
+      additions.overlays.add(overlay.id);
+      themeAdditions.set(activeThemeName, additions);
+      if (!themeOverlays.includes(overlay.id)) themeOverlays.push(overlay.id);
+      ctl.ov[overlay.id]?.theme(true);
+      ctl.ov[overlay.id]?.el && (ctl.ov[overlay.id].el.hidden = false);
+      ctl.ov[overlay.id]?.set(true);
+      saveThemeAdditions();
+    }
+    updateManualRemovalControls();
+    populateSearchLayers();
+    updateArcgisLegendInView();
+    syncMapLayerOrder();
+    $('userLayerDialog').close();
+    closeAddDataPanel();
+  } catch (error) {
+    errorOutput.textContent = `Could not add layer: ${error.message}`;
+    errorOutput.hidden = false;
+  } finally {
+    submit.disabled = false;
+  }
+}
+$('userLayerForm').addEventListener('submit', submitUserLayer);
 async function activateJsonTheme(theme) {
   const config = await loadJsonThemeConfig(theme);
   const themeId = theme.jsonTheme;
@@ -5886,6 +6078,7 @@ function loadArcgisLegend(w) {
   });
 }
 const overlayLegendImages = new Map();
+const overlayLegendGroups = new Map();
 function loadOverlayLegendImage(w) {
   const container = overlayLegendImages.get(w.id);
   if (!container || !w.legendUrl || container.querySelector('img')) return;
@@ -5922,12 +6115,16 @@ map.on('moveend', updateArcgisLegendInView);
 ///////////////////////////////////////////////////////////////////////////
 // Builds grouped layer controls for configured raster and terrain overlays.
 ///////////////////////////////////////////////////////////////////////////
-function buildOverlayLegend() {
+function buildOverlayLegend(overlays = allOverlays()) {
   const lg = $('legend');
   const byGroup = {};
-  allOverlays().forEach(w => (byGroup[w.group || 'Overlays'] ||= []).push(w));
+  overlays.forEach(w => (byGroup[w.group || 'Overlays'] ||= []).push(w));
   Object.entries(byGroup).forEach(([name, list]) => {
-    const group = addGroup(lg, name);
+    let group = overlayLegendGroups.get(name);
+    if (!group) {
+      group = addGroup(lg, name);
+      overlayLegendGroups.set(name, group);
+    }
     const body = group.body;
     list.forEach(w => {
       if (w.terrain) {   // 3D on/off, in sync with the menu button

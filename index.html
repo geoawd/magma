@@ -48,6 +48,7 @@
         <div class="add-data-search"><input id="addDataSearch" type="search" aria-label="Search groups and layers" placeholder="Search groups and layers" autocomplete="off" disabled></div>
         <div id="addDataList"></div>
         <div class="add-data-actions"><button id="addDataApply" class="primary" type="button" disabled>Add selected</button></div>
+        <div class="add-data-own"><button id="addOwnLayerBtn" type="button">Add your own layer</button></div>
       </section>
       <div class="dbody" id="legend"></div>
     </section>
@@ -124,6 +125,33 @@
     </section>
   </div>
 </div>
+
+<dialog id="userLayerDialog" aria-labelledby="userLayerTitle">
+  <form id="userLayerForm">
+    <div class="user-layer-head"><h2 id="userLayerTitle">Add your own layer</h2></div>
+    <label for="userLayerUrl">Service URL</label>
+    <input id="userLayerUrl" type="url" required autocomplete="url" placeholder="https://example.org/...">
+    <label for="userLayerName">Title</label>
+    <input id="userLayerName" type="text" required maxlength="120">
+    <label for="userLayerGroup">Group</label>
+    <input id="userLayerGroup" type="text" required maxlength="80" value="user added layers">
+    <label for="userLayerType">Service type</label>
+    <select id="userLayerType">
+      <option value="wms">WMS</option>
+      <option value="xyz">XYZ tiles</option>
+      <option value="esri-rest">Esri REST MapServer</option>
+    </select>
+    <div id="userLayerWmsOptions" hidden>
+      <label for="userLayerWmsNames">WMS layer name(s)</label>
+      <input id="userLayerWmsNames" type="text" placeholder="e.g. geology_50k">
+    </div>
+    <p id="userLayerError" class="user-layer-error" role="alert" hidden></p>
+    <div class="user-layer-actions">
+      <button id="userLayerCancel" type="button">Cancel</button>
+      <button id="userLayerSubmit" class="primary" type="submit">Add layer</button>
+    </div>
+  </form>
+</dialog>
 
 <main id="main" tabindex="-1">
   <h1 class="visually-hidden">MAGMA geoscience map viewer</h1>
