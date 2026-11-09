@@ -5,6 +5,12 @@ const pixel = Buffer.from(
   'base64'
 );
 
+test.beforeEach(async ({ page }) => {
+  await page.route('https://tile.openstreetmap.org/**', route => route.abort());
+  await page.goto('/');
+  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
+});
+
 async function openUserLayerForm(page, type, url, title) {
   await page.getByRole('button', { name: 'Add data to the current theme' }).click();
   await page.getByRole('button', { name: 'Add your own layer' }).click();
