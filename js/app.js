@@ -33,12 +33,15 @@ function loadUserLayers() {
         serviceType: layer.serviceType, global: false, visible: true
       };
       if (layer.serviceType === 'wms' && typeof layer.url === 'string' && typeof layer.layers === 'string') {
+        try { httpServiceUrl(layer.url); } catch { return; }
         restored.url = layer.url;
         restored.layers = layer.layers;
       } else if (layer.serviceType === 'xyz' && typeof layer.tiles === 'string') {
+        try { httpServiceUrl(layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
         restored.tiles = layer.tiles;
       } else if (layer.serviceType === 'esri-rest' &&
           (typeof layer.url === 'string' || typeof layer.tiles === 'string')) {
+        try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
         if (typeof layer.url === 'string') restored.url = layer.url;
         if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
       } else return;
@@ -2653,6 +2656,7 @@ function httpServiceUrl(value) {
     throw new Error('Service URLs must use HTTP or HTTPS and must not contain embedded credentials.');
   return url;
 }
+const restoreTilePlaceholders = value => value.replace(/%7B(z|x|y)%7D/gi, '{$1}');
 async function validateWmsService(url, layerNames) {
   const capabilitiesUrl = new URL(url.href);
   capabilitiesUrl.searchParams.set('service', 'WMS');
@@ -2694,7 +2698,7 @@ function probeXyzTile(template) {
 }
 async function validateEsriService(inputUrl) {
   const serviceUrl = new URL(inputUrl.href);
-  const match = serviceUrl.pathname.match(/^(.*\/MapServer)(?:\/\d+)?(?:\/tile\/(?:\{z\}|\d+)\/(?:\{y\}|\d+)\/(?:\{x\}|\d+))?\/?$/i);
+  const match = decodeURIComponent(serviceUrl.pathname).match(/^(.*\/MapServer)(?:\/\d+)?(?:\/tile\/(?:\{z\}|\d+)\/(?:\{y\}|\d+)\/(?:\{x\}|\d+))?\/?$/i);
   if (!match) throw new Error('Enter an ArcGIS REST MapServer URL, optionally ending in /tile/{z}/{y}/{x}.');
   serviceUrl.pathname = match[1];
   serviceUrl.searchParams.set('f', 'json');
@@ -2709,7 +2713,7 @@ async function validateEsriService(inputUrl) {
   baseUrl.pathname = match[1];
   if (metadata.tileInfo) {
     baseUrl.pathname = `${match[1]}/tile/{z}/{y}/{x}`;
-    return { tiles: baseUrl.href };
+    return { tiles: restoreTilePlaceholders(baseUrl.href) };
   }
   return { url: baseUrl.href };
 }
@@ -2734,10 +2738,11 @@ async function submitUserLayer(event) {
       const layers = await validateWmsService(url, $('userLayerWmsNames').value);
       source = { url: url.href, layers };
     } else if (type === 'xyz') {
-      if (!/\{z\}/.test(url.href) || !/\{x\}/.test(url.href) || !/\{y\}/.test(url.href))
+      const template = restoreTilePlaceholders(url.href);
+      if (!/\{z\}/.test(template) || !/\{x\}/.test(template) || !/\{y\}/.test(template))
         throw new Error('XYZ tile URLs must contain {z}, {x}, and {y} placeholders.');
-      await probeXyzTile(url.href);
-      source = { tiles: url.href };
+      await probeXyzTile(template);
+      source = { tiles: template };
     } else {
       source = await validateEsriService(url);
     }
@@ -6073,6 +6078,7 @@ function loadArcgisLegend(w) {
   });
 }
 const overlayLegendImages = new Map();
+const overlayLegendGroups = new Map();
 function loadOverlayLegendImage(w) {
   const container = overlayLegendImages.get(w.id);
   if (!container || !w.legendUrl || container.querySelector('img')) return;
@@ -6109,12 +6115,16 @@ map.on('moveend', updateArcgisLegendInView);
 ///////////////////////////////////////////////////////////////////////////
 // Builds grouped layer controls for configured raster and terrain overlays.
 ///////////////////////////////////////////////////////////////////////////
-function buildOverlayLegend() {
+function buildOverlayLegend(overlays = allOverlays()) {
   const lg = $('legend');
   const byGroup = {};
-  allOverlays().forEach(w => (byGroup[w.group || 'Overlays'] ||= []).push(w));
+  overlays.forEach(w => (byGroup[w.group || 'Overlays'] ||= []).push(w));
   Object.entries(byGroup).forEach(([name, list]) => {
-    const group = addGroup(lg, name);
+    let group = overlayLegendGroups.get(name);
+    if (!group) {
+      group = addGroup(lg, name);
+      overlayLegendGroups.set(name, group);
+    }
     const body = group.body;
     list.forEach(w => {
       if (w.terrain) {   // 3D on/off, in sync with the menu button
