@@ -241,6 +241,15 @@
   #addDataList label[hidden] { display: none; }
   #addDataList input { flex: none; }
   .add-data-actions { justify-content: flex-end; border-top: 1px solid var(--line); border-bottom: 0; }
+  .add-data-own { padding: 8px 12px; border-top: 1px solid var(--line); }
+  .add-data-own button { width: 100%; }
+  #userLayerDialog { box-sizing: border-box; width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+  #userLayerDialog::backdrop { background: rgba(15, 23, 30, .58); }
+  #userLayerForm { display: grid; gap: 8px; padding: 16px; }
+  .user-layer-head h2 { margin: 0 0 8px; font-size: 18px; }
+  #userLayerForm input, #userLayerForm select { box-sizing: border-box; width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid #8a949e; border-radius: 5px; font: inherit; }
+  .user-layer-error { margin: 0; color: #a12020; }
+  .user-layer-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
   .lgroup { margin-bottom: 10px; }
   .lghead { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin: 0; padding: 0 3px 0 0; background: var(--rail-bg); color: #fff; font-size: 13px; font-weight: 600; border-radius: 5px; user-select: none; }
   .lghead:hover { background: #2b3a46; }
