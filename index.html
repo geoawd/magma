@@ -129,22 +129,10 @@
 <dialog id="userLayerDialog" aria-labelledby="userLayerTitle">
   <form id="userLayerForm">
     <div class="user-layer-head"><h2 id="userLayerTitle">Add your own layer</h2></div>
-    <label for="userLayerUrl">Service URL</label>
+    <label for="userLayerUrl">ArcGIS REST MapServer URL</label>
     <input id="userLayerUrl" type="url" required autocomplete="url" placeholder="https://example.org/...">
-    <label for="userLayerName">Title</label>
-    <input id="userLayerName" type="text" required maxlength="120">
     <label for="userLayerGroup">Group</label>
     <input id="userLayerGroup" type="text" required maxlength="80" value="user added layers">
-    <label for="userLayerType">Service type</label>
-    <select id="userLayerType">
-      <option value="wms">WMS</option>
-      <option value="xyz">XYZ tiles</option>
-      <option value="esri-rest">Esri REST MapServer</option>
-    </select>
-    <div id="userLayerWmsOptions" hidden>
-      <label for="userLayerWmsNames">WMS layer name(s)</label>
-      <input id="userLayerWmsNames" type="text" placeholder="e.g. geology_50k">
-    </div>
     <p id="userLayerError" class="user-layer-error" role="alert" hidden></p>
     <div class="user-layer-actions">
       <button id="userLayerCancel" type="button">Cancel</button>

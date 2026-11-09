@@ -247,7 +247,7 @@
   #userLayerDialog::backdrop { background: rgba(15, 23, 30, .58); }
   #userLayerForm { display: grid; gap: 8px; padding: 16px; }
   .user-layer-head h2 { margin: 0 0 8px; font-size: 18px; }
-  #userLayerForm input, #userLayerForm select { box-sizing: border-box; width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid #8a949e; border-radius: 5px; font: inherit; }
+  #userLayerForm input { box-sizing: border-box; width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid #8a949e; border-radius: 5px; font: inherit; }
   .user-layer-error { margin: 0; color: #a12020; }
   .user-layer-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
   .lgroup { margin-bottom: 10px; }

@@ -27,24 +27,17 @@ function loadUserLayers() {
     saved.forEach(layer => {
       if (!layer || layer.userAdded !== true || typeof layer.id !== 'string' || ids.has(layer.id) ||
           typeof layer.name !== 'string' || typeof layer.group !== 'string' ||
-          !['wms', 'xyz', 'esri-rest'].includes(layer.serviceType)) return;
+          layer.serviceType !== 'esri-rest') return;
       const restored = {
         id: layer.id, name: layer.name, group: layer.group, userAdded: true,
-        serviceType: layer.serviceType, global: false, visible: true
+        serviceType: 'esri-rest', global: false,
+        visible: typeof layer.visible === 'boolean' ? layer.visible : true
       };
-      if (layer.serviceType === 'wms' && typeof layer.url === 'string' && typeof layer.layers === 'string') {
-        try { httpServiceUrl(layer.url); } catch { return; }
-        restored.url = layer.url;
-        restored.layers = layer.layers;
-      } else if (layer.serviceType === 'xyz' && typeof layer.tiles === 'string') {
-        try { httpServiceUrl(layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
-        restored.tiles = layer.tiles;
-      } else if (layer.serviceType === 'esri-rest' &&
-          (typeof layer.url === 'string' || typeof layer.tiles === 'string')) {
-        try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
-        if (typeof layer.url === 'string') restored.url = layer.url;
-        if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
-      } else return;
+      if (typeof layer.url !== 'string' && typeof layer.tiles !== 'string') return;
+      try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
+      if (typeof layer.url === 'string') restored.url = layer.url;
+      if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
+      if (typeof layer.layers === 'string') restored.layers = layer.layers;
       ids.add(restored.id);
       CONFIG.overlays ||= [];
       CONFIG.overlays.push(restored);
@@ -2638,15 +2631,8 @@ $('addOwnLayerBtn').onclick = () => {
   $('userLayerError').textContent = '';
   $('userLayerForm').reset();
   $('userLayerGroup').value = 'user added layers';
-  $('userLayerWmsOptions').hidden = $('userLayerType').value !== 'wms';
-  $('userLayerWmsNames').required = $('userLayerType').value === 'wms';
   $('userLayerDialog').showModal();
   $('userLayerUrl').focus();
-};
-$('userLayerType').onchange = () => {
-  const isWms = $('userLayerType').value === 'wms';
-  $('userLayerWmsOptions').hidden = !isWms;
-  $('userLayerWmsNames').required = isWms;
 };
 $('userLayerCancel').onclick = () => $('userLayerDialog').close();
 function httpServiceUrl(value) {
@@ -2657,46 +2643,7 @@ function httpServiceUrl(value) {
   return url;
 }
 const restoreTilePlaceholders = value => value.replace(/%7B(z|x|y)%7D/gi, '{$1}');
-async function validateWmsService(url, layerNames) {
-  const capabilitiesUrl = new URL(url.href);
-  capabilitiesUrl.searchParams.set('service', 'WMS');
-  capabilitiesUrl.searchParams.set('request', 'GetCapabilities');
-  const response = await fetch(capabilitiesUrl);
-  if (!response.ok) throw new Error(`WMS GetCapabilities returned HTTP ${response.status}.`);
-  const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
-  const rootName = xml.documentElement?.localName;
-  if (!['WMS_Capabilities', 'WMT_MS_Capabilities'].includes(rootName))
-    throw new Error('The URL did not return WMS capabilities. Check the service URL and browser access permissions.');
-  const availableNames = new Set();
-  [...xml.getElementsByTagNameNS('*', 'Layer')].forEach(layer => {
-    [...layer.children].find(child => child.localName === 'Name')?.textContent?.trim() &&
-      availableNames.add([...layer.children].find(child => child.localName === 'Name').textContent.trim());
-  });
-  const requestedNames = layerNames.split(',').map(name => name.trim()).filter(Boolean);
-  if (!requestedNames.length || requestedNames.some(name => !availableNames.has(name)))
-    throw new Error('Enter WMS layer name(s) listed by the service capabilities.');
-  return requestedNames.join(',');
-}
-function probeXyzTile(template) {
-  const sampleUrl = template.replace(/\{z\}/g, '0').replace(/\{x\}/g, '0').replace(/\{y\}/g, '0');
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    const timeout = setTimeout(() => {
-      image.src = '';
-      reject(new Error('The XYZ test tile did not load in time.'));
-    }, 10000);
-    image.onload = () => {
-      clearTimeout(timeout);
-      resolve();
-    };
-    image.onerror = () => {
-      clearTimeout(timeout);
-      reject(new Error('The XYZ URL did not return a readable image tile.'));
-    };
-    image.src = sampleUrl;
-  });
-}
-async function validateEsriService(inputUrl) {
+async function getEsriServiceLayers(inputUrl) {
   const serviceUrl = new URL(inputUrl.href);
   const match = decodeURIComponent(serviceUrl.pathname).match(/^(.*\/MapServer)(?:\/\d+)?(?:\/tile\/(?:\{z\}|\d+)\/(?:\{y\}|\d+)\/(?:\{x\}|\d+))?\/?$/i);
   if (!match) throw new Error('Enter an ArcGIS REST MapServer URL, optionally ending in /tile/{z}/{y}/{x}.');
@@ -2711,11 +2658,27 @@ async function validateEsriService(inputUrl) {
     throw new Error('The URL is not a readable ArcGIS REST MapServer service.');
   const baseUrl = new URL(inputUrl.href);
   baseUrl.pathname = match[1];
+  const serviceLayers = (metadata.layers || []).filter(layer =>
+    Number.isInteger(layer.id) && typeof layer.name === 'string' && layer.name.trim() &&
+    (!Array.isArray(layer.subLayerIds) || layer.subLayerIds.length === 0)
+  );
+  if (serviceLayers.length) {
+    return serviceLayers.map(layer => ({
+      name: layer.name.trim(),
+      visible: layer.defaultVisibility !== false,
+      url: baseUrl.href,
+      layers: String(layer.id)
+    }));
+  }
   if (metadata.tileInfo) {
     baseUrl.pathname = `${match[1]}/tile/{z}/{y}/{x}`;
-    return { tiles: restoreTilePlaceholders(baseUrl.href) };
+    return [{
+      name: metadata.mapName || 'MapServer',
+      visible: true,
+      tiles: restoreTilePlaceholders(baseUrl.href)
+    }];
   }
-  return { url: baseUrl.href };
+  throw new Error('The MapServer does not expose any individual layers to add.');
 }
 function persistUserLayers(layers) {
   localStorage.setItem(USER_LAYERS_KEY, JSON.stringify(layers));
@@ -2728,51 +2691,52 @@ async function submitUserLayer(event) {
   errorOutput.textContent = '';
   submit.disabled = true;
   try {
-    const type = $('userLayerType').value;
     const url = httpServiceUrl($('userLayerUrl').value.trim());
-    const name = $('userLayerName').value.trim();
     const group = $('userLayerGroup').value.trim();
-    if (!name || !group) throw new Error('Enter a title and group for the layer.');
-    let source;
-    if (type === 'wms') {
-      const layers = await validateWmsService(url, $('userLayerWmsNames').value);
-      source = { url: url.href, layers };
-    } else if (type === 'xyz') {
-      const template = restoreTilePlaceholders(url.href);
-      if (!/\{z\}/.test(template) || !/\{x\}/.test(template) || !/\{y\}/.test(template))
-        throw new Error('XYZ tile URLs must contain {z}, {x}, and {y} placeholders.');
-      await probeXyzTile(template);
-      source = { tiles: template };
-    } else {
-      source = await validateEsriService(url);
-    }
-    const overlay = {
-      id: `user-layer-${crypto.randomUUID()}`, name, group, serviceType: type,
-      userAdded: true, global: false, visible: true, opacity: 1, ...source
-    };
-    const userLayers = [...(CONFIG.overlays || []).filter(layer => layer.userAdded), overlay];
+    if (!group) throw new Error('Enter a group for the layers.');
+    const serviceLayers = await getEsriServiceLayers(url);
+    const overlays = serviceLayers.map(layer => ({
+      id: `user-layer-${crypto.randomUUID()}`,
+      name: layer.name,
+      group,
+      serviceType: 'esri-rest',
+      userAdded: true,
+      global: false,
+      visible: layer.visible,
+      opacity: 1,
+      ...(layer.url ? { url: layer.url } : {}),
+      ...(layer.tiles ? { tiles: layer.tiles } : {}),
+      ...(layer.layers ? { layers: layer.layers } : {})
+    }));
+    const savedUserLayers = (CONFIG.overlays || []).filter(layer => layer.userAdded);
+    const userLayers = [...savedUserLayers, ...overlays];
     persistUserLayers(userLayers);
     CONFIG.overlays ||= [];
-    CONFIG.overlays.push(overlay);
+    CONFIG.overlays.push(...overlays);
     try {
       const firstSymbol = map.getStyle().layers.find(layer => layer.type === 'symbol');
-      addRasterLayer(overlay, firstSymbol?.id);
-      buildOverlayLegend([overlay]);
+      overlays.forEach(overlay => addRasterLayer(overlay, firstSymbol?.id));
+      buildOverlayLegend(overlays);
     } catch (error) {
-      CONFIG.overlays = CONFIG.overlays.filter(layer => layer !== overlay);
-      if (map.getLayer(overlay.id)) map.removeLayer(overlay.id);
-      if (map.getSource(overlay.id)) map.removeSource(overlay.id);
-      persistUserLayers(userLayers.slice(0, -1));
+      const newIds = new Set(overlays.map(overlay => overlay.id));
+      CONFIG.overlays = CONFIG.overlays.filter(layer => !newIds.has(layer.id));
+      overlays.forEach(overlay => {
+        if (map.getLayer(overlay.id)) map.removeLayer(overlay.id);
+        if (map.getSource(overlay.id)) map.removeSource(overlay.id);
+      });
+      persistUserLayers(savedUserLayers);
       throw error;
     }
     if (activeThemeName) {
       const additions = themeAdditions.get(activeThemeName) || { layers: new Set(), overlays: new Set(), overlayGroups: new Set() };
-      additions.overlays.add(overlay.id);
+      overlays.forEach(overlay => additions.overlays.add(overlay.id));
       themeAdditions.set(activeThemeName, additions);
-      if (!themeOverlays.includes(overlay.id)) themeOverlays.push(overlay.id);
-      ctl.ov[overlay.id]?.theme(true);
-      ctl.ov[overlay.id]?.el && (ctl.ov[overlay.id].el.hidden = false);
-      ctl.ov[overlay.id]?.set(true);
+      overlays.forEach(overlay => {
+        if (!themeOverlays.includes(overlay.id)) themeOverlays.push(overlay.id);
+        ctl.ov[overlay.id]?.theme(true);
+        ctl.ov[overlay.id]?.el && (ctl.ov[overlay.id].el.hidden = false);
+        ctl.ov[overlay.id]?.set(overlay.visible);
+      });
       saveThemeAdditions();
     }
     updateManualRemovalControls();
