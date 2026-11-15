@@ -3,7 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 window.CONFIG = {
-  title: 'MAGMA - Mapping and Analysis of Geospatial Material and Archives',
+  title: 'MAGMA - Mapping and Analysis of Geoscience Models and Archives',
   showZoom: true, // development helper: show the current zoom level beside the grid reference; set to false for production
   copytourlocation: true,
   // Optional 3Dconnexion SpaceMouse support (requires a WebHID-capable browser and a secure context).

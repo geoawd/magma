@@ -613,6 +613,11 @@ test('resuming a saved terrain model updates its model dropdown', async ({ page 
     view: { center: [-6, 54], zoom: 8 },
     terrain: { enabled: false, model: 'Ardquin_DTM', exaggeration: 1.4 }
   };
+  await page.route(/Ardquin_DTM\.tif/i, route => route.fulfill({
+    status: 206,
+    headers: { 'access-control-allow-origin': '*' },
+    body: 'range request accepted'
+  }));
   await page.addInitScript(snapshot => {
     localStorage.setItem('mapviewer.session.v1', JSON.stringify(snapshot));
   }, savedSession);

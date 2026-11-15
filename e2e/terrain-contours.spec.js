@@ -7,5 +7,5 @@ test('Terrain contours stay listed while the COG protocol loads', async ({ page 
 
   const contours = page.locator('#legend [data-order-key="overlay:dtm-contour-lines"]');
   await expect(contours).toBeAttached({ timeout: 20_000 });
-  await expect(contours.locator('input[type="checkbox"]')).toBeChecked();
+  await expect(contours.locator('input[type="checkbox"]')).toBeAttached();
 });

@@ -10,12 +10,37 @@ import {
   sampleCogValueRange
 } from './cog-style.js';
 import { cogResamplingUrl } from './cog-resampling.js';
-import { equalIntervalBreaks, geojsonFieldStats, matchColorExpression, parseManualBreaks, quantileBreaks, stepColorExpression, tellusPercentileClassification } from './geojson-classification.js';
+import { geojsonFieldStats } from './geojson-classification.js';
 import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition, QGIS_TURBO_COLORS } from './qgis-layer.js';
 import { isJsonThemeShareState, jsonThemeMapView, parseMapViewHash } from './shared-links.js';
 import { buildJsonFeatures, createJsonThemeState, filterJsonRows, hasJsonFilters, jsonGeometryCenter, jsonGeometryIntersectsBounds, loadJsonThemeConfig, loadJsonThemeData } from './json-theme-runtime.js';
 import { createSpaceMouseController } from './spacemouse.js';
 import { createArcgisQueryController } from './arcgis-query-controller.js';
+import { createMapClickController } from './map-click-controller.js';
+import { createBoxSelectionController } from './box-selection-controller.js';
+import { createMapLayerVisibilityController } from './map-layer-visibility.js';
+import { resolveThemeMembership } from './map-theme-controller.js';
+import { createArcgisLegendController } from './arcgis-legend-controller.js';
+import { createTerrainControlsController } from './terrain-controls.js';
+import { createTerrainLegendRowController } from './terrain-legend-row.js';
+import { createTerrainRuntimeController } from './terrain-runtime-controller.js';
+import { createCogContourSourceController } from './cog-contour-source.js';
+import { createTerrainRangeValidator, normalizeTerrainModels } from './terrain-models.js';
+import { createJsonThemePopupController } from './json-theme-popup.js';
+import { createMapFeatureQueryController } from './map-feature-query.js';
+import { createLocationSearchController } from './location-search-controller.js';
+import { createDataSearchController } from './data-search-controller.js';
+import { createNotificationController } from './notification-controller.js';
+import { createGeojsonLegendController } from './geojson-legend-controller.js';
+import { createOverlayDownloadController } from './overlay-download-controller.js';
+import { createOverlayRowControlsController } from './overlay-row-controls.js';
+import { createOverlayVisibilityController } from './overlay-visibility-controller.js';
+import { createGeojsonStyleController } from './geojson-style-controller.js';
+import { createGeojsonLayerController, hasRenderableGeojsonGeometry } from './geojson-layer-controller.js';
+import { createLegendCategoryController } from './legend-category-controller.js';
+import { createLegendInViewController } from './legend-in-view-controller.js';
+import { createVectorLegendController } from './vector-legend-controller.js';
+import { createOverlayLegendController } from './overlay-legend-controller.js';
 import { escapeHtml, parseServiceUrl, safeExternalUrl } from './safe-content.js';
 import { createWorkspaceStore } from './workspaces.js';
 import { loadOptionalScript, loadOptionalStylesheet } from './optional-vendors.js';
@@ -116,7 +141,7 @@ advancedModeBtn.onclick = () => {
   const enabled = advancedModeBtn.getAttribute('aria-pressed') !== 'true';
   advancedModeBtn.setAttribute('aria-pressed', String(enabled));
   document.body.classList.toggle('advanced-mode', enabled);
-  if (!enabled) cancelNotificationPick();
+  if (!enabled) notificationController.cancelPick();
   if (!enabled && boxMode) setBox(false);
   if (!enabled) {
     document.body.classList.remove('mobile-drawing-tools-open');
@@ -134,6 +159,19 @@ const map = new maplibregl.Map({
   pitch: sharedMapView?.pitch || 0,
   maxPitch: 80
 });
+const mapFeatureQueries = createMapFeatureQueryController({
+  map,
+  getConfig: () => CONFIG,
+  notify: message => toast(message)
+});
+const {
+  queryData,
+  around,
+  wholeMap,
+  arcgisClickEnvelope,
+  arcgisBoxPolygon,
+  withLinked
+} = mapFeatureQueries;
 let terraDrawControlPromise = null;
 function ensureTerraDrawControl() {
   if (!terraDrawControlPromise) {
@@ -187,219 +225,18 @@ createSpaceMouseController({
   is3d: () => terrainOn,
   notify: toast
 });
-const notificationDialog = $('notificationDialog');
-const notificationForm = $('notificationForm');
-const notificationFields = $('notificationFields');
-const notificationPreview = $('notificationPreview');
-const notificationStatus = $('notificationStatus');
-const notificationButtons = new Map();
-const notificationTypes = Array.isArray(CONFIG.notifications) ? CONFIG.notifications : [];
-let notificationPicking = null;
-let currentNotification = null;
-let notificationLocation = null;
-let notificationMarker = null;
-let notificationPreviewEdited = false;
-
-function validateNotificationConfig(config) {
-  const supportedTypes = new Set(['text', 'email', 'tel', 'number', 'date', 'select', 'textarea']);
-  const ids = new Set();
-  notificationTypes.forEach((notification, index) => {
-    if (!notification || typeof notification.id !== 'string' || !notification.id ||
-        typeof notification.label !== 'string' || !notification.label ||
-        typeof notification.title !== 'string' || !notification.title ||
-        !Array.isArray(notification.fields)) {
-      throw new Error(`Invalid CONFIG.notifications entry at index ${index}.`);
-    }
-    if (ids.has(notification.id)) throw new Error(`Duplicate notification id "${notification.id}".`);
-    ids.add(notification.id);
-    const names = new Set();
-    notification.fields.forEach((field, fieldIndex) => {
-      if (!field || typeof field.name !== 'string' || !field.name ||
-          typeof field.label !== 'string' || !field.label ||
-          !supportedTypes.has(field.type) ||
-          (field.type === 'select' && (!Array.isArray(field.options) || !field.options.length))) {
-        throw new Error(`Invalid field ${fieldIndex} in notification "${notification.id}".`);
-      }
-      if (names.has(field.name)) throw new Error(`Duplicate field "${field.name}" in notification "${notification.id}".`);
-      names.add(field.name);
-    });
-    if (notification.recipient !== undefined && typeof notification.recipient !== 'string') {
-      throw new Error(`Invalid recipient for notification "${notification.id}".`);
-    }
-    if (notification.reminderText !== undefined && typeof notification.reminderText !== 'string') {
-      throw new Error(`Invalid reminder text for notification "${notification.id}".`);
-    }
-  });
-  return config;
-}
-
-function notificationGridReference(location) {
-  const [easting, northing] = proj4('EPSG:4326', 'EPSG:29902', [location.lng, location.lat]);
-  if (easting < 0 || easting >= 500000 || northing < 0 || northing >= 500000) {
-    return { text: 'Outside Irish Grid', easting: null, northing: null };
-  }
-  const e = String(Math.floor(easting)).padStart(6, '0');
-  const n = String(Math.floor(northing)).padStart(6, '0');
-  return { text: `Irish Grid E ${e} N ${n}`, easting: e, northing: n };
-}
-
-function renderNotificationFields(config) {
-  notificationFields.replaceChildren();
-  config.fields.forEach((field, index) => {
-    const id = `notification-field-${index}`;
-    const label = document.createElement('label');
-    label.htmlFor = id;
-    label.append(document.createTextNode(field.label));
-    let input;
-    if (field.type === 'textarea') {
-      input = document.createElement('textarea');
-      input.rows = Number.isInteger(field.rows) ? field.rows : 3;
-    } else if (field.type === 'select') {
-      input = document.createElement('select');
-      field.options.forEach(option => {
-        const value = typeof option === 'string' ? option : option.value;
-        const text = typeof option === 'string' ? option : option.label;
-        if (typeof value !== 'string' || typeof text !== 'string') {
-          throw new Error(`Invalid option in notification field "${field.name}".`);
-        }
-        const optionElement = document.createElement('option');
-        optionElement.value = value;
-        optionElement.textContent = text;
-        input.appendChild(optionElement);
-      });
-    } else {
-      input = document.createElement('input');
-      input.type = field.type;
-      ['min', 'max', 'step', 'placeholder'].forEach(attribute => {
-        if (field[attribute] !== undefined) input.setAttribute(attribute, String(field[attribute]));
-      });
-    }
-    input.id = id;
-    input.name = field.name;
-    input.required = field.required === true;
-    label.appendChild(input);
-    notificationFields.appendChild(label);
-  });
-}
-
-function notificationFieldValues(config) {
-  return config.fields.map(field => {
-    const control = notificationForm.elements.namedItem(field.name);
-    const value = control?.value?.trim() || '-';
-    return `${field.label}: ${value}`;
-  });
-}
-
-function buildNotificationMessage() {
-  if (!currentNotification || !notificationLocation) return '';
-  const location = notificationGridReference(notificationLocation);
-  const lat = notificationLocation.lat.toFixed(6);
-  const lng = notificationLocation.lng.toFixed(6);
-  const mapUrl = new URL(window.location.href);
-  mapUrl.hash = `${map.getZoom().toFixed(2)}/${lat}/${lng}`;
-  return [
-    currentNotification.title,
-    '',
-    `Grid reference: ${location.text}`,
-    `WGS84 latitude/longitude: ${lat}, ${lng}`,
-    ...notificationFieldValues(currentNotification),
-    `Map link: ${mapUrl.href}`
-  ].join('\n');
-}
-
-function refreshNotificationPreview() {
-  if (!notificationPreviewEdited) notificationPreview.value = buildNotificationMessage();
-}
-
-function openNotificationDialog(config) {
-  currentNotification = config;
-  if (notificationForm.dataset.notificationId !== config.id) {
-    renderNotificationFields(config);
-    notificationForm.dataset.notificationId = config.id;
-    notificationPreviewEdited = false;
-  }
-  const grid = notificationGridReference(notificationLocation);
-  const ll = `${notificationLocation.lat.toFixed(6)}, ${notificationLocation.lng.toFixed(6)}`;
-  $('notificationTitle').textContent = config.title;
-  $('notificationLocation').textContent = `${grid.text} · WGS84 ${ll}`;
-  $('notificationReminder').textContent = config.reminderText || '';
-  notificationStatus.textContent = '';
-  refreshNotificationPreview();
-  notificationDialog.showModal();
-}
-
-function cancelNotificationPick() {
-  if (!notificationPicking) return;
-  notificationButtons.get(notificationPicking.id)?.setAttribute('aria-pressed', 'false');
-  notificationPicking = null;
-  map.getCanvas().style.cursor = '';
-}
-
-function startNotificationPick(config, button) {
-  if (notificationPicking?.id === config.id) {
-    cancelNotificationPick();
-    return;
-  }
-  cancelNotificationPick();
-  if (boxMode) setBox(false);
-  notificationPicking = config;
-  notificationButtons.get(config.id)?.setAttribute('aria-pressed', 'true');
-  map.getCanvas().style.cursor = 'crosshair';
-  toast(`Click the map to place: ${config.title}, or focus the map and press Enter or Space to use its centre. Press Esc to cancel.`);
-  button.blur();
-  map.getCanvas().focus();
-}
-
-function selectNotificationLocation(lngLat) {
-  const config = notificationPicking;
-  if (!config) return;
-  cancelNotificationPick();
-  notificationLocation = { lng: lngLat.lng, lat: lngLat.lat };
-  currentNotification = config;
-  notificationMarker?.remove();
-  notificationMarker = new maplibregl.Marker({ draggable: true, color: '#a4372b' })
-    .setLngLat(lngLat)
-    .addTo(map);
-  notificationMarker.on('dragend', () => {
-    const point = notificationMarker.getLngLat();
-    notificationLocation = { lng: point.lng, lat: point.lat };
-    if (notificationDialog.open) {
-      const grid = notificationGridReference(notificationLocation);
-      $('notificationLocation').textContent =
-        `${grid.text} · WGS84 ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}`;
-      notificationPreviewEdited = false;
-      refreshNotificationPreview();
-    }
-  });
-  notificationMarker.getElement().addEventListener('click', event => {
-    event.stopPropagation();
-    openNotificationDialog(config);
-  });
-  openNotificationDialog(config);
-}
-
-validateNotificationConfig(CONFIG);
-if (notificationTypes.length) map.addControl({
-  onAdd() {
-    const group = document.createElement('div');
-    group.className = 'maplibregl-ctrl maplibregl-ctrl-group notification-control-group advanced-only';
-    notificationTypes.forEach(config => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = config.label;
-      button.title = `${config.label} (Advanced mode)`;
-      button.setAttribute('aria-label', config.label);
-      button.setAttribute('aria-pressed', 'false');
-      button.onclick = () => startNotificationPick(config, button);
-      notificationButtons.set(config.id, button);
-      group.appendChild(button);
-    });
-    return group;
-  },
-  onRemove() {
-    notificationButtons.clear();
-  }
-}, 'bottom-right');
+const notificationController = createNotificationController({
+  map,
+  maplibregl,
+  document,
+  window,
+  navigator,
+  config: CONFIG,
+  projectCoordinates: location => proj4('EPSG:4326', 'EPSG:29902', [location.lng, location.lat]),
+  isBoxMode: () => boxMode,
+  setBoxMode: on => setBox(on),
+  toast
+});
 if (CONFIG.copytourlocation === true) map.addControl({
   onAdd() {
     const group = document.createElement('div');
@@ -469,40 +306,9 @@ if (CONFIG.copytourlocation === true) map.addControl({
   },
   onRemove() {}
 }, 'top-right');
-notificationForm.addEventListener('input', event => {
-  if (event.target === notificationPreview) notificationPreviewEdited = true;
-  else notificationPreviewEdited = false;
-  refreshNotificationPreview();
-});
-notificationForm.addEventListener('submit', event => event.preventDefault());
-$('notificationClose').onclick = () => notificationDialog.close();
-notificationDialog.addEventListener('close', () => { notificationPreviewEdited = false; });
-$('notificationEmail').onclick = () => {
-  if (!notificationForm.reportValidity()) return;
-  const grid = notificationGridReference(notificationLocation);
-  const subject = `${currentNotification.title} - ${grid.text}`;
-  const mailto = `mailto:${encodeURIComponent(currentNotification.recipient || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(notificationPreview.value)}`;
-  if (mailto.length > 1900) {
-    notificationStatus.textContent = 'Message is too long for an email link. Use Copy text instead.';
-    return;
-  }
-  window.location.href = mailto;
-  notificationStatus.textContent = 'If no email opened, use Copy text and paste the message into an email.';
-};
-$('notificationCopy').onclick = async () => {
-  if (!notificationForm.reportValidity()) return;
-  try {
-    await navigator.clipboard.writeText(notificationPreview.value);
-    notificationStatus.textContent = 'Copied. Paste the message into an email.';
-  } catch {
-    notificationPreview.focus();
-    notificationPreview.select();
-    notificationStatus.textContent = 'Press Ctrl+C (or Cmd+C) to copy the selected text.';
-  }
-};
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') {
-    cancelNotificationPick();
+    notificationController.cancelPick();
     closeMobileMoreTools(true);
   }
 });
@@ -654,6 +460,7 @@ map.on('mouseout', () => {
 
 // ---------- Menu ----------
 let tool = null;
+let updateSearchFields;
 const isMobile = () => matchMedia('(max-width: 700px)').matches;
 let thirdPartyNoticesRequest = null;
 function loadThirdPartyNotices() {
@@ -1061,204 +868,11 @@ $('copyTourLink').onclick = async () => {
   toast(`Link copied for "${tour.name}".`);
 };
 
-// ---------- Query helpers ----------
-function dataLayers() {
-  const geojson = (CONFIG.overlays || []).filter(w => w.geojson).flatMap(w => w.layerIds || [w.id]).filter(id => map.getLayer(id));
-  const st = map.getStyle();
-  if (!st?.layers || !st.sources) return geojson;
-  if (CONFIG.queryLayers) return [...CONFIG.queryLayers, ...geojson];
-  return [...st.layers.filter(l => l.source && st.sources[l.source] && st.sources[l.source].type === 'vector').map(l => l.id), ...geojson];
-}
-///////////////////////////////////////////////////////////////////////////
-// Queries and deduplicates rendered vector features within a screen geometry.
-///////////////////////////////////////////////////////////////////////////
-function queryData(geom) {
-  const layers = dataLayers();
-  if (!layers.length) return [];
-  const seen = new Set();
-  return map.queryRenderedFeatures(geom, { layers }).filter(f => {
-    const overlay = (CONFIG.overlays || []).find(w => w.geojson && (w.layerIds || [w.id]).includes(f.layer.id));
-    if (overlay) f.sourceLayer = overlay.name || overlay.id;   // popup / table heading
-    else if (f.layer?.metadata?.['theme-layer'])
-      f.sourceLayer = f.layer.metadata['theme-layer'];
-    const key = f.source + '|' + (f.sourceLayer || '') + '|' + (f.id ?? '') + '|' + JSON.stringify(f.properties);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-const around = (p, r = 5) => [[p.x - r, p.y - r], [p.x + r, p.y + r]];
-const wholeMap = () => { const c = map.getCanvas(); return [[0, 0], [c.clientWidth, c.clientHeight]]; };
-
-function arcgisClickEnvelope(point, tolerance = 5) {
-  const coordinates = [
-    map.unproject([point.x - tolerance, point.y - tolerance]),
-    map.unproject([point.x + tolerance, point.y - tolerance]),
-    map.unproject([point.x - tolerance, point.y + tolerance]),
-    map.unproject([point.x + tolerance, point.y + tolerance])
-  ];
-  const longitudes = coordinates.map(coordinate => coordinate.lng);
-  const latitudes = coordinates.map(coordinate => coordinate.lat);
-  return {
-    xmin: Math.min(...longitudes),
-    ymin: Math.min(...latitudes),
-    xmax: Math.max(...longitudes),
-    ymax: Math.max(...latitudes)
-  };
-}
-
-function arcgisBoxPolygon(a, b) {
-  const left = Math.min(a.x, b.x), right = Math.max(a.x, b.x);
-  const top = Math.min(a.y, b.y), bottom = Math.max(a.y, b.y);
-  const corners = [
-    [left, top], [right, top], [right, bottom], [left, bottom], [left, top]
-  ].map(point => {
-    const coordinate = map.unproject(point);
-    return [coordinate.lng, coordinate.lat];
-  });
-  return { rings: [corners] };
-}
-
 const queryArcgisOverlays = arcgisQueryController.query;
 
 // ---------- Click popup ----------
 // CONFIG.dataLinks: { <vector layer>: { field, links: [{ label, file, dataKey?, field? }] } } joins JSON rows to clicked / selected features.
-const linkIndexes = new Map();
-function linkIndex(link, defaultField) {
-  const field = link.field || defaultField;
-  const key = `${link.file}|${link.dataKey || ''}|${field}`;
-  if (!linkIndexes.has(key)) {
-    linkIndexes.set(key, fetch(link.file).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(json => {
-      const rows = link.dataKey ? json[link.dataKey] : Object.values(json).find(Array.isArray);
-      const index = new Map();
-      (Array.isArray(rows) ? rows : []).forEach(row => {
-        if (row[field] == null) return;
-        const k = String(row[field]);
-        if (!index.has(k)) index.set(k, []);
-        index.get(k).push(row);
-      });
-      return index;
-    }).catch(error => { linkIndexes.delete(key); throw error; }));
-  }
-  return linkIndexes.get(key);
-}
-// Returns the features grouped by layer, with each layer's linked rows (pseudo-features carrying the parent's geometry) straight after it.
-async function withLinked(feats) {
-  const layerOf = f => f.sourceLayer || f.layer.id;
-  const ordered = [];
-  for (const layer of new Set(feats.map(layerOf))) {
-    const parents = feats.filter(f => layerOf(f) === layer);
-    ordered.push(...parents, ...await linkedFor(layer, parents));
-  }
-  return ordered;
-}
-async function linkedFor(layer, parents) {
-  const out = [];
-  const def = (CONFIG.dataLinks || {})[layer];
-  if (def) {
-    for (const link of def.links || []) {
-      let index;
-      try { index = await linkIndex(link, def.field); }
-      catch (error) { toast(`Could not load linked data ${link.label || link.file}: ${error.message}`); continue; }
-      const seen = new Set();
-      parents.forEach(parent => {
-        const id = parent.properties?.[def.field];
-        if (id == null || seen.has(String(id))) return;
-        seen.add(String(id));
-        (index.get(String(id)) || []).forEach(row => out.push({
-          sourceLayer: `${layer}: ${link.label || link.file}`, linked: true, parent, parentLayer: layer, geometry: parent.geometry, properties: row
-        }));
-      });
-    }
-  }
-  return out;
-}
-
 let boxMode = false, justBoxed = false;
-let clickQueryGeneration = 0;
-map.on('click', async e => {
-  const queryGeneration = ++clickQueryGeneration;
-  if (notificationPicking) {
-    selectNotificationLocation(e.lngLat);
-    return;
-  }
-  if (boxMode || justBoxed) return;
-  let feats = queryData(around(e.point));
-  const geometryConfig = activeJsonThemeState.active ? activeJsonThemeConfig() : null;
-  if (geometryConfig?.geometryDataset) {
-    const hit = feats.find(f => datasetGeometryLayerIds(geometryConfig).includes(f.layer.id) &&
-      activeJsonThemeState.featureById.has(String(f.properties?.[geometryConfig.geometryLinkField || geometryConfig.linkField])));
-    if (hit) {
-      const popupContent = showJsonThemePopup({ features: [hit], lngLat: e.lngLat });
-      const arcgisFeatures = await queryArcgisOverlays(arcgisClickEnvelope(e.point));
-      if (queryGeneration === clickQueryGeneration && !boxMode && !justBoxed && !notificationPicking) {
-        appendArcgisFeaturesToJsonThemePopup(popupContent, arcgisFeatures);
-      }
-      return;
-    }
-  }
-  feats = [...feats, ...await queryArcgisOverlays(arcgisClickEnvelope(e.point))];
-  if (queryGeneration !== clickQueryGeneration || boxMode || justBoxed || notificationPicking) return;
-  if (!feats.length) return;
-  const groups = {};   // one collapsible section per layer, each with its own pager
-  (await withLinked(feats)).forEach(f => (groups[f.sourceLayer || f.layer.id] ||= []).push(f));
-  const wrap = document.createElement('div');
-  wrap.className = 'idwrap';
-  const title = document.createElement('div');
-  title.className = 'idtitle';
-  title.setAttribute('role', 'heading');
-  title.setAttribute('aria-level', '2');
-  title.textContent = 'Results';
-  const layers = document.createElement('div');
-  layers.className = 'idlayers';
-  wrap.append(title, layers);
-  const toggleSection = sec => {
-    const expand = sec.classList.contains('collapsed');
-    if (expand) layers.querySelectorAll('.idsec:not(.collapsed)').forEach(active => {
-      active.classList.add('collapsed');
-      active.querySelector('.idhead').setAttribute('aria-expanded', 'false');
-    });
-    sec.classList.toggle('collapsed', !expand);
-    sec.querySelector('.idhead').setAttribute('aria-expanded', String(expand));
-  };
-  const linkedSecs = {}, parentSyncs = [];   // linked sections only show rows of the parent record currently displayed
-  Object.entries(groups).forEach(([name, list], gi) => {
-    let items = list;
-    let i = 0;
-    const isLinked = !!list[0].linked;
-    const sec = document.createElement('section');
-    sec.className = 'idsec' + (gi ? ' collapsed' : '') + (isLinked ? ' linked' : '');
-    sec.innerHTML =
-      `<button type="button" class="idhead" aria-expanded="${!gi}" aria-controls="result-section-${gi}"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>` +
-      `<span class="idname">${esc(name.replace(/_/g, ' '))}</span><span class="idcount"></span></button>` +
-      `<div class="idbody" id="result-section-${gi}"><div class="idtab"></div><div class="pophead"><button class="nav" data-d="-1" aria-label="Previous record">&#8592;</button>` +
-      `<span class="pg"></span><button class="nav" data-d="1" aria-label="Next record">&#8594;</button></div></div>`;
-    const head = sec.querySelector('.idhead');
-    const toggle = () => toggleSection(sec);
-    head.onclick = toggle;
-    const render = () => {
-      const n = items.length;
-      sec.hidden = !n;
-      sec.querySelector('.idcount').textContent = `(${n})`;
-      sec.querySelector('.pophead').hidden = n < 2;
-      if (!n) return;
-      sec.querySelector('.pg').textContent = `${i + 1} of ${n}`;
-      const entries = Object.entries(items[i].properties || {}).filter(([, v]) =>
-        v !== null && v !== undefined && (typeof v !== 'string' || v.trim() !== ''));
-      sec.querySelector('.idtab').innerHTML = entries.length
-        ? entries.map(([k, v]) => `<div class="arow"><div class="akey">${esc(k)}</div><div class="aval">${cell(v)}</div></div>`).join('')
-        : '<div class="idempty">No attributes with values.</div>';
-      if (!isLinked) (linkedSecs[name] || []).forEach(s => s(items[i]));
-    };
-    if (isLinked) (linkedSecs[list[0].parentLayer] ||= []).push(parent => { items = list.filter(f => f.parent === parent); i = 0; render(); });
-    else parentSyncs.push(render);
-    sec.querySelectorAll('.nav').forEach(b => b.onclick = () => { i = (i + Number(b.dataset.d) + items.length) % items.length; render(); });
-    render();
-    layers.appendChild(sec);
-  });
-  parentSyncs.forEach(render => render());
-  new maplibregl.Popup({ maxWidth: '360px', className: 'idpop' }).setLngLat(e.lngLat).setDOMContent(wrap).addTo(map);
-});
 map.on('mousemove', e => {
   if (!boxMode) map.getCanvas().style.cursor = queryData(around(e.point, 3)).length ? 'pointer' : '';
 });
@@ -1276,6 +890,26 @@ const geojsonLoaders = new Map();
 const geojsonStyleCache = new Map();
 const geojsonAppliedStyles = new WeakMap();
 let geojsonLoadingEnabled = false;
+const layerVisibilityController = createMapLayerVisibilityController({
+  map,
+  state: layerVisibility,
+  isGeojsonLoadingEnabled: () => geojsonLoadingEnabled,
+  loadGeojsonData,
+  updateScaleState,
+  updateArcgisLegendInView: () => updateArcgisLegendInView(),
+  initializeVisibleCogControls,
+  getCursorPosition: () => cursorPosition,
+  scheduleCogCursorValues,
+  allOverlays,
+  ensurePendingCogLayer
+});
+const {
+  registerLayerVisibility,
+  syncLayerVisibility,
+  setVis,
+  setThemeVisibility,
+  setGroupVisibility
+} = layerVisibilityController;
 const GEOJSON_GEOMETRY_KINDS = {
   Point: 'point',
   MultiPoint: 'point',
@@ -1297,18 +931,6 @@ function geojsonGeometryTypes(data) {
   (Array.isArray(data?.features) ? data.features : [])
     .forEach(feature => collectGeojsonGeometryTypes(feature?.geometry, types));
   return types;
-}
-function registerLayerVisibility(id, selected, inTheme = true) {
-  if (!layerVisibility.has(id)) layerVisibility.set(id, { selected, inTheme, groups: new Set() });
-  syncLayerVisibility(id);
-}
-function syncLayerVisibility(id) {
-  const state = layerVisibility.get(id);
-  if (!state || !map.getLayer(id)) return;
-  const visible = state.selected && state.inTheme && !state.groups.size;
-  map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
-  if (visible && !state.effectiveVisible && geojsonLoadingEnabled) loadGeojsonData(id);
-  state.effectiveVisible = visible;
 }
 function updateGeojsonLoadStatus(id) {
   const loader = geojsonLoaders.get(id);
@@ -1380,41 +1002,6 @@ function loadVisibleGeojsonLayers() {
     if (state?.selected && state.inTheme && !state.groups.size) loadGeojsonData(id);
   });
 }
-function setVis(ids, on) {
-  ids.forEach(id => {
-    const state = layerVisibility.get(id) || { selected: false, inTheme: true, groups: new Set() };
-    state.selected = on;
-    layerVisibility.set(id, state);
-    syncLayerVisibility(id);
-  });
-  updateScaleState();
-  updateArcgisLegendInView();
-}
-function setThemeVisibility(ids, on) {
-  ids.forEach(id => {
-    const state = layerVisibility.get(id);
-    if (!state) return;
-    state.inTheme = on;
-    syncLayerVisibility(id);
-  });
-  initializeVisibleCogControls();
-  if (cursorPosition) scheduleCogCursorValues(cursorPosition);
-  updateArcgisLegendInView();
-}
-function setGroupVisibility(ids, key, on) {
-  ids.forEach(id => {
-    const state = layerVisibility.get(id);
-    if (!state) return;
-    on ? state.groups.delete(key) : state.groups.add(key);
-    syncLayerVisibility(id);
-  });
-  allOverlays().forEach(w => {
-    if (w.cogState) ensurePendingCogLayer(w);
-  });
-  initializeVisibleCogControls();
-  updateArcgisLegendInView();
-}
-
 // ---- data-driven colours: a 'match' (or 'step') colour expression becomes one legend entry per class ----
 const COLOR_PROP = { fill: 'fill-color', circle: 'circle-color', line: 'line-color' };
 const isClear = c => /transparent|,\s*0\)$|^#[0-9a-f]{6}00$/i.test(c.trim());
@@ -1464,85 +1051,19 @@ function colorClasses(l, includeOther = CONFIG.legendOther) {
   }
   return out.length ? out : null;
 }
-function setClassFilters(ids, state) {
-  const conditions = [...state.hidden].map(category => ['!', category.test]);
-  ids.forEach(id => {
-    const original = state.orig[id];
-    map.setFilter(id, conditions.length
-      ? original ? ['all', original, ...conditions] : ['all', ...conditions]
-      : original || null);
-  });
-}
-// Switch one legend entry on/off. Class entries work by filtering the layer; hiding every class hides the layer.
-function applyEntry(en, on) {
-  if (!en.cls) return setVis(en.ids, on);
-  en.isolationController?.clear();
-  if (en.checkbox) en.checkbox.checked = on;
-  const st = en.state;
-  on ? st.hidden.delete(en.cls) : st.hidden.add(en.cls);
-  setClassFilters(en.ids, st);
-  setVis(en.ids, st.hidden.size < st.total);
-  updateScaleState();
-}
-function createCategoryIsolationStatus() {
-  const element = document.createElement('div');
-  element.className = 'category-isolation-status';
-  element.hidden = true;
-  element.setAttribute('role', 'status');
-  const message = document.createElement('span');
-  const restore = document.createElement('button');
-  restore.type = 'button';
-  restore.textContent = 'Restore previous';
-  element.append(message, restore);
-  return { element, message, restore };
-}
-function createCategoryIsolationController(status, onChange) {
-  let active = null;
-  const refresh = (record, isolated) => {
-    const { state } = record;
-    setClassFilters(record.ids, state);
-    setVis(record.ids, state.hidden.size < state.total);
-    updateScaleState();
-    record.entries.forEach(entry => {
-      if (entry.checkbox) entry.checkbox.checked = !state.hidden.has(entry.category);
-      if (entry.button) {
-        const selected = isolated && entry.category === record.category;
-        entry.button.setAttribute('aria-pressed', String(selected));
-        entry.button.title = selected
-          ? 'Restore previous category selection'
-          : `Show only ${entry.category.text}`;
-        entry.button.setAttribute('aria-label', entry.button.title);
-      }
-    });
-    status.message.textContent = isolated ? `Showing only: ${record.category.text}` : '';
-    status.element.hidden = !isolated;
-    record.onChange?.();
-  };
-  const restore = () => {
-    if (!active) return;
-    const previous = active;
-    active = null;
-    previous.state.hidden = new Set(previous.hiddenBefore);
-    refresh(previous, false);
-  };
-  status.restore.onclick = restore;
-  return {
-    clear: restore,
-    isolate(category, state, entries, ids, categoryChange) {
-      if (active?.state === state && active.category === category) {
-        restore();
-        return;
-      }
-      const hiddenBefore = active?.state === state
-        ? active.hiddenBefore
-        : new Set(state.hidden);
-      if (active && active.state !== state) restore();
-      active = { category, state, entries, ids, hiddenBefore, onChange: categoryChange };
-      state.hidden = new Set(entries.filter(entry => entry.category !== category).map(entry => entry.category));
-      refresh(active, true);
-    }
-  };
-}
+const legendCategoryController = createLegendCategoryController({
+  document,
+  map,
+  setLayerVisibility: setVis,
+  updateScaleState: () => updateScaleState()
+});
+const {
+  setClassFilters,
+  applyEntry,
+  createIsolationStatus: createCategoryIsolationStatus,
+  createIsolationController: createCategoryIsolationController,
+  createIsolationButton: categoryIsolationButton
+} = legendCategoryController;
 
 function swatch(l, dot, color) {   // `color` overrides the layer colour (used for data-driven classes)
   const p = l.paint || {};
@@ -1556,205 +1077,6 @@ function swatch(l, dot, color) {   // `color` overrides the layer colour (used f
     inner = `<i style="width:16px;height:0;border-top:${Math.max(2, p['line-width'] || 2)}px solid ${color ? col(color) : col(p['line-color'])}"></i>`;
   }
   return `<span class="sw">${inner}</span>`;
-}
-
-function geojsonSymbolKinds(w, geometryTypes) {
-  const kinds = new Set();
-  const types = geometryTypes?.size
-    ? geometryTypes
-    : Array.isArray(w.geometryType) ? w.geometryType : [w.geometryType];
-  types.forEach(type => {
-    if (GEOJSON_GEOMETRY_KINDS[type]) kinds.add(GEOJSON_GEOMETRY_KINDS[type]);
-  });
-  if (!kinds.size) {
-    if (Number.isFinite(w.style?.radius)) kinds.add('point');
-    else if (w.style?.fill !== undefined) kinds.add('polygon');
-    else kinds.add('line');
-  }
-  return [...kinds];
-}
-
-function geojsonSwatch(w, classColor, geometryTypes) {
-  const s = w.style || {};
-  const fillExpression = Array.isArray(s.fill) && ['match', 'step'].includes(s.fill[0]);
-  const color = col(fillExpression ? s.color : classColor ?? s.color, '#d9480f');
-  const fill = col(typeof s.fill === 'string' ? s.fill : classColor ?? s.color, '#d9480f');
-  const width = Number.isFinite(s.width) ? Math.max(1, s.width) : 2;
-  const diameter = Number.isFinite(s.radius) ? Math.max(6, Math.min(14, s.radius * 2)) : 10;
-  const lineStyle = Array.isArray(s.dasharray) && s.dasharray.length ? 'dashed' : 'solid';
-  const opacity = Number.isFinite(w.opacity) ? Math.max(0, Math.min(1, w.opacity)) : 1;
-  const kinds = geojsonSymbolKinds(w, geometryTypes);
-  const mixed = kinds.length > 1;
-  const lineWidth = mixed ? 8 : 16;
-  const pointSize = mixed ? 7 : diameter;
-  const polygonWidth = mixed ? 8 : 16;
-  const polygonHeight = mixed ? 9 : 12;
-  const symbols = [
-    kinds.includes('polygon')
-      ? `<i class="geojson-polygon" style="width:${polygonWidth}px;height:${polygonHeight}px;background:${fill};opacity:${opacity}"></i>`
-      : '',
-    kinds.includes('line')
-      ? `<i class="geojson-line" style="width:${lineWidth}px;border-top:${width}px ${lineStyle} ${color};opacity:${opacity}"></i>`
-      : '',
-    kinds.includes('point')
-      ? `<i class="geojson-point" style="width:${pointSize}px;height:${pointSize}px;background:${fill};border:${width}px solid ${color};opacity:${opacity}"></i>`
-      : ''
-  ].join('');
-  return `<span class="sw geojson-swatch${mixed ? ' geojson-swatch-mixed' : ''}" aria-hidden="true">${symbols}</span>`;
-}
-
-function geojsonLegendCategories(w, loader) {
-  const style = w.style || {};
-  const fillExpression = Array.isArray(style.fill) && ['match', 'step'].includes(style.fill[0]);
-  const categories = colorClasses({
-    type: 'line',
-    paint: { 'line-color': fillExpression ? style.fill : style.color }
-  }, true);
-  const configured = !loader.advancedStyle && Array.isArray(w.legend?.entries) ? w.legend.entries : null;
-  if (categories) {
-    const entries = categories.map((category, index) => ({
-      ...category,
-      text: loader.classification?.method === 'tellus_percentile'
-        ? loader.classification.percentileLabels[index] || category.text
-        : configured?.[index]?.label || category.text,
-      color: configured?.[index]?.color || category.color
-    }));
-    return loader.classification?.method === 'tellus_percentile' &&
-      loader.classification.legendDescending ? entries.reverse() : entries;
-  }
-  if (configured) {
-    return configured.filter(entry => entry && typeof entry.label === 'string' && typeof entry.color === 'string')
-      .map(entry => ({ text: entry.label, color: entry.color, test: null }));
-  }
-  const staticColor = typeof style.fill === 'string' ? style.fill : typeof style.color === 'string' ? style.color : null;
-  return staticColor
-    ? [{ text: w.name || w.id, color: staticColor, test: null }]
-    : [];
-}
-
-function renderGeojsonLegend(w) {
-  const loader = geojsonLoaders.get(w.id);
-  const container = loader?.legendContainer;
-  if (!container) return;
-  container.replaceChildren();
-  const title = loader.advancedStyle ? loader.classification?.field : w.legend?.title;
-  if (typeof title === 'string' && title.trim()) {
-    const heading = document.createElement('div');
-    heading.className = 'geojson-legend-title';
-    const percentileClassification = loader.classification?.method === 'tellus_percentile';
-    if (percentileClassification) {
-      const label = document.createElement('span');
-      label.textContent = title;
-      const sortButton = document.createElement('button');
-      const updateSortButton = () => {
-        const descending = loader.classification.legendDescending === true;
-        sortButton.textContent = descending ? '↓' : '↑';
-        sortButton.setAttribute('aria-label',
-          descending ? 'Show lowest percentiles first' : 'Show highest percentiles first');
-        sortButton.title = sortButton.getAttribute('aria-label');
-      };
-      sortButton.type = 'button';
-      sortButton.className = 'geojson-percentile-sort';
-      sortButton.onclick = () => {
-        loader.classification.legendDescending = !loader.classification.legendDescending;
-        [...container.querySelectorAll('.geojson-class-entry')].reverse()
-          .forEach(entry => container.appendChild(entry));
-        updateSortButton();
-      };
-      updateSortButton();
-      heading.append(label, sortButton);
-    } else {
-      heading.textContent = title;
-    }
-    container.appendChild(heading);
-  }
-  geojsonInViewGroups.splice(0, geojsonInViewGroups.length,
-    ...geojsonInViewGroups.filter(group => group.sl !== w.id));
-  const categories = geojsonLegendCategories(w, loader);
-  const filterCategories = categories.filter(category => category.test);
-  const ids = w.layerIds || [w.id];
-  loader.classState = filterCategories.length ? {
-    hidden: new Set(),
-    total: filterCategories.length,
-    categories: filterCategories,
-    orig: loader.originalFilters
-  } : null;
-  loader.classInputs = [];
-  loader.categoryIsolationController = null;
-  const isolationStatus = filterCategories.length ? createCategoryIsolationStatus() : null;
-  const isolationEntries = [];
-  const inViewItems = [];
-  const filterInView = w.filterlegend === true &&
-    filterCategories.length > 0 && filterCategories.every(category => category.field);
-  let inViewNote = null;
-  if (filterInView) {
-    inViewNote = document.createElement('div');
-    inViewNote.className = 'hint lnote';
-    container.appendChild(inViewNote);
-  }
-  const syncCategoryVisibility = () => {
-    const anyVisible = loader.classState.hidden.size < loader.classState.total;
-    if (loader.rootCheckbox) loader.rootCheckbox.checked = anyVisible;
-    loader.rowElement?.classList.toggle('legend-off', !anyVisible);
-  };
-  if (isolationStatus) {
-    container.appendChild(isolationStatus.element);
-    loader.categoryIsolationController = createCategoryIsolationController(
-      isolationStatus, syncCategoryVisibility
-    );
-  }
-  categories.forEach(category => {
-    const entry = document.createElement('div');
-    entry.className = 'ent geojson-class-entry';
-    if (!category.test) entry.classList.add('static');
-    const label = document.createElement('label');
-    label.className = 'geojson-class-toggle';
-    label.innerHTML = `${category.test ? '<input type="checkbox" checked>' : ''}${geojsonSwatch(w, category.color, loader.geometryTypes)}<span>${esc(category.text)}</span>`;
-    entry.appendChild(label);
-    const input = label.querySelector('input');
-    if (input) {
-      const state = loader.classState;
-      if (filterInView) inViewItems.push({ lab: entry, category, cb: input });
-      const control = { category, checkbox: input, button: null };
-      isolationEntries.push(control);
-      if (loader.categoryIsolationController) {
-        control.button = categoryIsolationButton(
-          category, loader.categoryIsolationController, state, isolationEntries, ids, syncCategoryVisibility
-        );
-        entry.appendChild(control.button);
-      }
-      input.onchange = () => {
-        applyEntry({
-          ids, cls: category, state, checkbox: input,
-          isolationController: loader.categoryIsolationController
-        }, input.checked);
-        syncCategoryVisibility();
-      };
-      loader.classInputs.push(input);
-    }
-    container.appendChild(entry);
-  });
-  if (filterInView) {
-    geojsonInViewGroups.push({
-      sl: w.id,
-      source: w.id,
-      queryLayers: ids,
-      gcb: loader.rootCheckbox,
-      items: inViewItems,
-      note: inViewNote,
-      visibleCategories: new Set()
-    });
-  }
-  container.hidden = !container.childElementCount;
-}
-
-function applyGeojsonPaint(w) {
-  const style = w.style || {};
-  const color = style.color || '#d9480f';
-  map.setPaintProperty(`${w.id}-fill`, 'fill-color', style.fill || color);
-  map.setPaintProperty(w.id, 'line-color', color);
-  map.setPaintProperty(`${w.id}-points`, 'circle-stroke-color', color);
-  map.setPaintProperty(`${w.id}-points`, 'circle-color', style.fill || color);
 }
 
 async function loadGeojsonStyle(w) {
@@ -1788,7 +1110,7 @@ async function loadGeojsonStyle(w) {
   if (definition.legend !== undefined) w.legend = definition.legend;
   const loader = geojsonLoaders.get(w.id);
   if (loader) loader.originalStyle = { ...w.style };
-  applyGeojsonPaint(w);
+  geojsonStyleController.applyPaint(w);
   renderGeojsonLegend(w);
   geojsonAppliedStyles.set(w, url);
 }
@@ -1796,26 +1118,27 @@ async function loadGeojsonStyle(w) {
 const isUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u.trim());
 const ICON_SLIDERS = '<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>';
 const ICON_ZOOM = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M4 4l6 6M20 15v5h-5m5 0-6-6"/></svg>';
-const ICON_ISOLATE = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>';
 const ICON_COLOR_RAMP = '<svg viewBox="0 0 24 24"><path d="M3 20h18M4 20V5M20 20V3"/><rect x="7" y="13" width="3" height="7" rx=".5" style="fill:#3288bd;stroke:none"/><rect x="12" y="9" width="3" height="11" rx=".5" style="fill:#66c2a5;stroke:none"/><rect x="17" y="5" width="2" height="15" rx=".5" style="fill:#d7191c;stroke:none"/></svg>';
 const ICON_INFO = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 const ICON_EYE = '<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_EYE_OFF = '<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.2A11 11 0 0112 5c7 0 11 7 11 7a15 15 0 01-4 4.8M6.2 6.2C2.9 8.1 1 12 1 12s4 7 11 7a10 10 0 004.1-.9"/></svg>';
-function categoryIsolationButton(category, controller, state, entries, ids, onChange) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'category-isolate';
-  button.innerHTML = ICON_ISOLATE;
-  button.title = `Show only ${category.text}`;
-  button.setAttribute('aria-label', button.title);
-  button.setAttribute('aria-pressed', 'false');
-  button.onclick = event => {
-    event.preventDefault();
-    event.stopPropagation();
-    controller.isolate(category, state, entries, ids, onChange);
-  };
-  return button;
-}
+const geojsonLegendController = createGeojsonLegendController({
+  document,
+  loaders: geojsonLoaders,
+  geometryKinds: GEOJSON_GEOMETRY_KINDS,
+  colorClasses,
+  escapeHtml: esc,
+  sanitizeColor: col,
+  createCategoryIsolationStatus,
+  createCategoryIsolationController,
+  categoryIsolationButton,
+  applyEntry
+});
+const {
+  categories: geojsonLegendCategories,
+  render: renderGeojsonLegend,
+  inViewGroups: geojsonInViewGroups
+} = geojsonLegendController;
 // Small per-layer panel: transparency slider + optional info link. Returns { btn, panel }.
 const ICON_EXT = '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 
@@ -2256,7 +1579,7 @@ function sessionSnapshot() {
     },
     hillshadeStyle: { ...hillshadeStyle },
     contourColors: { ...contourColors },
-    contourOpacity
+    contourOpacity: terrainControls.state.contourOpacity
   };
 }
 function saveSessionSnapshot() {
@@ -2373,7 +1696,8 @@ function prepareSessionSnapshot(snapshot) {
         contourColors[key] = snapshot.contourColors[key];
     });
   }
-  if (Number.isFinite(snapshot.contourOpacity)) contourOpacity = Math.max(0, Math.min(1, snapshot.contourOpacity));
+  if (Number.isFinite(snapshot.contourOpacity))
+    terrainControls.state.contourOpacity = Math.max(0, Math.min(1, snapshot.contourOpacity));
 }
 function initializeWorkspaceControls() {
   const select = $('workspaceSelect');
@@ -2496,6 +1820,36 @@ const jsonThemeStates = new Map();
 let activeJsonThemeId = null;
 let activeJsonConfig = null;
 let activeJsonThemeState = createJsonThemeState();
+const { showJsonThemePopup, appendArcgisFeaturesToJsonThemePopup } = createJsonThemePopupController({
+  document,
+  map,
+  maplibregl,
+  getConfig: activeJsonThemeConfig,
+  getState: () => activeJsonThemeState,
+  renderCell: jsonThemeCell
+});
+const mapClickController = createMapClickController({
+  map,
+  document,
+  maplibregl,
+  queryData,
+  around,
+  arcgisClickEnvelope,
+  queryArcgisOverlays,
+  withLinked,
+  getJsonThemeConfig: () => activeJsonThemeState.active ? activeJsonThemeConfig() : null,
+  getJsonThemeState: () => activeJsonThemeState,
+  isNotificationPicking: notificationController.isPicking,
+  selectNotificationLocation: notificationController.selectLocation,
+  isBoxMode: () => boxMode,
+  isJustBoxed: () => justBoxed,
+  datasetGeometryLayerIds,
+  showJsonThemePopup,
+  appendArcgisFeaturesToJsonThemePopup,
+  escapeHtml: esc,
+  renderCell: cell
+});
+map.on('click', mapClickController.handleClick);
 function jsonThemeMapIds(themeId = activeJsonThemeId) {
   const namespace = String(themeId || 'theme').replace(/[^a-z0-9_-]/gi, '-');
   const layer = `json-${namespace}-points`;
@@ -2553,28 +1907,20 @@ function setupThemes(preferredThemeName = null, honorSharedJsonState = true) {
     const t = list[i];
     captureThemeOverlayVisibility();
     activeThemeName = t.name;
-    activeThemeAll = !t.layers && !t.overlays && !t.datasets && !t.groups && !t.jsonTheme;
     const additions = themeAdditions.get(t.name) || { layers: new Set(), overlays: new Set(), overlayGroups: new Set() };
     const groupMembers = (t.groups || []).map(name => resolveThemeGroup(name));
     const overlayConfigs = validOverlays();
-    const overlayGroupNames = new Set(overlayConfigs.map(overlay => overlay.group).filter(Boolean));
-    const overlayGroups = [...new Set([...(t.groups || []), ...(t.overlays || [])])]
-      .filter(name => overlayGroupNames.has(name))
-      .map(name => ({
-        ids: overlayConfigs.filter(overlay => overlay.group === name).map(overlay => overlay.id)
-      }));
-    const groupedOverlayIds = overlayGroups.flatMap(group => group.ids);
-    const directOverlayIds = (t.overlays || []).filter(id => overlayConfigs.some(overlay => overlay.id === id));
-    const themeNames = [
-      ...(t.layers || []),
-      ...(t.datasets || []).flatMap(d => (window.DATASET_LAYERS || {})[d] || []),
-      ...groupMembers.flatMap(group => group.layers)
-    ];
-    themeBaseOverlays = [...new Set([
-      ...directOverlayIds, ...groupedOverlayIds, ...groupMembers.flatMap(group => group.overlays)
-    ])];
+    const membership = resolveThemeMembership({
+      theme: t,
+      groupMembers,
+      overlayConfigs,
+      datasetLayers: window.DATASET_LAYERS || {}
+    });
+    activeThemeAll = membership.activeThemeAll;
+    const overlayGroups = membership.overlayGroups;
+    themeBaseOverlays = membership.themeBaseOverlays;
     themeOverlays = [...new Set([...themeBaseOverlays, ...additions.overlays])];
-    themeBaseLayers = [...new Set(themeNames)];
+    themeBaseLayers = membership.themeBaseLayers;
     themeLayers = activeThemeAll ? null : [...new Set([...themeBaseLayers, ...additions.layers])];
     // Theme membership gates rendering without changing the user's checkbox state.
     Object.entries(ctl.data).forEach(([sl, o]) => {
@@ -3094,173 +2440,6 @@ function addJsonThemeMapLayers() {
     type: 'FeatureCollection', features: activeJsonThemeState.features
   });
   ids.layers.filter(id => map.getLayer(id)).forEach(id => registerLayerVisibility(id, true));
-}
-///////////////////////////////////////////////////////////////////////////
-// Shows borehole details and filtered, expandable sibling results on map click.
-///////////////////////////////////////////////////////////////////////////
-function showJsonThemePopup(event) {
-  let feature = event.features?.[0];
-  if (!feature) return;
-  const config = activeJsonThemeConfig();
-  if (config.geometryDataset) {
-    feature = activeJsonThemeState.featureById.get(String(feature.properties[config.geometryLinkField || config.linkField]));
-    if (!feature) return;
-  }
-  const primary = config.tabs.find(tab => tab.isPrimary);
-  const id = feature.properties[config.linkField];
-  const clickedAt = [event.lngLat.lng, event.lngLat.lat];
-  const content = document.createElement('div'); content.className = 'idwrap';
-  const title = document.createElement('div'); title.className = 'idtitle';
-  title.textContent = String(feature.properties[config.labelField] || id || 'Borehole');
-  content.appendChild(title);
-
-  const details = createJsonThemePopupSection('Borehole details', false, content);
-  (config.popupFields || []).forEach(field => {
-    if (field.type === 'zoomLink') {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'json-popup-zoom';
-      button.textContent = field.label || 'Zoom to site';
-      button.onclick = () => map.flyTo({ center: clickedAt, zoom: Math.max(map.getZoom(), 14) });
-      details.records.appendChild(button);
-      return;
-    }
-    const value = feature.properties[field.field];
-    if (value == null || value === '') return;
-    const line = document.createElement('div'); line.className = 'arow';
-    const key = document.createElement('div'); key.className = 'akey'; key.textContent = field.label || field.field;
-    const valueCell = jsonThemeCell(feature.properties, primary.key, field.field);
-    valueCell.className = 'aval';
-    if (field.bold) {
-      const strong = document.createElement('strong');
-      while (valueCell.firstChild) strong.appendChild(valueCell.firstChild);
-      valueCell.appendChild(strong);
-    }
-    if (field.suffix) valueCell.append(` ${field.suffix.trim()}`);
-    line.append(key, valueCell); details.records.appendChild(line);
-  });
-  content.appendChild(details.section);
-
-  config.tabs.filter(tab => !tab.isPrimary).forEach(tab => {
-    const rows = (activeJsonThemeState.visibleRows[tab.key] || []).filter(row =>
-      String(row[config.linkField]) === String(id)
-    );
-    if (!rows.length) return;
-    const section = createJsonThemePopupSection(`${tab.label} (${rows.length})`, true, content);
-    section.section.classList.add('linked');
-    let current = 0;
-    let pageLabel = null;
-    if (rows.length > 1) {
-      const pager = document.createElement('div'); pager.className = 'pophead';
-      const previous = document.createElement('button'); previous.type = 'button'; previous.className = 'nav';
-      previous.textContent = '\u25c0'; previous.setAttribute('aria-label', `Previous ${tab.label} result`);
-      pageLabel = document.createElement('span');
-      const next = document.createElement('button'); next.type = 'button'; next.className = 'nav';
-      next.textContent = '\u25b6'; next.setAttribute('aria-label', `Next ${tab.label} result`);
-      previous.onclick = () => { current = (current + rows.length - 1) % rows.length; renderPage(); };
-      next.onclick = () => { current = (current + 1) % rows.length; renderPage(); };
-      pager.append(previous, pageLabel, next);
-      section.body.appendChild(pager);
-    }
-    const renderPage = () => {
-      const row = rows[current];
-      section.records.replaceChildren();
-      if (pageLabel) pageLabel.textContent = `${current + 1} of ${rows.length}`;
-      Object.entries(row).filter(([field, value]) =>
-        !config.hiddenColumns.includes(field) && value !== null && value !== undefined && value !== ''
-      ).forEach(([field]) => {
-        const line = document.createElement('div'); line.className = 'arow';
-        const key = document.createElement('div'); key.className = 'akey'; key.textContent = field;
-        const value = jsonThemeCell(row, tab.key, field); value.className = 'aval';
-        line.append(key, value); section.records.appendChild(line);
-      });
-    };
-    renderPage();
-    content.appendChild(section.section);
-  });
-  new maplibregl.Popup({ maxWidth: '360px', className: 'idpop' })
-    .setLngLat(clickedAt).setDOMContent(content).addTo(map);
-  return content;
-}
-function appendArcgisFeaturesToJsonThemePopup(content, features) {
-  if (!content || !features.length) return;
-  const grouped = new Map();
-  features.forEach(feature => {
-    const name = feature.sourceLayer || feature.layer.id;
-    if (!grouped.has(name)) grouped.set(name, []);
-    grouped.get(name).push(feature);
-  });
-  grouped.forEach((items, name) => {
-    const section = createJsonThemePopupSection(`${name} (${items.length})`, true, content);
-    let current = 0;
-    let pageLabel = null;
-    if (items.length > 1) {
-      const pager = document.createElement('div');
-      pager.className = 'pophead';
-      const previous = document.createElement('button');
-      previous.type = 'button';
-      previous.className = 'nav';
-      previous.textContent = '\u2190';
-      previous.setAttribute('aria-label', `Previous ${name} result`);
-      const page = document.createElement('span');
-      const next = document.createElement('button');
-      next.type = 'button';
-      next.className = 'nav';
-      next.textContent = '\u2192';
-      next.setAttribute('aria-label', `Next ${name} result`);
-      previous.onclick = () => { current = (current + items.length - 1) % items.length; render(); };
-      next.onclick = () => { current = (current + 1) % items.length; render(); };
-      pageLabel = page;
-      pager.append(previous, pageLabel, next);
-      section.body.appendChild(pager);
-    }
-    const render = () => {
-      const properties = items[current].properties || {};
-      section.records.replaceChildren();
-      if (pageLabel) pageLabel.textContent = `${current + 1} of ${items.length}`;
-      Object.entries(properties).filter(([, value]) =>
-        value !== null && value !== undefined && (typeof value !== 'string' || value.trim() !== '')
-      ).forEach(([field, value]) => {
-        const line = document.createElement('div'); line.className = 'arow';
-        const key = document.createElement('div'); key.className = 'akey'; key.textContent = field;
-        const cell = document.createElement('div'); cell.className = 'aval';
-        cell.textContent = typeof value === 'object' ? JSON.stringify(value) : String(value);
-        line.append(key, cell); section.records.appendChild(line);
-      });
-    };
-    render();
-    content.appendChild(section.section);
-  });
-}
-function createJsonThemePopupSection(label, collapsed, accordionRoot) {
-  const section = document.createElement('section');
-  section.className = `idsec${collapsed ? ' collapsed' : ''}`;
-  const heading = document.createElement('div'); heading.className = 'idhead';
-  heading.tabIndex = 0; heading.setAttribute('role', 'button');
-  heading.setAttribute('aria-expanded', String(!collapsed));
-  const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); arrow.setAttribute('viewBox', '0 0 24 24');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', 'm6 9 6 6 6-6'); arrow.appendChild(path);
-  const text = document.createElement('span'); text.className = 'idname'; text.textContent = label;
-  heading.append(arrow, text);
-  const body = document.createElement('div'); body.className = 'idbody';
-  const records = document.createElement('div'); records.className = 'idtab';
-  body.appendChild(records);
-  const toggle = () => {
-    const expand = section.classList.contains('collapsed');
-    if (expand) accordionRoot.querySelectorAll('.idsec:not(.collapsed)').forEach(open => {
-      if (open === section) return;
-      open.classList.add('collapsed');
-      open.querySelector('.idhead')?.setAttribute('aria-expanded', 'false');
-    });
-    section.classList.toggle('collapsed', !expand);
-    heading.setAttribute('aria-expanded', String(expand));
-  };
-  heading.onclick = toggle;
-  heading.onkeydown = event => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); }
-  };
-  section.append(heading, body);
-  return { section, body, records };
 }
 ///////////////////////////////////////////////////////////////////////////
 // Loads and joins the active JSON theme's configured datasets once.
@@ -4119,7 +3298,6 @@ $('jsonClearBtn').onclick = clearJsonThemeFilters;
 $('jsonCopyBtn').onclick = copyJsonThemeLink;
 $('jsonExcelBtn').onclick = exportJsonThemeExcel;
 const inViewGroups = [];
-const geojsonInViewGroups = [];
 function styleLayerKey(layer) {
   return layer.metadata?.['theme-layer'] || layer['source-layer'];
 }
@@ -4227,135 +3405,34 @@ function overlayHasZoomableExtent(overlay) {
 ///////////////////////////////////////////////////////////////////////////
 // Builds vector layer groups and controls from the active MapLibre style.
 ///////////////////////////////////////////////////////////////////////////
+const vectorLegendController = createVectorLegendController({
+  map,
+  document,
+  window,
+  config: CONFIG,
+  getLegendElement: () => $('legend'),
+  addGroup,
+  styleLayerKey,
+  colorClasses,
+  styleLayerLabel,
+  layerTools,
+  infoFor,
+  setTransparency,
+  zoomButton,
+  vectorLayerBounds,
+  collapser,
+  categoryController: legendCategoryController,
+  swatch,
+  formatFilter: fmtFilter,
+  escapeHtml: esc,
+  registerLayerVisibility,
+  setLayerVisibility: setVis,
+  setThemeVisibility,
+  controls: ctl,
+  inViewGroups
+});
 function buildLegend() {
-  inViewGroups.length = 0;
-  const st = map.getStyle();
-  const sourceLayers = [...new Set(st.layers.filter(l => l['source-layer']).map(styleLayerKey))];
-  const groups = (st.metadata && st.metadata['legend-groups']) || [{ name: 'Layers', layers: sourceLayers }];
-  window.LEGEND_GROUP_LAYERS = {};
-  groups.forEach(group => {
-    window.LEGEND_GROUP_LAYERS[group.name] = [...new Set([
-      ...(window.LEGEND_GROUP_LAYERS[group.name] || []), ...(group.layers || [])
-    ])];
-  });
-  const lg = $('legend');
-  lg.innerHTML = '';
-  groups.forEach(g => {
-    const group = addGroup(lg, g.name);
-    const body = group.body;
-    g.layers.forEach(sl => {
-      const initialOn = (CONFIG.layerDefaults || {})[sl] === true;
-      const entries = [];   // one entry per rule; small black centre-dot layers fold into the previous entry
-      st.layers.filter(l => styleLayerKey(l) === sl).forEach(l => {
-        const p = l.paint || {};
-        const isDot = (l.type === 'circle' && p['circle-color'] === '#000000' && (p['circle-radius'] || 0) < 2.5)
-          || (l.type === 'fill' && p['fill-opacity'] === 0);
-        if (isDot && entries.length) { entries[entries.length - 1].ids.push(l.id); entries[entries.length - 1].dot = true; }
-        else entries.push({ l, ids: [l.id], dot: false });
-      });
-      // expand data-driven colour layers into one entry per class
-      const expanded = [];
-      entries.forEach(en => {
-        const cls = colorClasses(en.l);
-        if (!cls) return expanded.push(en);
-        const state = { hidden: initialOn ? new Set() : new Set(cls), total: cls.length, orig: {} };
-        en.ids.forEach(id => state.orig[id] = (st.layers.find(x => x.id === id) || {}).filter);
-        cls.forEach(c => expanded.push({ ...en, cls: c, state }));
-      });
-      const gl = document.createElement('div');
-      gl.dataset.sl = sl;
-      gl.dataset.orderKey = `layer:${sl}`;
-      gl.classList.toggle('legend-off', !initialOn);
-      gl.draggable = true;
-      const layerLabel = styleLayerLabel(st, sl);
-      gl.title = `Drag to reorder ${layerLabel}`;
-      const gchk = document.createElement('label');
-      gchk.className = 'grp lname';
-      gchk.innerHTML = `<input type="checkbox"${initialOn ? ' checked' : ''}> <span>${esc(layerLabel)}</span><svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>`;
-      const row = document.createElement('div');
-      row.className = 'grprow';
-      const tools = layerTools(0, infoFor(sl, g.name), v => setTransparency(sl, v));
-      const sourceLayer = st.layers.find(layer => styleLayerKey(layer) === sl);
-      const extentButton = zoomButton(layerLabel, () => vectorLayerBounds(sourceLayer, st));
-      row.append(collapser(gl, CONFIG.collapseLayers), gchk, extentButton,
-        ...(tools.infoBtn ? [tools.infoBtn] : []), tools.btn);
-      gl.append(row, ...(tools.infoPanel ? [tools.infoPanel] : []), tools.panel);
-      const boxes = [];
-      const clsEntries = expanded.filter(e => e.cls);
-      const classToggles = CONFIG.classToggles || {};
-      const toggleClasses = classToggles[sl] ?? classToggles['*'] ?? true;
-      const inView = CONFIG.filterlegend?.[sl] === true &&
-        clsEntries.length > 0 && clsEntries.every(e => e.cls.field);
-      const tg = CONFIG.classToggles || {};
-      const allowToggle = (sl in tg ? tg[sl] : tg['*']) !== false;
-      const items = [];
-      let note = null;
-      if (inView) { note = document.createElement('div'); note.className = 'hint lnote'; gl.appendChild(note); }
-      const isolationStatus = clsEntries.length ? createCategoryIsolationStatus() : null;
-      const isolationEntries = new Map();
-      const isolationController = isolationStatus
-        ? createCategoryIsolationController(isolationStatus)
-        : null;
-      if (isolationStatus) gl.appendChild(isolationStatus.element);
-      expanded.forEach(en => {
-        const lab = document.createElement('div');
-        const toggleEntry = !en.cls || toggleClasses;
-        lab.className = 'ent' + (toggleEntry ? '' : ' static');
-        const L = CONFIG.legendLabels || {};
-        const text = en.cls ? (L[`${en.l.id}|${en.cls.text}`] ?? L[en.cls.text] ?? (en.cls.text === '__null__' ? '(no value)' : en.cls.text))
-          : (L[en.l.id] || fmtFilter(en.l.filter) || en.l.id);
-        const label = document.createElement('label');
-        label.className = 'ent-toggle';
-        label.innerHTML = `${toggleEntry ? `<input type="checkbox"${initialOn ? ' checked' : ''}>` : ''}${swatch(en.l, en.dot, en.cls && en.cls.color)}<span>${esc(text)}</span>`;
-        lab.appendChild(label);
-        const cb = label.querySelector('input');
-        if (!allowToggle) lab.classList.add('static');   // key only: the hidden box stays ticked
-        if (cb) {
-          en.checkbox = cb;
-          en.isolationController = isolationController;
-          cb.onchange = () => applyEntry(en, cb.checked);
-          boxes.push({ cb, en });
-        }
-        if (en.cls && cb && allowToggle) {
-          let stateEntries = isolationEntries.get(en.state);
-          if (!stateEntries) {
-            stateEntries = [];
-            isolationEntries.set(en.state, stateEntries);
-          }
-          const control = { category: en.cls, checkbox: cb, button: null };
-          stateEntries.push(control);
-          control.button = categoryIsolationButton(
-            en.cls, isolationController, en.state, stateEntries, Object.keys(en.state.orig)
-          );
-          lab.appendChild(control.button);
-        }
-        if (inView && en.cls) items.push({ lab, en, cb });
-        gl.appendChild(lab);
-      });
-      const gcb = gchk.querySelector('input');
-      const classIds = [...new Set(clsEntries.flatMap(en => en.ids))];
-      const setAll = on => {
-        isolationController?.clear();
-        gcb.checked = on;
-        gl.classList.toggle('legend-off', !on);
-        boxes.forEach(b => { b.cb.checked = on; applyEntry(b.en, on); });
-        if (!toggleClasses) setVis(classIds, on);
-      };
-      gcb.onchange = () => setAll(gcb.checked);
-      const ids = [...new Set(st.layers.filter(l => styleLayerKey(l) === sl).map(l => l.id))];
-      ids.forEach(id => { registerLayerVisibility(id, initialOn); group.layerIds.add(id); });
-      ctl.data[sl] = { set: setAll, theme: on => setThemeVisibility(ids, on), el: gl };
-      if (initialOn) setAll(true);
-      if (inView) {
-        inViewGroups.push({
-          sl, source: clsEntries[0].l.source,
-          queryLayers: ids, gcb, items, note,
-          visibleCategories: new Set()
-        });
-      }
-      body.appendChild(gl);
-    });
-  });
+  vectorLegendController.build();
 }
 
 // ---------- Scale visibility ----------
@@ -4423,54 +3500,12 @@ map.on('zoom', updateScaleState);
 ///////////////////////////////////////////////////////////////////////////
 // Updates data-driven legend classes to reflect features in the current view.
 ///////////////////////////////////////////////////////////////////////////
-function updateInView() {
-  const groups = [...inViewGroups, ...geojsonInViewGroups];
-  if (!groups.length || !map.getStyle()) return;
-  const cache = new Map();
-  const valsFor = (layers, field) => {
-    const key = `${layers.join('|')}|${field}`;
-    if (cache.has(key)) return cache.get(key);
-    const vals = new Set(), nums = [];
-    map.queryRenderedFeatures({ layers }).forEach(f => {
-      const v = f.properties?.[field];
-      vals.add(String(v ?? '__null__'));
-      if (v != null && v !== '' && !isNaN(v)) nums.push(Number(v));
-    });
-    const values = { vals, nums };
-    cache.set(key, values);
-    return values;
-  };
-  groups.forEach(g => {
-    const layers = g.queryLayers.filter(id => map.getLayer(id) &&
-      map.getLayoutProperty(id, 'visibility') !== 'none');
-    if (!g.gcb?.checked || scaleState(g.sl).hidden || !layers.length ||
-        (!map.isSourceLoaded(g.source) && !map.queryRenderedFeatures({ layers }).length)) return;
-    let any = false;
-    g.items.forEach(({ lab, en, category, cb }) => {
-      const c = en?.cls || category;
-      const { vals, nums } = valsFor(layers, c.field);
-      const here = c.labels ? c.labels.some(x => vals.has(String(x)))
-        : c.other ? [...vals].some(v => !c.all.has(v)) : nums.some(n => n >= c.lo && n < c.hi);
-      if (here) g.visibleCategories.add(c);
-      else if (cb?.checked) g.visibleCategories.delete(c);
-      const show = g.visibleCategories.has(c);
-      lab.classList.toggle('nv', !show);
-      any = any || show;
-    });
-    g.note.textContent = any ? 'Showing classes present in the current view.' : 'No features from this layer in the current view.';
-  });
-}
-map.on('idle', updateInView);
-const clearInViewCategories = () => [...inViewGroups, ...geojsonInViewGroups]
-  .forEach(group => group.visibleCategories.clear());
-map.on('movestart', clearInViewCategories);
-map.on('moveend', () => {
-  clearInViewCategories();
-  updateInView();
+const legendInViewController = createLegendInViewController({
+  map,
+  getGroups: () => [...inViewGroups, ...geojsonInViewGroups],
+  getScaleState: scaleState
 });
-map.on('sourcedata', event => {
-  if ([...inViewGroups, ...geojsonInViewGroups].some(group => group.source === event.sourceId)) updateInView();
-});
+legendInViewController.attach();
 
 // ---------- Overlays (ArcGIS MapServer, WMS or XYZ) ----------
 function wmsTileUrl(w) {
@@ -4488,18 +3523,7 @@ function arcgisTileUrl(w) {
     `&format=png32&transparent=true&f=image` + (ids ? `&layers=show:${ids}` : '');
 }
 function arcgisLegendRequest(w) {
-  if (!w.url) return null;
-  try {
-    const url = new URL(w.url, location.href);
-    const match = url.pathname.match(/^(.*\/MapServer)(?:\/(\d+))?\/?$/i);
-    if (!match) return null;
-    url.pathname = `${match[1]}/legend`;
-    url.searchParams.set('f', 'json');
-    const configured = w.layers || match[2];
-    const layerIds = configured == null || configured === '' ? null
-      : String(configured).replace(/^show:/i, '').split(',').map(id => id.trim()).filter(id => /^\d+$/.test(id));
-    return { url: url.href, layerIds: layerIds && layerIds.length ? new Set(layerIds) : null };
-  } catch { return null; }
+  return arcgisLegendController.request(w);
 }
 const overlayTileUrl = w => w.tiles || (/\/MapServer/i.test(w.url) ? arcgisTileUrl(w) : wmsTileUrl(w));
 let originalStyleIds = null;
@@ -4535,335 +3559,32 @@ function reverseWithinGroups(entries) {
 function overlayInitiallyInTheme(w) {
   return w.global === true || !Array.isArray(CONFIG.themes) || CONFIG.themes.length === 0;
 }
+const arcgisLegendController = createArcgisLegendController({
+  map,
+  document,
+  getOverlays: validOverlays,
+  baseUrl: location.href
+});
 ///////////////////////////////////////////////////////////////////////////
 // Adds a configured raster overlay or basemap to the MapLibre style.
 ///////////////////////////////////////////////////////////////////////////
 function reprojectCoords(c, from) {
   return typeof c[0] === 'number' ? proj4(from, 'EPSG:4326', c.slice(0, 2)) : c.map(x => reprojectCoords(x, from));
 }
-function hasGeojsonPositions(coordinates) {
-  if (!Array.isArray(coordinates)) return false;
-  if (coordinates.length >= 2 && Number.isFinite(coordinates[0]) && Number.isFinite(coordinates[1])) return true;
-  return coordinates.some(hasGeojsonPositions);
-}
-function hasRenderableGeojsonGeometry(geometry) {
-  if (!geometry || typeof geometry !== 'object') return false;
-  return geometry.type === 'GeometryCollection'
-    ? Array.isArray(geometry.geometries) && geometry.geometries.some(hasRenderableGeojsonGeometry)
-    : hasGeojsonPositions(geometry.coordinates);
-}
-// GeoJSON polygon fills, outlines and points; `projection` is the file's CRS, e.g. 'EPSG:29902'.
-function addGeojsonLayer(w, beforeId) {
-  const empty = { type: 'FeatureCollection', features: [] };
-  map.addSource(w.id, { type: 'geojson', data: empty, ...(w.attribution ? { attribution: w.attribution } : {}) });
-  const s = w.style || {};
-  const fillId = `${w.id}-fill`;
-  map.addLayer({
-    id: fillId, type: 'fill', source: w.id,
-    filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
-    ...(Number.isFinite(w.minzoom) ? { minzoom: w.minzoom } : {}),
-    ...(Number.isFinite(w.maxzoom) ? { maxzoom: w.maxzoom } : {}),
-    layout: { visibility: 'none' },
-    paint: { 'fill-color': s.fill || s.color || '#d9480f', 'fill-opacity': w.opacity ?? 1 }
-  }, beforeId);
-  map.addLayer({
-    id: w.id, type: 'line', source: w.id,
-    ...(Number.isFinite(w.minzoom) ? { minzoom: w.minzoom } : {}),
-    ...(Number.isFinite(w.maxzoom) ? { maxzoom: w.maxzoom } : {}),
-    layout: { visibility: 'none', 'line-join': 'round' },
-    paint: {
-      'line-color': s.color || '#d9480f', 'line-width': s.width ?? 2, 'line-opacity': w.opacity ?? 1,
-      ...(s.dasharray ? { 'line-dasharray': s.dasharray } : {})
-    }
-  }, beforeId);
-  const pointId = `${w.id}-points`;
-  map.addLayer({
-    id: pointId, type: 'circle', source: w.id,
-    ...(Number.isFinite(w.minzoom) ? { minzoom: w.minzoom } : {}),
-    ...(Number.isFinite(w.maxzoom) ? { maxzoom: w.maxzoom } : {}),
-    filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    layout: { visibility: 'none' },
-    paint: {
-      'circle-radius': s.radius ?? 5, 'circle-color': s.fill || s.color || '#d9480f',
-      'circle-stroke-color': s.color || '#d9480f', 'circle-stroke-width': s.width ?? 1,
-      'circle-opacity': w.opacity ?? 1, 'circle-stroke-opacity': w.opacity ?? 1
-    }
-  }, beforeId);
-  w.layerIds = [fillId, w.id, pointId];
-  geojsonLoaders.set(w.id, {
-    config: w,
-    originalStyle: { ...(w.style || {}) },
-    originalFilters: {
-      [fillId]: map.getFilter(fillId),
-      [w.id]: map.getFilter(w.id),
-      [pointId]: map.getFilter(pointId)
-    },
-    status: 'idle',
-    statusElement: null,
-    legendContainer: null,
-    classifyButton: null,
-    rootCheckbox: null,
-    classState: null,
-    classInputs: [],
-    advancedStyle: false,
-    classification: null,
-    geometryTypes: null,
-    data: null,
-    loadingPromise: null
-  });
-  const inTheme = overlayInitiallyInTheme(w);
-  registerLayerVisibility(fillId, w.visible === true, inTheme);
-  registerLayerVisibility(w.id, w.visible === true, inTheme);
-  registerLayerVisibility(pointId, w.visible === true, inTheme);
-}
-let activeGeojsonStyleDialog = null;
-const geojsonStyleDialog = $('geojsonStyleDialog');
-const geojsonStyleForm = $('geojsonStyleForm');
-const geojsonStyleField = $('geojsonStyleField');
-const geojsonStyleMethod = $('geojsonStyleMethod');
-const geojsonStyleRamp = $('geojsonStyleRamp');
-const geojsonStyleRampButton = $('geojsonStyleRampButton');
-const geojsonStyleRampCurrent = $('geojsonStyleRampCurrent');
-const geojsonStyleRampOptions = $('geojsonStyleRampOptions');
-const geojsonClassCount = $('geojsonClassCount');
-const geojsonManualBreaks = $('geojsonManualBreaks');
-const geojsonStyleStatus = $('geojsonStyleStatus');
-const geojsonRampOptionButtons = Object.keys(COG_RAMP_COLORS).map(name => {
-  const option = document.createElement('button');
-  option.type = 'button';
-  option.className = 'geojson-ramp-option';
-  option.setAttribute('role', 'option');
-  option.setAttribute('aria-label', name);
-  option.title = name;
-  const bar = document.createElement('span');
-  bar.className = 'geojson-ramp-bar';
-  bar.style.backgroundImage = `linear-gradient(to right, ${COG_RAMP_COLORS[name].join(', ')})`;
-  option.appendChild(bar);
-  geojsonStyleRampOptions.appendChild(option);
-  option.onclick = () => {
-    geojsonStyleRamp.value = name;
-    updateGeojsonRampPicker();
-    closeGeojsonRampPicker(true);
-    updateGeojsonStyleDialogControls();
-  };
-  return option;
+const geojsonLayerController = createGeojsonLayerController({
+  map,
+  loaders: geojsonLoaders,
+  registerLayerVisibility,
+  isInitiallyInTheme: overlayInitiallyInTheme
 });
-
-function updateGeojsonRampPicker() {
-  const name = geojsonStyleRamp.value;
-  const ramp = COG_RAMP_COLORS[name];
-  geojsonStyleRampCurrent.style.backgroundImage = ramp ? `linear-gradient(to right, ${ramp.join(', ')})` : '';
-  geojsonStyleRampButton.setAttribute('aria-label', `Color ramp: ${name}`);
-  geojsonRampOptionButtons.forEach(option => {
-    const selected = option.getAttribute('aria-label') === name;
-    option.setAttribute('aria-selected', String(selected));
-    option.tabIndex = selected ? 0 : -1;
-  });
-}
-
-function closeGeojsonRampPicker(restoreFocus = false) {
-  geojsonStyleRampOptions.hidden = true;
-  geojsonStyleRampButton.setAttribute('aria-expanded', 'false');
-  if (restoreFocus) geojsonStyleRampButton.focus();
-}
-
-function openGeojsonRampPicker(focusSelected = false) {
-  geojsonStyleRampOptions.hidden = false;
-  geojsonStyleRampButton.setAttribute('aria-expanded', 'true');
-  if (focusSelected) {
-    (geojsonRampOptionButtons.find(option => option.getAttribute('aria-selected') === 'true') ||
-      geojsonRampOptionButtons[0])?.focus();
-  }
-}
-
-geojsonStyleRampButton.addEventListener('click', () => {
-  if (geojsonStyleRampOptions.hidden) openGeojsonRampPicker(true);
-  else closeGeojsonRampPicker();
+const geojsonStyleController = createGeojsonStyleController({
+  map,
+  document,
+  loaders: geojsonLoaders,
+  getFieldFromExpression: fieldOf,
+  renderLegend: renderGeojsonLegend,
+  toast
 });
-geojsonStyleRampButton.addEventListener('keydown', event => {
-  if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
-    event.preventDefault();
-    openGeojsonRampPicker(true);
-  }
-});
-geojsonStyleRampOptions.addEventListener('keydown', event => {
-  const index = geojsonRampOptionButtons.indexOf(document.activeElement);
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    closeGeojsonRampPicker(true);
-  } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp' ||
-             event.key === 'Home' || event.key === 'End') {
-    event.preventDefault();
-    const next = event.key === 'Home' ? 0
-      : event.key === 'End' ? geojsonRampOptionButtons.length - 1
-        : (index + (event.key === 'ArrowDown' ? 1 : -1) + geojsonRampOptionButtons.length) % geojsonRampOptionButtons.length;
-    geojsonRampOptionButtons[next]?.focus();
-  } else if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    geojsonRampOptionButtons[index]?.click();
-  }
-});
-updateGeojsonRampPicker();
-
-function geojsonNumericField(field) {
-  return field?.numeric && field.values.length > 0;
-}
-
-function updateGeojsonStyleDialogControls() {
-  const state = activeGeojsonStyleDialog;
-  if (!state) return;
-  const field = state.fields.find(item => item.name === geojsonStyleField.value);
-  const numeric = geojsonNumericField(field);
-  const uniqueAvailable = field?.uniqueValues.length > 0 && field.uniqueValues.length <= 20;
-  [...geojsonStyleMethod.options].forEach(option => {
-    if (option.value === 'unique_values') option.disabled = !uniqueAvailable;
-    else option.disabled = !numeric;
-  });
-  if (geojsonStyleMethod.selectedOptions[0]?.disabled) {
-    geojsonStyleMethod.value = numeric ? 'quantile' : uniqueAvailable ? 'unique_values' : '';
-  }
-  const method = geojsonStyleMethod.value;
-  const numericAutomatic = method === 'quantile' || method === 'equal_interval';
-  const manual = method === 'manual_breaks';
-  $('geojsonClassCountRow').hidden = !numericAutomatic;
-  geojsonClassCount.hidden = !numericAutomatic;
-  geojsonClassCount.disabled = !numericAutomatic;
-  $('geojsonManualBreaksRow').hidden = !manual;
-  geojsonManualBreaks.hidden = !manual;
-  $('geojsonManualBreaksHint').hidden = !manual;
-  $('geojsonApplyStyle').disabled = !field || !method;
-  if (!field) geojsonStyleStatus.textContent = 'No usable feature attributes were found.';
-  else if (!numeric && !uniqueAvailable) {
-    geojsonStyleStatus.textContent = `Unique-values classification is unavailable: this field has more than 20 distinct values.`;
-  } else if (method === 'tellus_percentile') {
-    geojsonStyleStatus.textContent = 'Uses fixed breaks at the 1st, 2nd, 5th, 10th, 15th, 20th, 25th, 40th, 50th, 60th, 75th, 85th, 90th, 95th, 98th, and 99th percentiles.';
-  } else if (field.uniqueValues.length > 20 && !numericAutomatic && !manual) {
-    geojsonStyleStatus.textContent = `This field has ${field.uniqueValues.length} distinct values; unique-values classification is limited to 20.`;
-  } else {
-    geojsonStyleStatus.textContent = '';
-  }
-  updateGeojsonRampPicker();
-}
-
-function openGeojsonStyleDialog(w) {
-  const loader = geojsonLoaders.get(w.id);
-  if (!loader || loader.status !== 'loaded' || !loader.data) {
-    toast('Enable this layer to load its attributes before classifying.');
-    return;
-  }
-  const fields = geojsonFieldStats(loader.data.features);
-  activeGeojsonStyleDialog = { overlay: w, loader, fields };
-  geojsonStyleField.replaceChildren();
-  fields.forEach(field => {
-    const option = document.createElement('option');
-    option.value = field.name;
-    option.textContent = `${field.name}${geojsonNumericField(field) ? ' (numeric)' : ''}`;
-    geojsonStyleField.appendChild(option);
-  });
-  const classification = loader.classification;
-  const configuredField = fieldOf(loader.originalStyle.fill) || fieldOf(loader.originalStyle.color);
-  geojsonStyleField.value = classification?.field || configuredField || fields[0]?.name || '';
-  geojsonStyleMethod.value = classification?.method ||
-    (geojsonNumericField(fields.find(field => field.name === geojsonStyleField.value)) ? 'quantile' : 'unique_values');
-  geojsonClassCount.value = String(
-    ['quantile', 'equal_interval'].includes(classification?.method) ? classification.classCount : 5
-  );
-  geojsonManualBreaks.value = (classification?.breaks || []).join(', ');
-  geojsonStyleRamp.value = classification?.ramp || 'Viridis';
-  $('geojsonStyleTitle').textContent = `Classify ${w.name || w.id} layer`;
-  $('geojsonStyleDescription').textContent =
-    'Custom classification applies for this page session; the configured style remains the reset option.';
-  geojsonStyleStatus.textContent = '';
-  updateGeojsonStyleDialogControls();
-  geojsonStyleDialog.showModal();
-}
-
-function applyGeojsonClassification() {
-  const dialogState = activeGeojsonStyleDialog;
-  if (!dialogState) return;
-  const { overlay: w, loader, fields } = dialogState;
-  const field = fields.find(item => item.name === geojsonStyleField.value);
-  if (!field) throw new Error('Select a feature attribute to classify.');
-  const method = geojsonStyleMethod.value;
-  const rampName = geojsonStyleRamp.value;
-  const ramp = COG_RAMP_COLORS[rampName];
-  if (!ramp) throw new Error('Select a valid color ramp.');
-  let expression, breaks = [], classCount, percentileLabels;
-  if (method === 'unique_values') {
-    if (field.uniqueValues.length > 20) throw new Error('Unique-values classification is limited to 20 values.');
-    classCount = field.uniqueValues.length;
-    const colors = cogClassRampColors(ramp, Array.from({ length: classCount }, (_, index) => ({ max: index })));
-    expression = matchColorExpression(field.name, field.uniqueValues, colors);
-  } else {
-    if (!geojsonNumericField(field)) throw new Error('The selected field does not contain only numeric values.');
-    if (method === 'quantile' || method === 'equal_interval') {
-      classCount = Number(geojsonClassCount.value);
-      if (!Number.isInteger(classCount) || classCount < 2 || classCount > 12) {
-        throw new Error('Choose between 2 and 12 numeric classes.');
-      }
-      breaks = method === 'quantile'
-        ? quantileBreaks(field.values, classCount)
-        : equalIntervalBreaks(field.values, classCount);
-    } else if (method === 'tellus_percentile') {
-      const classification = tellusPercentileClassification(field.values);
-      breaks = classification.breaks;
-      percentileLabels = classification.labels;
-      classCount = breaks.length + 1;
-    } else if (method === 'manual_breaks') {
-      breaks = parseManualBreaks(geojsonManualBreaks.value, field.min, field.max);
-      classCount = breaks.length + 1;
-    } else {
-      throw new Error('Select a supported classification method.');
-    }
-    const colors = cogClassRampColors(ramp, Array.from({ length: breaks.length + 1 }, (_, index) => ({ max: index })));
-    expression = stepColorExpression(field.name, breaks, colors);
-  }
-  w.style = { ...(w.style || {}), color: expression, fill: expression };
-  loader.advancedStyle = true;
-  const legendDescending = method === 'tellus_percentile' &&
-    loader.classification?.method === 'tellus_percentile' &&
-    loader.classification.legendDescending === true;
-  loader.classification = {
-    field: field.name,
-    method,
-    classCount,
-    breaks,
-    ramp: rampName,
-    percentileLabels,
-    legendDescending
-  };
-  applyGeojsonPaint(w);
-  renderGeojsonLegend(w);
-}
-
-function resetGeojsonStyle(w) {
-  const loader = geojsonLoaders.get(w.id);
-  if (!loader) return;
-  w.style = { ...loader.originalStyle };
-  loader.advancedStyle = false;
-  loader.classification = null;
-  applyGeojsonPaint(w);
-  renderGeojsonLegend(w);
-}
-
-geojsonStyleField.addEventListener('change', updateGeojsonStyleDialogControls);
-geojsonStyleMethod.addEventListener('change', updateGeojsonStyleDialogControls);
-$('geojsonCancelStyle').addEventListener('click', () => geojsonStyleDialog.close());
-$('geojsonResetStyle').addEventListener('click', () => {
-  if (!activeGeojsonStyleDialog) return;
-  resetGeojsonStyle(activeGeojsonStyleDialog.overlay);
-  geojsonStyleDialog.close();
-});
-geojsonStyleForm.addEventListener('submit', event => {
-  event.preventDefault();
-  try {
-    applyGeojsonClassification();
-    geojsonStyleDialog.close();
-  } catch (error) {
-    geojsonStyleStatus.textContent = error.message;
-  }
-});
-geojsonStyleDialog.addEventListener('close', () => { activeGeojsonStyleDialog = null; });
 const COG_QUANTILE_CLASS_COUNT = Number.isInteger(CONFIG.cogStyleDefaults?.quantileStops) &&
   CONFIG.cogStyleDefaults.quantileStops >= 2
   ? CONFIG.cogStyleDefaults.quantileStops
@@ -5583,7 +4304,7 @@ function initializeCogRampControls(w, panel, legend) {
   });
 }
 function addRasterLayer(w, beforeId, isBasemap = false) {
-  if (w.geojson) return addGeojsonLayer(w, beforeId);
+  if (w.geojson) return geojsonLayerController.add(w, beforeId);
   const cogUrl = w.cog ? new URL(w.cog, location.href).href : null;
   if (w.cog) {
     const baseUrl = new URL(cogUrl);
@@ -5675,59 +4396,10 @@ function addRasterLayer(w, beforeId, isBasemap = false) {
   registerLayerVisibility(w.id, w.visible === true, isBasemap || overlayInitiallyInTheme(w));
 }
 
-function configuredTerrainModels() {
-  const t = CONFIG.terrain || {};
-  const configured = Array.isArray(t.models) && t.models.length ? t.models : t.cog
-    ? [{ id: 'default', name: t.modelName || t.hillshadeName || 'DTM', cog: t.cog, tileSize: t.tileSize, attribution: t.attribution }]
-    : [];
-  const ids = new Set(), models = [];
-  configured.forEach((model, index) => {
-    if (!model || typeof model.cog !== 'string' || !model.cog.trim()) {
-      console.warn('Terrain model skipped: needs a COG path', model);
-      return;
-    }
-    const id = String(model.id || `model-${index + 1}`);
-    if (ids.has(id)) { console.warn('Terrain model skipped: duplicate id', id); return; }
-    ids.add(id);
-    models.push({ ...model, id, name: model.name || id,
-      sourceId: `dtm-terrain-${models.length}`, hillshadeSourceId: `dtm-hillshade-${models.length}` });
-  });
-  return models;
-}
-const terrainModels = configuredTerrainModels();
+const terrainModels = normalizeTerrainModels(CONFIG.terrain || {});
 let activeTerrainModel = null, terrainLayerBeforeId = null;
-const terrainRangeChecks = new Map();
-const terrainRangeVerified = new Set();
-function verifyTerrainRangeSupport(model) {
-  const url = new URL(model.cog, location.href).href;
-  if (!terrainRangeChecks.has(url)) {
-    let tracked;
-    const pending = (async () => {
-      const controller = new AbortController();
-      try {
-        const response = await fetch(url, {
-          headers: { Range: 'bytes=0-0' },
-          signal: controller.signal
-        });
-        if (response.status !== 206) {
-          controller.abort();
-          throw new Error(`The server ignored byte-range requests (HTTP ${response.status}); refusing to download the full DEM.`);
-        }
-        await response.body?.cancel();
-        terrainRangeVerified.add(url);
-      } catch (error) {
-        controller.abort();
-        throw error;
-      }
-    })();
-    tracked = pending.catch(error => {
-      if (terrainRangeChecks.get(url) === tracked) terrainRangeChecks.delete(url);
-      throw error;
-    });
-    terrainRangeChecks.set(url, tracked);
-  }
-  return terrainRangeChecks.get(url);
-}
+const terrainRangeValidator = createTerrainRangeValidator({ baseUrl: location.href });
+const verifyTerrainRangeSupport = terrainRangeValidator.verify;
 function reportTerrainRangeError(model, error) {
   const message = `Could not load ${model.name || model.id} terrain: ${error.message}`;
   console.error(message, error);
@@ -5788,91 +4460,31 @@ const CONTOUR_LINE_ID = 'dtm-contour-lines';
 const CONTOUR_LABEL_ID = 'dtm-contour-labels';
 const contourSettings = (CONFIG.terrain || {}).contours;
 let contoursVisible = !!contourSettings && contourSettings.visible === true;
-const contourColors = { minor: '#30383b', major: '#30383b', ...(contourSettings && contourSettings.colors || {}) };
-const contourLineColor = () => ['match', ['get', 'level'], 1, contourColors.major, contourColors.minor];
-let contourOpacity = contourSettings && typeof contourSettings === 'object' ? contourSettings.opacity ?? 0.8 : 0.8;
-const contourDemSources = new Map();
 let contourDemSource = null, contourGeneration = 0;
-const hillshadeMax = () => (CONFIG.terrain || {}).hillshadeStrength ?? 0.6;
-let terrainShadeStrength = hillshadeMax();
-const HILLSHADE_METHODS = [
-  ['standard', 'Standard'], ['basic', 'Basic'], ['combined', 'Combined'],
-  ['igor', 'Igor'], ['multidirectional', 'Multidirectional']
-];
-const HILLSHADE_STYLE_DEFAULTS = {
-  method: 'standard', direction: 335, altitude: 45, anchor: 'map',
-  shadowColor: '#000000', highlightColor: '#ffffff', accentColor: '#000000'
-};
-const hillshadeStyle = { ...HILLSHADE_STYLE_DEFAULTS, ...((CONFIG.terrain || {}).hillshadeStyle || {}) };
-function hillshadePaint() {
-  return {
-    'hillshade-exaggeration': terrainShadeStrength,
-    'hillshade-method': hillshadeStyle.method,
-    'hillshade-illumination-direction': hillshadeStyle.direction,
-    'hillshade-illumination-altitude': hillshadeStyle.altitude,
-    'hillshade-illumination-anchor': hillshadeStyle.anchor,
-    'hillshade-shadow-color': hillshadeStyle.shadowColor,
-    'hillshade-highlight-color': hillshadeStyle.highlightColor,
-    'hillshade-accent-color': hillshadeStyle.accentColor
-  };
-}
-function hillshadeControlsMarkup() {
-  return '<div class="hillshade-settings advanced-only">' +
-    '<label class="trow">Method <select class="hs-method">' + HILLSHADE_METHODS.map(([value, label]) =>
-      `<option value="${value}"${hillshadeStyle.method === value ? ' selected' : ''}>${label}</option>`).join('') + '</select></label>' +
-    '<label class="trow">Light direction <input class="hs-direction" type="range" min="0" max="359" step="1" value="' + hillshadeStyle.direction + '"><output class="hs-direction-value">' + hillshadeStyle.direction + '°</output></label>' +
-    '<label class="trow">Light altitude <input class="hs-altitude" type="range" min="0" max="90" step="1" value="' + hillshadeStyle.altitude + '"><output class="hs-altitude-value">' + hillshadeStyle.altitude + '°</output></label>' +
-    '<label class="trow">Illumination <select class="hs-anchor"><option value="map">Map north</option><option value="viewport">Viewport</option></select></label>' +
-    '<div class="hillshade-colors">' +
-      '<label>Shadow <input class="hs-shadow" type="color" value="' + esc(hillshadeStyle.shadowColor) + '"></label>' +
-      '<label>Highlight <input class="hs-highlight" type="color" value="' + esc(hillshadeStyle.highlightColor) + '"></label>' +
-      '<label>Accent <input class="hs-accent" type="color" value="' + esc(hillshadeStyle.accentColor) + '"></label>' +
-    '</div></div>';
-}
-function bindHillshadeControls(panel) {
-  const paintProps = {
-    method: 'hillshade-method', direction: 'hillshade-illumination-direction',
-    altitude: 'hillshade-illumination-altitude', anchor: 'hillshade-illumination-anchor',
-    shadowColor: 'hillshade-shadow-color', highlightColor: 'hillshade-highlight-color', accentColor: 'hillshade-accent-color'
-  };
-  const setStyle = (key, value) => {
-    hillshadeStyle[key] = value;
-    if (map.getLayer('hillshade')) map.setPaintProperty('hillshade', paintProps[key], value);
-  };
-  const method = panel.querySelector('.hs-method');
-  method.value = hillshadeStyle.method;
-  method.onchange = () => setStyle('method', method.value);
-  const anchor = panel.querySelector('.hs-anchor');
-  anchor.value = hillshadeStyle.anchor;
-  anchor.onchange = () => setStyle('anchor', anchor.value);
-  const direction = panel.querySelector('.hs-direction'), directionValue = panel.querySelector('.hs-direction-value');
-  direction.oninput = () => { directionValue.value = direction.value + '°'; setStyle('direction', Number(direction.value)); };
-  const altitude = panel.querySelector('.hs-altitude'), altitudeValue = panel.querySelector('.hs-altitude-value');
-  altitude.oninput = () => { altitudeValue.value = altitude.value + '°'; setStyle('altitude', Number(altitude.value)); };
-  [['shadowColor', '.hs-shadow'], ['highlightColor', '.hs-highlight'], ['accentColor', '.hs-accent']].forEach(([key, selector]) => {
-    const input = panel.querySelector(selector);
-    input.oninput = () => setStyle(key, input.value);
-  });
-}
-function contourControlsMarkup() {
-  return '<div class="hillshade-colors advanced-only">' +
-    '<label>Minor <input class="ct-minor" type="color" value="' + esc(contourColors.minor) + '"></label>' +
-    '<label>Major <input class="ct-major" type="color" value="' + esc(contourColors.major) + '"></label></div>';
-}
-function bindContourControls(panel) {
-  const apply = () => {
-    if (map.getLayer(CONTOUR_LINE_ID)) map.setPaintProperty(CONTOUR_LINE_ID, 'line-color', contourLineColor());
-    if (map.getLayer(CONTOUR_LABEL_ID)) map.setPaintProperty(CONTOUR_LABEL_ID, 'text-color', contourColors.major);
-  };
-  [['minor', '.ct-minor'], ['major', '.ct-major']].forEach(([key, selector]) => {
-    const input = panel.querySelector(selector);
-    input.oninput = () => { contourColors[key] = input.value; apply(); };
-  });
-}
+const terrainControls = createTerrainControlsController({
+  map,
+  document,
+  terrain: CONFIG.terrain || {},
+  escapeHtml: esc,
+  contourLineId: CONTOUR_LINE_ID,
+  contourLabelId: CONTOUR_LABEL_ID
+});
+const { hillshadeStyle, contourColors } = terrainControls.state;
+const {
+  hillshadeMethods: HILLSHADE_METHODS,
+  hillshadePaint,
+  setHillshadeTransparency,
+  setContourTransparency,
+  contourLineColor,
+  hillshadeControlsMarkup,
+  bindHillshadeControls,
+  contourControlsMarkup,
+  bindContourControls
+} = terrainControls;
 function allOverlays() {   // configured overlays + the built-in hillshade
   const list = validOverlays(), t = CONFIG.terrain;
   if (t && terrainModels.length && t.contours !== false)
-    list.push({ id: CONTOUR_LINE_ID, layerIds: [CONTOUR_LINE_ID, CONTOUR_LABEL_ID], name: contourSettings?.name || 'Contours', group: t.group || 'Terrain', contours: true, builtin: true, global: true, visible: contoursVisible, opacity: contourOpacity, info: contourSettings?.info });
+    list.push({ id: CONTOUR_LINE_ID, layerIds: [CONTOUR_LINE_ID, CONTOUR_LABEL_ID], name: contourSettings?.name || 'Contours', group: t.group || 'Terrain', contours: true, builtin: true, global: true, visible: contoursVisible, opacity: terrainControls.state.contourOpacity, info: contourSettings?.info });
   if (t && terrainModels.length && t.hillshade !== false)
     list.push({ id: 'hillshade', name: t.hillshadeName || 'Hillshade', group: t.group || 'Terrain', hillshade: true, builtin: true, global: t.allThemes !== false, visible: !!t.hillshadeVisible, opacity: 1, info: t.info });
   if (t && terrainModels.length)
@@ -5881,8 +4493,7 @@ function allOverlays() {   // configured overlays + the built-in hillshade
 }
 const setOverlayTransparency = (w, v) => {
   if (w.hillshade) {
-    terrainShadeStrength = hillshadeMax() * (1 - v / 100);   // hillshade has no opacity: transparency scales its strength
-    map.setPaintProperty(w.id, 'hillshade-exaggeration', terrainShadeStrength);
+    setHillshadeTransparency(v);
   } else if (w.cogState) {
     w.cogState.opacity = 1 - v / 100;
     [w.id, ...w.cogState.colorLayerIds].forEach(id => {
@@ -5892,9 +4503,7 @@ const setOverlayTransparency = (w, v) => {
       map.setPaintProperty(w.cogState.hillshadeLayerId, 'hillshade-exaggeration', effectiveCogHillshadeStrength(w.cogState));
     }
   } else if (w.contours) {
-    contourOpacity = 1 - v / 100;
-    if (map.getLayer(CONTOUR_LINE_ID)) map.setPaintProperty(CONTOUR_LINE_ID, 'line-opacity', contourOpacity);
-    if (map.getLayer(CONTOUR_LABEL_ID)) map.setPaintProperty(CONTOUR_LABEL_ID, 'text-opacity', contourOpacity);
+    setContourTransparency(v);
   } else if (w.geojson) {
     map.setPaintProperty(`${w.id}-fill`, 'fill-opacity', 1 - v / 100);
     map.setPaintProperty(w.id, 'line-opacity', 1 - v / 100);
@@ -5907,40 +4516,10 @@ function removeTerrainContours() {
   if (map.getSource(CONTOUR_SOURCE_ID)) map.removeSource(CONTOUR_SOURCE_ID);
   contourDemSource = null;
 }
-function getContourDemSource(cogUrl, maxzoom) {
-  let source = contourDemSources.get(cogUrl);
-  if (source) return source;
-  source = new window.mlcontour.DemSource({
-    url: `cog://${cogUrl}#dem/{z}/{x}/{y}`,
-    encoding: 'mapbox', maxzoom, worker: false, cacheSize: 128
-  });
-  source.manager.getTile = async (url, abortController) => {
-    if (abortController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-    const { data: bitmap } = await window.MaplibreCOGProtocol.cogProtocol({ url, type: 'image' });
-    if (abortController.signal.aborted) { bitmap.close(); throw new DOMException('Aborted', 'AbortError'); }
-    return { data: bitmap };
-  };
-  source.manager.decodeImage = async bitmap => {
-    const { width, height } = bitmap;
-    const canvas = typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(width, height) : Object.assign(document.createElement('canvas'), { width, height });
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    context.drawImage(bitmap, 0, 0);
-    const pixels = context.getImageData(0, 0, width, height).data;
-    const data = new Float32Array(width * height);
-    for (let index = 0; index < data.length; index++) {
-      const offset = index * 4;
-      const encoded = pixels[offset] * 65536 + pixels[offset + 1] * 256 + pixels[offset + 2];
-      // The COG protocol's opaque 0 m sentinel represents no-data.
-      data[index] = pixels[offset + 3] < 255 || encoded === 100000
-        ? NaN : encoded * 0.1 - 10000;
-    }
-    return { width, height, data };
-  };
-  source.setupMaplibre(maplibregl);
-  contourDemSources.set(cogUrl, source);
-  return source;
-}
+const { getSource: getContourDemSource } = createCogContourSourceController({
+  maplibregl,
+  document
+});
 ///////////////////////////////////////////////////////////////////////////
 // Creates contour sources and layers for the selected elevation model.
 ///////////////////////////////////////////////////////////////////////////
@@ -5966,7 +4545,7 @@ async function setupTerrainContours(model, beforeId = terrainLayerBeforeId) {
     map.addLayer({
       id: CONTOUR_LINE_ID, type: 'line', source: CONTOUR_SOURCE_ID, 'source-layer': 'contours',
       layout: { visibility: contoursVisible ? 'visible' : 'none' },
-      paint: { 'line-color': contourLineColor(), 'line-opacity': contourOpacity,
+      paint: { 'line-color': contourLineColor(), 'line-opacity': terrainControls.state.contourOpacity,
         'line-width': ['match', ['get', 'level'], 1, 1.2, 0.7] }
     }, before);
     map.addLayer({
@@ -5975,7 +4554,7 @@ async function setupTerrainContours(model, beforeId = terrainLayerBeforeId) {
       layout: { visibility: contoursVisible ? 'visible' : 'none', 'symbol-placement': 'line',
         'text-size': 10, 'text-font': ['Noto Sans Regular'],
         'text-field': ['concat', ['number-format', ['get', 'ele'], {}], ' m'] },
-      paint: { 'text-color': contourColors.major, 'text-opacity': contourOpacity,
+      paint: { 'text-color': contourColors.major, 'text-opacity': terrainControls.state.contourOpacity,
         'text-halo-color': '#fff', 'text-halo-width': 1.2 }
     }, before);
     contourDemSource = source;
@@ -6094,216 +4673,11 @@ async function refreshCogContours(w) {
   if (state.contoursEnabled && isCogOverlayVisible(w)) await createCogContours(w);
   else syncCogLayerMode(w);
 }
-const arcgisLegendCache = new Map();
-const arcgisLegendViews = new Map();
-const arcgisCapabilityCache = new Map();
-const arcgisIdentifyDisabled = new Set();
-const arcgisViewValues = new Map();
-let arcgisLastViewKey = '';
-function arcgisServiceUrl(request) {
-  const url = new URL(request.url);
-  url.pathname = url.pathname.replace(/\/legend$/i, '');
-  url.searchParams.delete('f');
-  return url;
-}
-function applyArcgisLegendView(w) {
-  const view = arcgisLegendViews.get(w.id);
-  if (!view) return;
-  view.legend.querySelector('.arcgis-legend-empty')?.remove();
-  view.legend.querySelectorAll('.arcgis-legend-note').forEach(note => note.remove());
-  let filtered = 0, shown = 0;
-  view.legend.querySelectorAll('.arcgis-legend-entry').forEach(row => {
-    const values = row._arcgisValues;
-    const inView = arcgisViewValues.get(`${view.serviceKey}|${row._arcgisLayerId}`);
-    if (!Array.isArray(values) || !values.length || !inView) {
-      row.classList.remove('nv');
-      return;
-    }
-    const present = values.some(value => inView.has(String(value)));
-    row.classList.toggle('nv', !present);
-    filtered++;
-    if (present) shown++;
-  });
-  if (filtered && !shown) {
-    const note = document.createElement('div');
-    note.className = 'arcgis-legend-empty';
-    note.textContent = 'No symbols in the current view.';
-    view.legend.appendChild(note);
-  }
-  if (view.notice) {
-    const note = document.createElement('div');
-    note.className = 'arcgis-legend-note';
-    note.textContent = view.notice;
-    view.legend.appendChild(note);
-  }
-}
-function setArcgisServiceNotice(service, text) {
-  const serviceKey = service.serviceUrl.href;
-  service.layerIds.forEach(id => arcgisViewValues.delete(`${serviceKey}|${id}`));
-  const targetId = service.overlays.find(w => arcgisLegendViews.has(w.id))?.id;
-  arcgisLegendViews.forEach((view, id) => {
-    if (view.serviceKey !== serviceKey) return;
-    view.notice = id === targetId ? text : '';
-    applyArcgisLegendView({ id });
-  });
-}
-function arcgisSupportsQuery(serviceUrl) {
-  const url = new URL(serviceUrl);
-  url.searchParams.set('f', 'json');
-  const key = url.href;
-  if (!arcgisCapabilityCache.has(key)) {
-    arcgisCapabilityCache.set(key, fetch(key).then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    }).then(data => {
-      if (data.error) throw new Error(data.error.message || 'ArcGIS service request failed');
-      return String(data.capabilities || '').split(',').includes('Query');
-    }));
-  }
-  return arcgisCapabilityCache.get(key);
-}
-///////////////////////////////////////////////////////////////////////////
-// Fetches and applies ArcGIS identify results for overlays visible in the map.
-///////////////////////////////////////////////////////////////////////////
-async function updateArcgisLegendInView() {
-  if (!map.getStyle()) return;
-  const services = new Map();
-  validOverlays().forEach(w => {
-    if (!map.getLayer(w.id) || map.getLayoutProperty(w.id, 'visibility') !== 'visible') return;
-    const request = arcgisLegendRequest(w);
-    if (!request || !request.layerIds) return;
-    const serviceUrl = arcgisServiceUrl(request);
-    const serviceKey = serviceUrl.href;
-    if (!services.has(serviceKey)) services.set(serviceKey, { serviceUrl, layerIds: new Set(), overlays: [] });
-    const service = services.get(serviceKey);
-    request.layerIds.forEach(id => service.layerIds.add(id));
-    service.overlays.push(w);
-  });
-  if (!services.size) return;
-  const bounds = map.getBounds();
-  const canvas = map.getCanvas();
-  const extent = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
-  const viewKey = `${extent.map(value => value.toFixed(5)).join(',')}|${canvas.clientWidth},${canvas.clientHeight}|` +
-    [...services].map(([key, service]) => `${key}:${[...service.layerIds].sort().join(',')}`).sort().join('|');
-  if (viewKey === arcgisLastViewKey) return;
-  arcgisLastViewKey = viewKey;
-  await Promise.all([...services.entries()].map(async ([serviceKey, service]) => {
-    if (arcgisIdentifyDisabled.has(serviceKey)) {
-      setArcgisServiceNotice(service, 'View filtering is unavailable for this service; all symbols are shown.');
-      return;
-    }
-    try {
-      if (!await arcgisSupportsQuery(service.serviceUrl)) {
-        arcgisIdentifyDisabled.add(serviceKey);
-        setArcgisServiceNotice(service, 'View filtering is unavailable for this service; all symbols are shown.');
-        return;
-      }
-      const url = new URL(service.serviceUrl);
-      url.pathname += '/identify';
-      const params = {
-        f: 'json', geometry: JSON.stringify({ xmin: extent[0], ymin: extent[1], xmax: extent[2], ymax: extent[3], spatialReference: { wkid: 4326 } }),
-        geometryType: 'esriGeometryEnvelope', sr: '4326', mapExtent: extent.join(','),
-        imageDisplay: `${canvas.clientWidth},${canvas.clientHeight},96`, tolerance: '3',
-        layers: `visible:${[...service.layerIds].join(',')}`, returnGeometry: 'false'
-      };
-      Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
-      const response = await fetch(url.href);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message || 'ArcGIS identify request failed');
-      const counts = new Map(), values = new Map();
-      (data.results || []).forEach(result => {
-        const id = String(result.layerId);
-        counts.set(id, (counts.get(id) || 0) + 1);
-        if (result.value !== undefined && result.value !== null && result.value !== '') {
-          if (!values.has(id)) values.set(id, new Set());
-          values.get(id).add(String(result.value));
-        }
-      });
-      service.layerIds.forEach(id => {
-        const count = counts.get(id) || 0, found = values.get(id);
-        const key = `${serviceKey}|${id}`;
-        if (count < 1000 && (!count || found?.size)) arcgisViewValues.set(key, found || new Set());
-        else arcgisViewValues.delete(key);
-      });
-      service.overlays.forEach(applyArcgisLegendView);
-    } catch (error) {
-      arcgisIdentifyDisabled.add(serviceKey);
-      setArcgisServiceNotice(service, 'View filtering is unavailable for this service; all symbols are shown.');
-      console.warn('Could not filter ArcGIS legend to the current view:', error);
-    }
-  }));
-}
-function arcgisLegendData(url) {
-  if (!arcgisLegendCache.has(url)) {
-    let pending;
-    pending = fetch(url).then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    }).then(data => {
-      if (data.error) throw new Error(data.error.message || 'ArcGIS legend request failed');
-      return data;
-    }).catch(error => {
-      if (arcgisLegendCache.get(url) === pending) arcgisLegendCache.delete(url);
-      throw error;
-    });
-    arcgisLegendCache.set(url, pending);
-  }
-  return arcgisLegendCache.get(url);
-}
-function renderArcgisLegend(container, w) {
-  const request = arcgisLegendRequest(w);
-  if (!request) return;
-  const legend = document.createElement('div');
-  legend.className = 'arcgis-legend';
-  legend.textContent = 'Legend loads when this theme is active.';
-  container.appendChild(legend);
-  const serviceKey = arcgisServiceUrl(request).href;
-  arcgisLegendViews.set(w.id, { legend, serviceKey, request, notice: '', loading: false, loaded: false });
-}
-function loadArcgisLegend(w) {
-  const view = arcgisLegendViews.get(w.id);
-  if (!view || view.loading || view.loaded) return;
-  view.loading = true;
-  view.legend.textContent = 'Loading legend…';
-  arcgisLegendData(view.request.url).then(data => {
-    const layers = (data.layers || []).filter(layer => !view.request.layerIds || view.request.layerIds.has(String(layer.layerId)));
-    const entries = layers.flatMap(layer => (layer.legend || []).map(entry => ({ layer, entry })))
-      .filter(({ entry }) => entry.imageData || entry.url);
-    view.legend.replaceChildren();
-    if (!entries.length) {
-      view.legend.textContent = 'No legend entries available.';
-      view.loaded = true;
-      return;
-    }
-    entries.forEach(({ layer, entry }) => {
-      const row = document.createElement('div');
-      row.className = 'arcgis-legend-entry';
-      row._arcgisLayerId = String(layer.layerId);
-      row._arcgisValues = Array.isArray(entry.values) ? entry.values : [];
-      const label = entry.label || layer.layerName || '';
-      const image = document.createElement('img');
-      image.alt = label;
-      image.src = entry.imageData
-        ? `data:${entry.contentType || 'image/png'};base64,${entry.imageData}`
-        : new URL(entry.url, view.request.url).href;
-      row.appendChild(image);
-      if (entry.label) {
-        const text = document.createElement('span');
-        text.textContent = entry.label;
-        row.appendChild(text);
-      }
-      view.legend.appendChild(row);
-    });
-    view.loaded = true;
-    applyArcgisLegendView(w);
-  }).catch(error => {
-    console.warn(`Could not load ArcGIS legend for ${w.name || w.id}:`, error);
-    view.legend.textContent = 'Legend unavailable. Toggle the layer off and on to retry.';
-  }).finally(() => {
-    view.loading = false;
-  });
-}
+const {
+  render: renderArcgisLegend,
+  load: loadArcgisLegend,
+  updateInView: updateArcgisLegendInView
+} = arcgisLegendController;
 const overlayLegendImages = new Map();
 const overlayLegendGroups = new Map();
 function loadOverlayLegendImage(w) {
@@ -6337,329 +4711,61 @@ function ensureOverlaySymbology(w) {
   if (w.legendUrl) loadOverlayLegendImage(w);
   else loadArcgisLegend(w);
 }
+const overlayVisibilityController = createOverlayVisibilityController({
+  isCogProtocolRegistered: () => cogProtocolRegistered,
+  ensureCogProtocol,
+  notify: toast,
+  setContoursVisible: visible => { contoursVisible = visible; },
+  addHillshadeLayer,
+  getActiveTerrainModel: () => activeTerrainModel,
+  getTerrainLayerBeforeId: () => terrainLayerBeforeId,
+  setClassFilters,
+  setLayerVisibility: setVis,
+  syncCogLayerMode,
+  ensurePendingCogLayer,
+  initializeVisibleCogControls,
+  getCursorPosition: () => cursorPosition,
+  scheduleCogCursorValues,
+  getLayerVisibility: id => layerVisibility.get(id),
+  ensureOverlaySymbology,
+  setThemeLayerVisibility: setThemeVisibility
+});
+const overlayDownloadController = createOverlayDownloadController({
+  document,
+  window,
+  navigator,
+  URL,
+  Blob,
+  crypto,
+  setTimeout,
+  console,
+  getBaseUrl: () => location.href,
+  toast,
+  prepareCogQgisStyle,
+  cogQgisColorStops,
+  buildQgisLayerDefinition,
+  geojsonLegendCategories: geojsonLegendController.categories,
+  geojsonFieldStats,
+  buildGeojsonQgisLayerDefinition
+});
+const overlayRowControlsController = createOverlayRowControlsController({
+  layerTools,
+  infoFor,
+  setOverlayTransparency,
+  arcgisLegendRequest,
+  collapser,
+  collapseLayers: CONFIG.collapseLayers,
+  overlayHasZoomableExtent,
+  overlayBounds,
+  zoomButton
+});
 map.on('idle', updateArcgisLegendInView);
 map.on('moveend', updateArcgisLegendInView);
 ///////////////////////////////////////////////////////////////////////////
 // Builds grouped layer controls for configured raster and terrain overlays.
 ///////////////////////////////////////////////////////////////////////////
 function buildOverlayLegend(overlays = allOverlays()) {
-  const lg = $('legend');
-  const byGroup = {};
-  overlays.forEach(w => (byGroup[w.group || 'Overlays'] ||= []).push(w));
-  Object.entries(byGroup).forEach(([name, list]) => {
-    let group = overlayLegendGroups.get(name);
-    if (!group) {
-      group = addGroup(lg, name);
-      overlayLegendGroups.set(name, group);
-    }
-    const body = group.body;
-    list.forEach(w => {
-      if (w.terrain) {   // 3D on/off, in sync with the menu button
-        const d = document.createElement('div');
-        d.dataset.nokey = '1';
-        const modelSelect = terrainModels.length > 1
-          ? '<label class="trow">Model <select class="terrain-model">' + terrainModels.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('') + '</select></label>'
-          : '';
-        d.innerHTML = '<div class="grprow"><span class="cspace"></span><label class="lname"><input type="checkbox"> <span>' + esc(w.name) + '</span></label>' +
-            '<button class="tbtn terrain-zoom" type="button"></button>' +
-            '<button class="tbtn terrain-tools advanced-only" type="button" title="Terrain settings" aria-label="Terrain settings" aria-expanded="false">' + ICON_SLIDERS + '</button></div>' +
-            '<div class="lpanel terrain-panel advanced-only" hidden>' + (modelSelect ? modelSelect : '') + '<label class="trow">Exaggeration <input class="terrain-exaggeration" type="range" min="1" max="3" step="0.1" value="' + terrainExaggeration + '"><span class="tval"></span></label></div>';
-          const terrainZoom = zoomButton('selected DEM', () => {
-            if (!activeTerrainModel) throw new Error('No DEM is selected.');
-            return window.MaplibreCOGProtocol.getCogMetadata(
-              new URL(activeTerrainModel.cog, location.href).href
-            ).then(metadata => metadata.bbox);
-          }, () => activeTerrainModel?.maxzoom);
-          terrainZoom.classList.add('terrain-zoom');
-          d.querySelector('.terrain-zoom').replaceWith(terrainZoom);
-          terrainCb = d.querySelector('input');
-        terrainCb.onchange = () => setTerrain3D(terrainCb.checked && !terrainGroupHidden, false);
-        const modelPicker = d.querySelector('.terrain-model');
-        if (modelPicker) {
-          modelPicker.value = activeTerrainModel.id;
-          modelPicker.onchange = () => setTerrainModel(modelPicker.value);
-        }
-        const terrainTools = d.querySelector('.terrain-tools');
-        const terrainPanel = d.querySelector('.lpanel');
-        terrainTools.onclick = () => {
-          terrainPanel.hidden = !terrainPanel.hidden;
-          terrainTools.setAttribute('aria-expanded', String(!terrainPanel.hidden));
-        };
-        const terrainSlider = d.querySelector('.terrain-exaggeration');
-        const terrainValue = d.querySelector('.tval');
-        terrainExaggeration = Number(terrainSlider.value);
-        terrainValue.textContent = terrainExaggeration.toFixed(1) + 'x';
-        terrainSlider.oninput = () => {
-          terrainExaggeration = Number(terrainSlider.value);
-          terrainValue.textContent = terrainExaggeration.toFixed(1) + 'x';
-          if (terrainOn) map.setTerrain({ source: activeTerrainModel.sourceId, exaggeration: terrainExaggeration });
-        };
-        body.appendChild(d);
-        return;
-      }
-      const transp = 100 - Math.round((w.opacity ?? 1) * 100);
-      const d = document.createElement('div');
-      d.dataset.orderKey = `overlay:${w.id}`;
-      if (w.geojson) d.dataset.scaleId = w.id;
-      d.classList.toggle('legend-off', w.visible !== true);
-      d.draggable = true;
-      d.title = `Drag to reorder ${w.name || w.id}`;
-      const scaleEye = w.geojson
-        ? '<svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>'
-        : '';
-      const geojsonStatus = w.geojson
-        ? '<div class="geojson-load-status" role="status" aria-live="polite" hidden></div>'
-        : '';
-      const geojsonLegend = w.geojson ? '<div class="geojson-class-legend" hidden></div>' : '';
-      d.innerHTML = `<div class="grprow"><label class="lname"><input type="checkbox"${w.visible === true ? ' checked' : ''}> <span class="grp">${esc(w.name || w.id)}${scaleEye}</span></label></div>${geojsonLegend}${geojsonStatus}`;
-      const cb = d.querySelector('input');
-      const layerIds = w.layerIds || [w.id];
-      const geojsonLoader = w.geojson ? geojsonLoaders.get(w.id) : null;
-      if (geojsonLoader) {
-        geojsonLoader.statusElement = d.querySelector('.geojson-load-status');
-        geojsonLoader.legendContainer = d.querySelector('.geojson-class-legend');
-        geojsonLoader.rowElement = d;
-        geojsonLoader.rootCheckbox = cb;
-        updateGeojsonLoadStatus(w.id);
-        renderGeojsonLegend(w);
-      }
-      const setOverlayVisibility = on => {
-        if (w.hillshade && on && !cogProtocolRegistered) {
-          ensureCogProtocol()
-            .then(() => setOverlayVisibility(on))
-            .catch(error => toast(`Could not load COG support: ${error.message}`));
-          return;
-        }
-        cb.checked = on;
-        d.classList.toggle('legend-off', !on);
-        if (w.contours) contoursVisible = cb.checked;
-        if (w.hillshade && on) addHillshadeLayer(activeTerrainModel, terrainLayerBeforeId, false);
-        if (geojsonLoader?.classState) {
-          geojsonLoader.categoryIsolationController?.clear();
-          geojsonLoader.classState.hidden.clear();
-          if (!on) geojsonLoader.classState.categories.forEach(category => geojsonLoader.classState.hidden.add(category));
-          geojsonLoader.classInputs.forEach(input => { input.checked = on; });
-          setClassFilters(layerIds, geojsonLoader.classState);
-          setVis(layerIds, on);
-        } else if (w.cogState) {
-          w.cogState.visible = on;
-          syncCogLayerMode(w);
-          if (on) ensurePendingCogLayer(w);
-          initializeVisibleCogControls();
-          if (cursorPosition) scheduleCogCursorValues(cursorPosition);
-        } else setVis(layerIds, on);
-        if (on && layerVisibility.get(w.id)?.inTheme) ensureOverlaySymbology(w);
-      };
-      cb.onchange = () => setOverlayVisibility(cb.checked);
-      if (!w.global) ctl.ov[w.id] = {
-        theme: on => {
-          setThemeVisibility(layerIds, on);
-          if (on && w.cogState) {
-            ensurePendingCogLayer(w);
-            initializeVisibleCogControls();
-          }
-          if (on) ensureOverlaySymbology(w);
-        },
-        set: setOverlayVisibility,
-        el: d
-      };
-      const cogControls = w.cogState
-        ? `<div class="cog-ramp-controls">
-            <div class="cog-ramp-advanced-controls advanced-only"><div class="cog-ramp-status" role="status">Enable this layer to load its COG controls.</div></div>
-            <section class="cog-download-section" aria-label="Download and source">
-              <div class="cog-download-divider"></div>
-              <h4>Download for Desktop GIS</h4>
-              <div class="cog-download-actions">
-                <button class="cog-qgis-download" type="button" aria-label="Download QGIS layer definition" title="Download QGIS layer definition (.qlr)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5M8 14h8M8 17h5"/></svg><span>QGIS</span>
-                </button>
-                <button class="cog-arcpro-placeholder" type="button" aria-label="ArcGIS Pro export coming later" title="ArcGIS Pro export will be added later" disabled>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5M8 14h8M8 17h5"/></svg><span>ArcGIS Pro</span>
-                </button>
-                <button class="cog-source-copy" type="button" aria-label="Copy source URL to clipboard" title="Copy source URL to clipboard">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"/></svg><span>Copy URL</span>
-                </button>
-              </div>
-              <div class="cog-download-status" role="status" aria-live="polite"></div>
-            </section>
-          </div>`
-        : '';
-      const geojsonControls = w.geojson
-        ? `<section class="cog-download-section geojson-download-section" aria-label="Download and source">
-            <div class="cog-download-divider"></div>
-            <h4>Download for Desktop GIS</h4>
-            <div class="cog-download-actions">
-              <button class="geojson-qgis-download" type="button" aria-label="Download QGIS layer definition" title="Download QGIS layer definition (.qlr)">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5M8 14h8M8 17h5"/></svg><span>QGIS</span>
-              </button>
-              <button class="geojson-source-copy" type="button" aria-label="Copy source URL to clipboard" title="Copy source URL to clipboard">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"/></svg><span>Copy URL</span>
-              </button>
-            </div>
-            <div class="cog-download-status geojson-download-status" role="status" aria-live="polite"></div>
-          </section>`
-        : '';
-      const t = layerTools(transp, infoFor(w.id, name, w.info), v => setOverlayTransparency(w, v),
-        w.hillshade ? hillshadeControlsMarkup() : w.contours ? contourControlsMarkup() : geojsonControls || cogControls);
-      const rowEl = d.querySelector('.grprow');
-      if (w.legendUrl || arcgisLegendRequest(w)) rowEl.prepend(collapser(d, CONFIG.collapseLayers)); else rowEl.insertAdjacentHTML('afterbegin', '<span class="cspace"></span>');
-      if (overlayHasZoomableExtent(w)) {
-        rowEl.appendChild(zoomButton(w.name || w.id, () => overlayBounds(w), w.maxzoom));
-      }
-      if (geojsonLoader) {
-        const classifyButton = document.createElement('button');
-        classifyButton.type = 'button';
-        classifyButton.className = 'tbtn geojson-classify-button advanced-only';
-        classifyButton.innerHTML = ICON_COLOR_RAMP;
-        classifyButton.setAttribute('aria-label', `Classify ${w.name || w.id}`);
-        classifyButton.onclick = () => openGeojsonStyleDialog(w);
-        geojsonLoader.classifyButton = classifyButton;
-        rowEl.appendChild(classifyButton);
-        updateGeojsonLoadStatus(w.id);
-      }
-      if (t.infoBtn) rowEl.appendChild(t.infoBtn);
-      rowEl.appendChild(t.btn);
-      if (t.infoPanel) d.appendChild(t.infoPanel);
-      d.appendChild(t.panel);
-      if (geojsonLoader?.legendContainer) d.appendChild(geojsonLoader.legendContainer);
-      if (w.cogState) {
-        const copySource = t.panel.querySelector('.cog-source-copy');
-        const qgisDownload = t.panel.querySelector('.cog-qgis-download');
-        const downloadStatus = t.panel.querySelector('.cog-download-status');
-        qgisDownload.onclick = async () => {
-          qgisDownload.disabled = true;
-          downloadStatus.textContent = 'Preparing QGIS layer definition…';
-          try {
-            let hasSingleBandStyle = false;
-            let style = null;
-            let styleError = null;
-            try {
-              hasSingleBandStyle = await prepareCogQgisStyle(w);
-              if (hasSingleBandStyle) style = cogQgisColorStops(w.cogState);
-            } catch (error) {
-              styleError = error;
-              hasSingleBandStyle = w.cogState.bandCount !== 0;
-              console.warn(`Could not prepare the ${w.name || w.id} QGIS color style; using grayscale.`, error);
-            }
-            const qgisId = `${w.id.replace(/[^A-Za-z0-9_-]+/g, '_')}_${crypto.randomUUID().replace(/-/g, '_')}`;
-            const qlr = buildQgisLayerDefinition({
-              id: qgisId,
-              name: w.name || w.id,
-              url: w.cogState.url,
-              opacity: w.cogState.opacity,
-              minimum: w.cogState.rangeMin,
-              maximum: w.cogState.rangeMax,
-              crsAuthId: w.qgisCrs || w.projection || 'EPSG:29902',
-              renderer: hasSingleBandStyle ? 'gray' : 'none',
-              ...(style || {})
-            });
-            const blobUrl = URL.createObjectURL(new Blob([qlr], { type: 'application/xml;charset=utf-8' }));
-            const link = document.createElement('a');
-            const filename = (w.name || w.id).replace(/[\\/:*?"<>|]+/g, '_').trim() || 'raster-layer';
-            link.href = blobUrl;
-            link.download = `${filename}.qlr`;
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-            downloadStatus.textContent = style
-              ? 'QGIS layer definition downloaded with the current color style and breaks.'
-              : hasSingleBandStyle
-                ? `QGIS layer definition downloaded in single-band gray${styleError ? `; color style unavailable: ${styleError.message}` : ''}.`
-                : 'QGIS layer definition downloaded; this multiband raster will use QGIS default rendering.';
-            toast('QGIS layer definition downloaded');
-          } catch (error) {
-            console.error(`Could not export ${w.name || w.id} as a QGIS layer:`, error);
-            downloadStatus.textContent = `Could not create QGIS layer definition: ${error.message}`;
-            toast(`Could not create QGIS layer definition: ${error.message}`);
-          } finally {
-            qgisDownload.disabled = false;
-          }
-        };
-        copySource.onclick = async () => {
-          try {
-            await navigator.clipboard.writeText(w.cogState.url);
-            downloadStatus.textContent = 'Source URL copied to clipboard.';
-            toast('COG source URL copied');
-          } catch {
-            window.prompt('Copy this source URL', w.cogState.url);
-          }
-        };
-        const legend = document.createElement('div');
-        legend.className = 'cog-ramp-legend';
-        legend.hidden = true;
-        d.appendChild(legend);
-        w.cogState.controlsPanel = t.panel;
-        w.cogState.controlsLegend = legend;
-      }
-      if (geojsonLoader) {
-        const copySource = t.panel.querySelector('.geojson-source-copy');
-        const qgisDownload = t.panel.querySelector('.geojson-qgis-download');
-        const downloadStatus = t.panel.querySelector('.geojson-download-status');
-        const sourceUrl = new URL(w.url, location.href).href;
-        qgisDownload.onclick = () => {
-          qgisDownload.disabled = true;
-          downloadStatus.textContent = 'Preparing QGIS layer definition…';
-          try {
-            const fieldName = geojsonLegendCategories(w, geojsonLoader).find(category => category.field)?.field;
-            const fieldStats = fieldName
-              ? geojsonFieldStats(geojsonLoader.data?.features || []).find(field => field.name === fieldName)
-              : null;
-            const qlr = buildGeojsonQgisLayerDefinition({
-              id: `${w.id.replace(/[^A-Za-z0-9_-]+/g, '_')}_${crypto.randomUUID().replace(/-/g, '_')}`,
-              name: w.name || w.id,
-              url: sourceUrl,
-              opacity: Number.isFinite(w.opacity) ? w.opacity : 1,
-              crsAuthId: w.qgisCrs || w.projection || 'EPSG:4326',
-              geometryTypes: geojsonLoader.geometryTypes || [],
-              geometryType: w.geometryType,
-              style: w.style || {},
-              categories: geojsonLegendCategories(w, geojsonLoader),
-              minimum: fieldStats?.min,
-              maximum: fieldStats?.max
-            });
-            const blobUrl = URL.createObjectURL(new Blob([qlr], { type: 'application/xml;charset=utf-8' }));
-            const link = document.createElement('a');
-            const filename = (w.name || w.id).replace(/[\\/:*?"<>|]+/g, '_').trim() || 'geojson-layer';
-            link.href = blobUrl;
-            link.download = `${filename}.qlr`;
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-            downloadStatus.textContent = 'QGIS vector layer definition downloaded with the configured GeoJSON style.';
-            toast('QGIS layer definition downloaded');
-          } catch (error) {
-            console.error(`Could not export ${w.name || w.id} as a QGIS vector layer:`, error);
-            downloadStatus.textContent = `Could not create QGIS layer definition: ${error.message}`;
-            toast(`Could not create QGIS layer definition: ${error.message}`);
-          } finally {
-            qgisDownload.disabled = false;
-          }
-        };
-        copySource.onclick = async () => {
-          try {
-            await navigator.clipboard.writeText(sourceUrl);
-            downloadStatus.textContent = 'Source URL copied to clipboard.';
-            toast('GeoJSON source URL copied');
-          } catch {
-            downloadStatus.textContent = 'Clipboard unavailable; copy the URL from the prompt.';
-            window.prompt('Copy this source URL', sourceUrl);
-          }
-        };
-      }
-      if (w.hillshade) bindHillshadeControls(t.panel);
-      if (w.contours) bindContourControls(t.panel);
-      if (w.legendUrl) overlayLegendImages.set(w.id, d);
-      else renderArcgisLegend(d, w);
-      body.appendChild(d);
-      if (w.global) ensureOverlaySymbology(w);
-      layerIds.forEach(id => group.layerIds.add(id));
-      if (w.cogState) w.groupLayerIds = group.layerIds;
-    });
-    const hasTerrain = list.some(w => w.terrain);
-    if (hasTerrain) group.onVisibilityChange = visible => {
-      terrainGroupHidden = !visible;
-      if (!visible && terrainOn) setTerrain3D(false, false);
-      else if (visible && terrainCb && terrainCb.checked && !terrainOn) setTerrain3D(true, false);
-    };
-  });
+  overlayLegendController.build(overlays);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -6789,35 +4895,28 @@ map.once('style.load', async () => {
 });
 
 // ---------- Box selection (mouse and touch) ----------
-let start = null, selected = [], selectionGeneration = 0;
-const boxBtn = $('boxBtn');
-const boxEl = document.createElement('div');
-boxEl.id = 'selbox';
-map.getCanvasContainer().appendChild(boxEl);
-const mapBox = map.getCanvasContainer();
-let boxKeyboardStart = null;
-
-function setBox(on) {
-  if (on) cancelNotificationPick();
-  if (on) {
-    selectionGeneration++;
-    arcgisQueryController.cancel();
-  }
-  boxMode = on;
-  boxBtn.classList.toggle('active', on);
-  boxBtn.setAttribute('aria-pressed', String(on));
-  document.body.classList.toggle('box-on', on);
-  map.getCanvas().style.cursor = on ? 'crosshair' : '';
-  mapBox.style.touchAction = on ? 'none' : '';
-  boxKeyboardStart = null;
-  $('boxTip').textContent = 'Drag a box on the map, or focus the map and press Enter to set the first corner';
-  on ? (map.dragPan.disable(), map.touchZoomRotate.disable()) : (map.dragPan.enable(), map.touchZoomRotate.enable());
-  if (on) map.getCanvas().focus();
-}
-boxBtn.onclick = () => {
-  if (!boxMode && tool && isMobile()) openTool(tool);   // get the menu out of the way on phones
-  setBox(!boxMode);
-};
+const boxSelectionController = createBoxSelectionController({
+  map,
+  document,
+  boxButton: $('boxBtn'),
+  boxTip: $('boxTip'),
+  isBoxMode: () => boxMode,
+  setBoxMode: on => { boxMode = on; },
+  setJustBoxed: on => { justBoxed = on; },
+  isNotificationPicking: notificationController.isPicking,
+  cancelNotificationPick: notificationController.cancelPick,
+  selectNotificationLocation: notificationController.selectLocation,
+  getActiveTool: () => tool,
+  isMobile,
+  openTool,
+  arcgisQueryController,
+  queryData,
+  arcgisBoxPolygon,
+  queryArcgisOverlays,
+  showTable,
+  toast
+});
+const { setBox } = boxSelectionController;
 $('globeBtn').onclick = () => {
   const globe = $('globeBtn');
   const enabled = globe.getAttribute('aria-pressed') !== 'true';
@@ -6829,79 +4928,6 @@ $('globeBtn').onclick = () => {
   globe.setAttribute('aria-label', label);
   scheduleSessionSave();
 };
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape') return;
-  if (notificationPicking) cancelNotificationPick();
-  if (boxMode) setBox(false);
-});
-map.getCanvas().addEventListener('keydown', e => {
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  if (notificationPicking) {
-    e.preventDefault();
-    selectNotificationLocation(map.getCenter());
-    return;
-  }
-  if (!boxMode) return;
-  e.preventDefault();
-  if (!boxKeyboardStart) {
-    boxKeyboardStart = map.getCenter();
-    $('boxTip').textContent = 'First corner set. Pan with the arrow keys, then press Enter again to select the box.';
-    return;
-  }
-  const first = map.project(boxKeyboardStart);
-  const second = map.project(map.getCenter());
-  if (Math.hypot(first.x - second.x, first.y - second.y) < 3) {
-    $('boxTip').textContent = 'Pan the map with the arrow keys to the opposite corner, then press Enter again.';
-    return;
-  }
-  boxKeyboardStart = null;
-  runSelection(first, second);
-});
-
-const pos = e => { const r = mapBox.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-const drawBox = cur => Object.assign(boxEl.style, {
-  display: 'block', left: Math.min(start.x, cur.x) + 'px', top: Math.min(start.y, cur.y) + 'px',
-  width: Math.abs(cur.x - start.x) + 'px', height: Math.abs(cur.y - start.y) + 'px'
-});
-mapBox.addEventListener('pointerdown', e => {
-  if (!boxMode || (e.pointerType === 'mouse' && e.button !== 0)) return;
-  start = pos(e);
-  const s = start;
-  const move = ev => drawBox(pos(ev));
-  const up = ev => {
-    document.removeEventListener('pointermove', move);
-    document.removeEventListener('pointerup', up);
-    boxEl.style.display = 'none';
-    runSelection(s, pos(ev));
-    start = null;
-  };
-  document.addEventListener('pointermove', move);
-  document.addEventListener('pointerup', up);
-});
-
-///////////////////////////////////////////////////////////////////////////
-// Queries rendered vector features and visible queryable ArcGIS overlays for a map rectangle.
-///////////////////////////////////////////////////////////////////////////
-async function runSelection(a, b) {
-  setBox(false);
-  justBoxed = true; setTimeout(() => justBoxed = false, 50);   // stops the drag from also opening a popup
-  if (Math.abs(a.x - b.x) < 3 && Math.abs(a.y - b.y) < 3) return;
-  const generation = ++selectionGeneration;
-  const bounds = [
-    [Math.min(a.x, b.x), Math.min(a.y, b.y)],
-    [Math.max(a.x, b.x), Math.max(a.y, b.y)]
-  ];
-  const vectorFeatures = queryData(bounds);
-  let arcgisFeatures = [];
-  try {
-    arcgisFeatures = await queryArcgisOverlays(arcgisBoxPolygon(a, b), 'esriGeometryPolygon', true);
-  } catch (error) {
-    toast(`Could not query ArcGIS layers: ${error.message}`);
-  }
-  if (generation !== selectionGeneration) return;
-  selected = [...vectorFeatures, ...arcgisFeatures];
-  showTable(selected, `${selected.length} record(s) selected`);
-}
 
 // ---------- Results panel ----------
 let activeTab = null, ring = null, shown = [], tabRows = [], tabCols = [], tableFilters = {};
@@ -6984,7 +5010,7 @@ function renderTable(feats, label) {
 // Global results panel switch (rail button); JSON themes keep their legend eye in step.
 let resultsOn = false;
 function setResults(on) {
-  if (!on) selectionGeneration++;
+  if (!on) boxSelectionController.invalidatePendingSelection();
   resultsOn = on;
   document.body.classList.toggle('has-table', on);
   $('tableBtn').classList.toggle('active', on);
@@ -7003,7 +5029,8 @@ function closeResults() {
   if (ring) { ring.remove(); ring = null; }
 }
 function clearResults() {
-  selected = []; shown = []; tabRows = []; tabCols = [];
+  boxSelectionController.clear();
+  shown = []; tabRows = []; tabCols = [];
   $('xlsxBtn').hidden = true;
   closeResults();
 }
@@ -7030,174 +5057,47 @@ $('csvBtn').onclick = () => {
   URL.revokeObjectURL(a.href);
 };
 
-// ---------- Search ----------
-function pmtilesSearchLayers() {
-  return [...new Set(map.getStyle().layers.filter(layer => layer['source-layer']).map(styleLayerKey))]
-    .filter(layer => !themeLayers || themeLayers.includes(layer));
-}
-function pmtilesSearchLabel(layer) {
-  return styleLayerLabel(map.getStyle(), layer);
-}
-function populateSearchLayers() {
-  const geojsonLayers = (CONFIG.overlays || []).filter(overlay => overlay.geojson && geojsonLoaders.has(overlay.id) &&
-    (activeThemeAll || themeOverlays.includes(overlay.id)));
-  const pmtilesLayers = pmtilesSearchLayers();
-  const options = [
-    ...geojsonLayers.map(overlay => `<option value="geojson:${esc(overlay.id)}">${esc(overlay.name || overlay.id)}</option>`),
-    ...pmtilesLayers.map(layer => `<option value="pmtiles:${esc(layer)}">${esc(pmtilesSearchLabel(layer))}</option>`)
-  ];
-  $('searchLayer').innerHTML = options.join('');
-  updateSearchFields();
-}
-function renderSearchFields(properties, layer) {
-  const fields = Object.keys(properties || {});
-  $('searchFields').innerHTML = fields.length
-    ? fields.map(field => `<label><input type="checkbox" value="${esc(field)}" checked>${esc(field)}</label>`).join('')
-    : `<em class="hint">${layer ? 'No searchable fields in this layer.' : 'This theme has no searchable layers.'}</em>`;
-}
-function updatePmtilesSearchFields(layer) {
-  const sample = queryData(wholeMap()).find(feature => feature.sourceLayer === layer);
-  if (sample) renderSearchFields(sample.properties, layer);
-  else $('searchFields').innerHTML =
-    `<em class="hint">${layer ? 'No fields yet – make sure this layer is visible in the current view.' : 'This theme has no searchable layers.'}</em>`;
-}
-async function updateSearchFields() {
-  const selection = $('searchLayer').value;
-  const separator = selection.indexOf(':');
-  const type = separator < 0 ? '' : selection.slice(0, separator);
-  const layer = separator < 0 ? '' : selection.slice(separator + 1);
-  if (type !== 'geojson') {
-    updatePmtilesSearchFields(type === 'pmtiles' ? layer : '');
-    return;
-  }
-  const loader = geojsonLoaders.get(layer);
-  if (!loader) {
-    $('searchFields').innerHTML = '<em class="hint">This GeoJSON layer is unavailable.</em>';
-    return;
-  }
-  $('searchFields').innerHTML = '<em class="hint">Loading GeoJSON fields...</em>';
-  await loadGeojsonData(layer);
-  if ($('searchLayer').value !== selection) return;
-  if (loader.status === 'error') {
-    $('searchFields').innerHTML = '<em class="hint">Could not load this GeoJSON file. Try selecting the layer again.</em>';
-    return;
-  }
-  const sample = loader.data?.features?.find(feature => feature.properties && Object.keys(feature.properties).length);
-  renderSearchFields(sample?.properties, layer);
-}
-///////////////////////////////////////////////////////////////////////////
-// Searches every record in the selected GeoJSON file or visible PMTiles features.
-///////////////////////////////////////////////////////////////////////////
-async function runSearch() {
-  const text = $('searchText').value.trim().toLowerCase();
-  if (!text) { $('searchText').focus(); return; }
-  const selection = $('searchLayer').value;
-  const separator = selection.indexOf(':');
-  const type = separator < 0 ? '' : selection.slice(0, separator);
-  const layer = separator < 0 ? '' : selection.slice(separator + 1);
-  if (type === 'geojson') {
-    const loader = geojsonLoaders.get(layer);
-    if (!loader) return toast('The selected GeoJSON layer is unavailable.');
-    await loadGeojsonData(layer);
-    if (loader.status !== 'loaded') return;
-    if (!document.querySelector('#searchFields input')) renderSearchFields(
-      loader.data?.features?.find(feature => feature.properties)?.properties, layer);
-  }
-  const fields = [...document.querySelectorAll('#searchFields input:checked')].map(cb => cb.value);
-  const matches = type === 'geojson'
-    ? geojsonLoaders.get(layer).data.features.filter(feature =>
-      fields.some(field => feature.properties?.[field] != null &&
-        String(feature.properties[field]).toLowerCase().includes(text)))
-      .map(feature => ({ ...feature, sourceLayer: geojsonLoaders.get(layer).config.name || layer }))
-    : type === 'pmtiles'
-      ? queryData(wholeMap()).filter(feature => feature.sourceLayer === layer &&
-        fields.some(field => feature.properties[field] != null &&
-          String(feature.properties[field]).toLowerCase().includes(text)))
-      : [];
-  activeTab = null;
-  showTable(matches, `${matches.length} search result(s)`);
-  if (isMobile()) openTool(tool);   // reveal the results
-}
-$('searchLayer').addEventListener('change', updateSearchFields);
-$('runSearch').addEventListener('click', runSearch);
-$('searchText').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
-
-// ---------- Location search (place name, Irish grid reference, or lat/lon) ----------
-const IG_LETTERS = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';   // Irish Grid 100 km squares (no I), 5 x 5 from the south-west
-function parseGrid(q) {
-  q = q.trim().toUpperCase();
-  let m = q.match(/^([A-HJ-Z])\s*(\d[\d\s]*)$/);   // e.g. J 3374 7396, J33747396, J 337 739
-  if (m) {
-    const parts = m[2].trim().split(/\s+/);
-    let e, n;
-    if (parts.length === 2 && parts[0].length === parts[1].length) [e, n] = parts;
-    else if (parts.length === 1 && parts[0].length % 2 === 0) [e, n] = [parts[0].slice(0, parts[0].length / 2), parts[0].slice(parts[0].length / 2)];
-    if (e && e.length <= 5) {
-      const i = IG_LETTERS.indexOf(m[1]);
-      return { E: (i % 5) * 100000 + Number(e.padEnd(5, '0')), N: (4 - Math.floor(i / 5)) * 100000 + Number(n.padEnd(5, '0')) };
-    }
-  }
-  m = q.match(/^(?:E\s*)?(\d{5,6})\s*(?:,|N|\s)\s*(?:N\s*)?(\d{5,6})$/);   // 333740 373960, E 333740 N 373960
-  return m ? { E: Number(m[1]), N: Number(m[2]) } : null;
-}
-let geoMarker = null;
-const geoList = $('geoList');
-const geoStatus = $('geoStatus');
-const geoMsg = text => {
-  geoStatus.textContent = text;
-  geoList.innerHTML = `<li class="msg">${esc(text)}</li>`;
-  geoList.hidden = false;
-};
-function goTo(lngLat, label, bbox) {
-  geoList.hidden = true;
-  geoStatus.textContent = `Location selected: ${label}.`;
-  if (geoMarker) geoMarker.remove();
-  geoMarker = new maplibregl.Marker({ color: '#e8590c' }).setLngLat(lngLat)
-    .setPopup(new maplibregl.Popup({ offset: 24 }).setText(label)).addTo(map);
-  geoMarker.togglePopup();
-  if (bbox) map.fitBounds(bbox, { padding: 40, maxZoom: 17 }); else map.flyTo({ center: lngLat, zoom: 16 });
-  if (isMobile() && tool) openTool(tool);
-  $('geoIn').focus();
-}
-///////////////////////////////////////////////////////////////////////////
-// Resolves a place name, coordinate, or Irish Grid reference and navigates there.
-///////////////////////////////////////////////////////////////////////////
-async function geoSearch() {
-  const q = $('geoIn').value.trim();
-  if (!q) { geoList.hidden = true; geoStatus.textContent = ''; return; }
-  const g = parseGrid(q);
-  if (g) {
-    const ll = proj4('EPSG:29902', 'EPSG:4326', [g.E, g.N]);
-    if (ll[0] < -11 || ll[0] > -5 || ll[1] < 51 || ll[1] > 56) return geoMsg('That grid reference is outside Ireland.');
-    return goTo(ll, `Irish Grid E ${g.E} N ${g.N}`);
-  }
-  const ll = q.includes('.') && q.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)$/);
-  if (ll && Math.abs(ll[1]) <= 90 && Math.abs(ll[2]) <= 180) return goTo([Number(ll[2]), Number(ll[1])], `${ll[1]}, ${ll[2]}`);
-  geoMsg('Searching…');
-  try {
-    const sc = CONFIG.search || {};
-    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=' + (sc.limit || 5) +
-      (sc.countrycodes ? '&countrycodes=' + sc.countrycodes : '') + '&q=' + encodeURIComponent(q));
-    const res = await r.json();
-    if (!res.length) return geoMsg('No places found. Try a town name, a postcode or a grid reference such as J 3374 7396.');
-    const pick = x => goTo([Number(x.lon), Number(x.lat)], x.display_name,
-      x.boundingbox && [[Number(x.boundingbox[2]), Number(x.boundingbox[0])], [Number(x.boundingbox[3]), Number(x.boundingbox[1])]]);
-    if (res.length === 1) return pick(res[0]);
-    geoStatus.textContent = `${res.length} locations found. Choose a result.`;
-    geoList.innerHTML = res.map((x, i) =>
-      `<li><button type="button" class="geo-result" data-i="${i}">${esc(x.display_name)}</button></li>`).join('');
-    geoList.querySelectorAll('.geo-result').forEach(button => {
-      button.onclick = () => pick(res[button.dataset.i]);
-    });
-  } catch (e) { geoMsg('Search failed. Check your connection and try again.'); }
-}
-$('geoGo').onclick = geoSearch;
-$('geoIn').addEventListener('keydown', e => {
-  if (e.key === 'Enter') geoSearch();
-  if (e.key === 'Escape') { geoList.hidden = true; geoStatus.textContent = ''; }
+// ---------- Feature search ----------
+const { populateSearchLayers, updateSearchFields: refreshSearchFields } = createDataSearchController({
+  map,
+  layerSelect: $('searchLayer'),
+  textInput: $('searchText'),
+  fieldsElement: $('searchFields'),
+  runButton: $('runSearch'),
+  getConfig: () => CONFIG,
+  geojsonLoaders,
+  getActiveThemeAll: () => activeThemeAll,
+  getThemeOverlays: () => themeOverlays,
+  getThemeLayers: () => themeLayers,
+  queryData,
+  wholeMap,
+  loadGeojsonData,
+  styleLayerKey,
+  styleLayerLabel,
+  escapeHtml: esc,
+  toast,
+  showTable,
+  setActiveTab: tab => { activeTab = tab; },
+  isMobile,
+  getActiveTool: () => tool,
+  openTool
 });
-$('geoIn').addEventListener('search', () => { if (!$('geoIn').value) { geoList.hidden = true; if (geoMarker) { geoMarker.remove(); geoMarker = null; } } });
-map.on('click', () => { geoList.hidden = true; });
+updateSearchFields = refreshSearchFields;
+
+createLocationSearchController({
+  map,
+  maplibregl,
+  input: $('geoIn'),
+  goButton: $('geoGo'),
+  list: $('geoList'),
+  status: $('geoStatus'),
+  getConfig: () => CONFIG,
+  projectGrid: grid => proj4('EPSG:29902', 'EPSG:4326', [grid.E, grid.N]),
+  isMobile,
+  getActiveTool: () => tool,
+  openTool,
+  escapeHtml: esc
+});
 
 
 // ---------- 3D terrain ----------
@@ -7279,73 +5179,89 @@ map.on('error', async e => {
 });
 let terrainOn = false, terrainCb = null, terrainGroupHidden = false;   // checkbox selection is preserved when its group is hidden
 let terrainExaggeration = Math.min(10, Math.max(1, Number((CONFIG.terrain || {}).exaggeration) || 1));
-///////////////////////////////////////////////////////////////////////////
-// Switches the active elevation model and rebuilds dependent terrain layers.
-///////////////////////////////////////////////////////////////////////////
-async function setTerrainModel(id) {
-  const model = terrainModels.find(m => m.id === id);
-  if (!model || model === activeTerrainModel) return;
-  try {
-    await verifyTerrainRangeSupport(model);
-  } catch (error) {
-    reportTerrainRangeError(model, error);
+const terrainRuntimeController = createTerrainRuntimeController({
+  map,
+  terrainConfig: CONFIG.terrain,
+  contourLineId: CONTOUR_LINE_ID,
+  models: terrainModels,
+  verifyTerrainRangeSupport,
+  reportTerrainRangeError,
+  ensureCogProtocol,
+  isCogProtocolRegistered: () => cogProtocolRegistered,
+  getActiveModel: () => activeTerrainModel,
+  setActiveModel: model => { activeTerrainModel = model; },
+  setContoursVisible: visible => { contoursVisible = visible; },
+  removeTerrainContours,
+  addTerrainModelSource,
+  addHillshadeLayer,
+  setupTerrainContours,
+  getTerrainOn: () => terrainOn,
+  setTerrainOn: on => { terrainOn = on; },
+  getTerrainCheckbox: () => terrainCb,
+  getTerrainGroupHidden: () => terrainGroupHidden,
+  getTerrainLayerBeforeId: () => terrainLayerBeforeId,
+  getTerrainExaggeration: () => terrainExaggeration,
+  setModelPickerValue: id => {
     const picker = $('legend').querySelector('.terrain-model');
-    if (picker && activeTerrainModel) picker.value = activeTerrainModel.id;
-    return;
-  }
-  const tc = CONFIG.terrain;
-  if (map.getLayer(CONTOUR_LINE_ID)) contoursVisible = map.getLayoutProperty(CONTOUR_LINE_ID, 'visibility') !== 'none';
-  removeTerrainContours();
-  const hillshadeLayerExists = !!map.getLayer('hillshade');
-  const hillshadeVisible = hillshadeLayerExists
-    ? map.getLayoutProperty('hillshade', 'visibility') !== 'none'
-    : !!tc.hillshadeVisible;
-  if (hillshadeLayerExists) map.removeLayer('hillshade');
-  activeTerrainModel = model;
-  const modelPicker = $('legend').querySelector('.terrain-model');
-  if (modelPicker) modelPicker.value = model.id;
-  if (terrainOn) {
-    addTerrainModelSource(model, 'terrain');
-    map.setTerrain({ source: model.sourceId, exaggeration: terrainExaggeration });
-  }
-  if (hillshadeLayerExists || hillshadeVisible) addHillshadeLayer(model, terrainLayerBeforeId, hillshadeVisible);
-  setupTerrainContours(model, terrainLayerBeforeId);
-}
-///////////////////////////////////////////////////////////////////////////
-// Enables or disables 3D terrain and synchronizes map pitch and controls.
-///////////////////////////////////////////////////////////////////////////
-function setTerrain3D(on, syncCheckbox = true, tilt = true) {
-  const tc = CONFIG.terrain;
-  if (!tc || !activeTerrainModel) {
-    if (terrainCb) terrainCb.checked = false;
-    $('terrainBtn').setAttribute('aria-pressed', 'false');
-    return toast('3D view needs a DTM configured in CONFIG.terrain.models.');
-  }
-  if (on && !cogProtocolRegistered) {
-    ensureCogProtocol()
-      .then(() => setTerrain3D(on, syncCheckbox, tilt))
-      .catch(error => {
-        if (terrainCb && syncCheckbox) terrainCb.checked = false;
-        toast(`Could not load COG support: ${error.message}`);
-      });
-    return;
-  }
-  terrainOn = on;
-  if (terrainCb && syncCheckbox) terrainCb.checked = on;
-  $('terrainBtn').classList.toggle('active', on);
-  $('terrainBtn').setAttribute('aria-pressed', String(on));
-  if (on) { addTerrainModelSource(activeTerrainModel, 'terrain'); map.setTerrain({ source: activeTerrainModel.sourceId, exaggeration: terrainExaggeration }); if (tilt) map.easeTo({ pitch: tc.pitch ?? 60, duration: 900 }); }
-  else {
-    map.setTerrain(null);
-    if (tilt) map.easeTo({ pitch: 0, bearing: 0, duration: 600 });   // everything is draped on the surface automatically
-  }
-}
-map.on('pitchstart', e => {   // user tilting (right-drag / two-finger swipe) switches 3D on
-  if (e.originalEvent && !terrainOn && !terrainGroupHidden && activeTerrainModel) setTerrain3D(true, true, false);
+    if (picker && id) picker.value = id;
+  },
+  setTerrainButtonState: on => {
+    const button = $('terrainBtn');
+    button.classList.toggle('active', on);
+    button.setAttribute('aria-pressed', String(on));
+  },
+  toast
 });
-map.on('moveend', () => {
-  if (terrainOn && map.getPitch() < 1) setTerrain3D(false);
+const { setTerrainModel, setTerrain3D } = terrainRuntimeController;
+const terrainLegendRowController = createTerrainLegendRowController({
+  document,
+  map,
+  models: terrainModels,
+  escapeHtml: esc,
+  slidersIcon: ICON_SLIDERS,
+  zoomButton,
+  getActiveModel: () => activeTerrainModel,
+  setTerrainModel,
+  getExaggeration: () => terrainExaggeration,
+  setExaggeration: value => { terrainExaggeration = value; },
+  getTerrainGroupHidden: () => terrainGroupHidden,
+  isTerrainOn: () => terrainOn,
+  setTerrain3D,
+  setTerrainCheckbox: checkbox => { terrainCb = checkbox; },
+  getBaseUrl: () => location.href,
+  getCogMetadata: url => window.MaplibreCOGProtocol.getCogMetadata(url)
 });
+const overlayLegendController = createOverlayLegendController({
+  getLegendElement: () => $('legend'),
+  overlayLegendGroups,
+  allOverlays,
+  addGroup,
+  terrainLegendRowController,
+  document,
+  escapeHtml: esc,
+  geojsonLoaders,
+  updateGeojsonLoadStatus,
+  renderGeojsonLegend,
+  overlayVisibilityController,
+  controls: ctl,
+  overlayDownloadController,
+  overlayRowControlsController,
+  hillshadeControlsMarkup,
+  contourControlsMarkup,
+  colorRampIcon: ICON_COLOR_RAMP,
+  geojsonStyleController,
+  bindHillshadeControls,
+  bindContourControls,
+  overlayLegendImages,
+  renderArcgisLegend,
+  ensureOverlaySymbology,
+  onTerrainGroupVisibilityChange(visible) {
+    terrainGroupHidden = !visible;
+    if (!visible && terrainOn) setTerrain3D(false, false);
+    else if (visible && terrainCb && terrainCb.checked && !terrainOn) setTerrain3D(true, false);
+  }
+});
+terrainRuntimeController.attachMapListeners();
 $('terrainBtn').onclick = () => {
   if (!terrainGroupHidden) {
     setTerrain3D(!terrainOn);
