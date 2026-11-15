@@ -35,6 +35,62 @@ test('queries visible ArcGIS overlays on map click and shows returned attributes
   await expect(page.locator('.idpop')).toContainText('Test hydrogeology report');
 });
 
+test('mobile query popup fills the width above navigation with prominent record arrows', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/0/query**',
+    route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({
+        features: [
+          { attributes: { REPORT_TITLE: 'First report', OBJECTID: 1 } },
+          { attributes: { REPORT_TITLE: 'Second report', OBJECTID: 2 } }
+        ]
+      })
+    }));
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Hydrogeology' });
+  await page.getByRole('checkbox', { name: 'Hydrogeology Reports', exact: true }).check();
+  await page.locator('#map canvas').click({ position: { x: 180, y: 180 } });
+  const popup = page.locator('.idpop');
+  await expect(popup).toContainText('First report');
+
+  const position = await popup.evaluate(element => {
+    const popupRect = element.getBoundingClientRect();
+    const railRect = document.querySelector('#rail').getBoundingClientRect();
+    return {
+      left: popupRect.left,
+      width: popupRect.width,
+      windowWidth: window.innerWidth,
+      bottom: popupRect.bottom,
+      railTop: railRect.top
+    };
+  });
+  expect(position.left).toBeCloseTo(0, 0);
+  expect(position.width).toBeCloseTo(position.windowWidth, 0);
+  expect(position.railTop - position.bottom).toBeGreaterThanOrEqual(0);
+  expect(position.railTop - position.bottom).toBeLessThanOrEqual(2);
+
+  const sections = popup.locator('.idsec');
+  const resultSectionIndex = await sections.evaluateAll(elements =>
+    elements.findIndex(element => element.textContent.includes('First report'))
+  );
+  expect(resultSectionIndex).toBeGreaterThanOrEqual(0);
+  const resultSection = sections.nth(resultSectionIndex);
+  if (await resultSection.locator('.idbody').isHidden()) await resultSection.locator('.idhead').click();
+  const arrows = resultSection.locator('.pophead .nav');
+  await expect(arrows).toHaveCount(2);
+  const arrowSize = await arrows.first().evaluate(button => {
+    const rect = button.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, fontSize: getComputedStyle(button).fontSize };
+  });
+  expect(arrowSize.width).toBeGreaterThanOrEqual(44);
+  expect(arrowSize.height).toBeGreaterThanOrEqual(40);
+  await arrows.last().click();
+  await expect(resultSection.locator('.pg')).toHaveText('2 of 2');
+  await expect(resultSection).toContainText('Second report');
+});
+
 test('box selection queries visible ArcGIS overlays and lists attributes in results', async ({ page }) => {
   await page.route('https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/0/query**',
     route => route.fulfill({

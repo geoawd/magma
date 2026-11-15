@@ -1188,8 +1188,8 @@ map.on('click', async e => {
     sec.innerHTML =
       `<div class="idhead" tabindex="0" role="button" aria-expanded="${!gi}"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>` +
       `<span class="idname">${esc(name.replace(/_/g, ' '))}</span><span class="idcount"></span></div>` +
-      `<div class="idbody"><div class="idtab"></div><div class="pophead"><button class="nav" data-d="-1" aria-label="Previous record">&#9664;</button>` +
-      `<span class="pg"></span><button class="nav" data-d="1" aria-label="Next record">&#9654;</button></div></div>`;
+      `<div class="idbody"><div class="idtab"></div><div class="pophead"><button class="nav" data-d="-1" aria-label="Previous record">&#8592;</button>` +
+      `<span class="pg"></span><button class="nav" data-d="1" aria-label="Next record">&#8594;</button></div></div>`;
     const head = sec.querySelector('.idhead');
     const toggle = () => toggleSection(sec);
     head.onclick = toggle;
@@ -3086,13 +3086,13 @@ function appendArcgisFeaturesToJsonThemePopup(content, features) {
       const previous = document.createElement('button');
       previous.type = 'button';
       previous.className = 'nav';
-      previous.textContent = '\u25c0';
+      previous.textContent = '\u2190';
       previous.setAttribute('aria-label', `Previous ${name} result`);
       const page = document.createElement('span');
       const next = document.createElement('button');
       next.type = 'button';
       next.className = 'nav';
-      next.textContent = '\u25b6';
+      next.textContent = '\u2192';
       next.setAttribute('aria-label', `Next ${name} result`);
       previous.onclick = () => { current = (current + items.length - 1) % items.length; render(); };
       next.onclick = () => { current = (current + 1) % items.length; render(); };
