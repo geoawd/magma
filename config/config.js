@@ -1871,18 +1871,6 @@ layers: '10', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
 ///////////////////////////////////////////////////////////////////////////
 //  Hydro Layers
 ///////////////////////////////////////////////////////////////////////////
-{ id: 'Superficial Aquifer', name: 'Superficial Aquifer', group: 'Hydrogeology',
-url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '5', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
-
-{ id: 'Bedrock Aquifer', name: 'Bedrock Aquifer', group: 'Hydrogeology',
-url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '4', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
-
-{ id: 'Groundwater Vulnerability', name: 'Groundwater Vulnerability', group: 'Hydrogeology',
-url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '6', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
-
 { id: 'Groundwater Data Repository', name: 'Groundwater Data Repository', group: 'Hydrogeology',
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
 layers: '1', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
@@ -1891,7 +1879,17 @@ layers: '1', opacity: 0.6, visible: false, queryable: true, attribution: '&copy;
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
 layers: '0', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
+{ id: 'Groundwater Vulnerability', name: 'Groundwater Vulnerability', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '6', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
+{ id: 'Superficial Aquifer', name: 'Superficial Aquifer (Water Framework Directive)', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '5', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
+
+{ id: 'Bedrock Aquifer', name: 'Bedrock Aquifer (Water Framework Directive)', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '4', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
 
 
@@ -2056,8 +2054,9 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
 
     themes: [
       { name: 'Site Investigations',
-      overlays: ['Geotechnical', 'esri_world_imagery', 'lot1_ortho_ni'] },
-      { name: 'Vector PMTiles',
+      datasets: ['linear-pmtiles', 'superficial-pmtiles', 'bedrock-pmtiles', ],
+        overlays: ['Geotechnical', 'esri_world_imagery', 'lot1_ortho_ni'] },
+      { name: 'Vector Geology 250K',
       datasets: ['linear-pmtiles', 'superficial-pmtiles', 'bedrock-pmtiles', ] },
       { name: 'Geology WMS',
       overlays: ['10K_bedrock', '10K_superficial', '10K_linear', '10K_mass_movement', '10K_artificial','10K_landform', '250K_bedrock', '250K_superficial', '250K_linear','esri_world_imagery'] },
