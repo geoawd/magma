@@ -25,6 +25,7 @@ test('results expose a live count and a labeled dataset button group', async ({ 
 test('map viewer exposes a logical heading hierarchy', async ({ page }) => {
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
   await page.goto('/');
+  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
 
   await expect(page.getByRole('heading', { level: 1, name: 'MAGMA geoscience map viewer' })).toBeVisible();
   await expect(page.locator('#legendPage')).toHaveClass(/active/);
@@ -46,6 +47,7 @@ test('location search suggestions are announced and keyboard operable', async ({
     ])
   }));
   await page.goto('/');
+  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
   await expect(page.getByRole('combobox', { name: 'Theme' })).toBeVisible();
 
   const search = page.getByRole('searchbox', { name: 'Search for a place or Irish grid reference' });

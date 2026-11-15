@@ -1,7 +1,7 @@
 (() => {
-  const profileConfigs = {
-    public: 'config/config.js',
-    internal: 'config/config.internal.js'
+  const profileScripts = {
+    public: ['config/overlays.js', 'config/terrain-models.js', 'config/config.js'],
+    internal: ['config/config.internal.js']
   };
   const profile = new URLSearchParams(window.location.search).get('profile') || 'public';
 
@@ -23,8 +23,8 @@
     document.body.prepend(panel);
   };
 
-  if (!Object.prototype.hasOwnProperty.call(profileConfigs, profile)) {
-    showError(`Unknown configuration profile "${profile}". Choose ${Object.keys(profileConfigs).join(' or ')}.`);
+  if (!Object.prototype.hasOwnProperty.call(profileScripts, profile)) {
+    showError(`Unknown configuration profile "${profile}". Choose ${Object.keys(profileScripts).join(' or ')}.`);
     return;
   }
 
@@ -82,9 +82,13 @@
       });
     });
   };
-  loadScript(profileConfigs[profile])
+  (async () => {
+    for (const source of profileScripts[profile]) await loadScript(source);
+  })()
     .then(async () => {
-      if (!window.CONFIG) throw new Error(`${profileConfigs[profile]} did not define window.CONFIG.`);
+      if (!window.CONFIG) throw new Error(`${profileScripts[profile].at(-1)} did not define window.CONFIG.`);
+      if (typeof window.validateAppConfig !== 'function') throw new Error('Configuration validation is unavailable.');
+      window.validateAppConfig(window.CONFIG);
       encodeCogUrls(window.CONFIG);
       if (!Array.isArray(window.TOURS)) throw new Error('config/tours.js did not define window.TOURS.');
       validateTours(window.TOURS);

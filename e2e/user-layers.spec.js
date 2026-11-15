@@ -138,6 +138,12 @@ async function openUserLayerForm(page, url, group) {
   await page.locator('#userLayerGroup').fill(group);
 }
 
+test('custom ArcGIS services reject insecure HTTP outside localhost', async ({ page }) => {
+  await openUserLayerForm(page, 'http://services.example.test/arcgis/rest/services/Test/MapServer', 'Test');
+  await page.getByRole('button', { name: 'Add layer' }).click();
+  await expect(page.locator('#userLayerError')).toContainText('must use HTTPS');
+});
+
 test('adds each MapServer sublayer separately in the selected group', async ({ page }) => {
   await page.route('https://services.example.test/**', route => {
     const url = new URL(route.request().url());

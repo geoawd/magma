@@ -15,11 +15,21 @@ import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition, QGIS_TURBO_C
 import { isJsonThemeShareState, jsonThemeMapView, parseMapViewHash } from './shared-links.js';
 import { buildJsonFeatures, createJsonThemeState, filterJsonRows, hasJsonFilters, jsonGeometryCenter, jsonGeometryIntersectsBounds, loadJsonThemeConfig, loadJsonThemeData } from './json-theme-runtime.js';
 import { createSpaceMouseController } from './spacemouse.js';
-import { arcgisLayerIds, buildArcgisQueryUrl, parseArcgisQueryResponse } from './arcgis-query.js';
+import { createArcgisQueryController } from './arcgis-query-controller.js';
+import { escapeHtml, parseServiceUrl, safeExternalUrl } from './safe-content.js';
+import { createWorkspaceStore } from './workspaces.js';
+import { loadOptionalScript, loadOptionalStylesheet } from './optional-vendors.js';
 
 window.maplibregl = maplibregl;
 const CONFIG = window.CONFIG;
 const USER_LAYERS_KEY = `mapviewer.user-layers${window.CONFIG_PROFILE === 'internal' ? '.internal' : ''}.v1`;
+const XLSX_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const XLSX_INTEGRITY = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
+async function ensureXlsx() {
+  if (!window.XLSX) await loadOptionalScript(XLSX_SCRIPT, XLSX_INTEGRITY);
+  if (!window.XLSX) throw new Error('The spreadsheet library did not initialize.');
+  return window.XLSX;
+}
 function loadUserLayers() {
   try {
     const saved = JSON.parse(localStorage.getItem(USER_LAYERS_KEY) || '[]');
@@ -35,7 +45,11 @@ function loadUserLayers() {
         visible: typeof layer.visible === 'boolean' ? layer.visible : true
       };
       if (typeof layer.url !== 'string' && typeof layer.tiles !== 'string') return;
-      try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
+      try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); }
+      catch (error) {
+        console.warn(`Ignoring saved user layer "${layer.name}": ${error.message}`);
+        return;
+      }
       if (typeof layer.url === 'string') restored.url = layer.url;
       if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
       if (typeof layer.layers === 'string') {
@@ -59,7 +73,10 @@ proj4.defs('EPSG:29902',
   '+proj=tmerc +lat_0=53.5 +lon_0=-8 +k=1.000035 +x_0=200000 +y_0=250000 ' +
   '+ellps=mod_airy +towgs84=482.5,-130.6,564.6,-1.042,-0.214,-0.631,8.15 +units=m +no_defs');
 maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
-if (window.MaplibreCOGProtocol) {
+let cogProtocolPromise = null;
+let cogProtocolRegistered = false;
+function registerCogProtocol() {
+  if (cogProtocolRegistered) return;
   const cogProtocol = window.MaplibreCOGProtocol.cogProtocol;
   maplibregl.addProtocol('cog', async request => {
     const match = request.url.match(/#dem&reliefScale=([^&/]+)&reliefCenter=([^&/]+)(?:&resampling=(nearest|bilinear))?(?=\/\d+\/\d+\/\d+$)/);
@@ -72,6 +89,22 @@ if (window.MaplibreCOGProtocol) {
     const response = await cogProtocol({ ...request, url: request.url.replace(match[0], demFragment) });
     return { ...response, data: await scaleCogDemTile(response.data, scale, center) };
   });
+  cogProtocolRegistered = true;
+}
+function ensureCogProtocol() {
+  if (cogProtocolRegistered) return Promise.resolve(window.MaplibreCOGProtocol);
+  if (!cogProtocolPromise) {
+    cogProtocolPromise = (async () => {
+      if (!window.MaplibreCOGProtocol) await loadOptionalScript('js/maplibre-cog-protocol.js');
+      if (!window.MaplibreCOGProtocol?.cogProtocol) throw new Error('The COG protocol did not initialize.');
+      registerCogProtocol();
+      return window.MaplibreCOGProtocol;
+    })().catch(error => {
+      cogProtocolPromise = null;
+      throw error;
+    });
+  }
+  return cogProtocolPromise;
 }
 const $ = id => document.getElementById(id);
 const sharedJsonHashState = decodeJsonThemeHash();
@@ -85,6 +118,12 @@ advancedModeBtn.onclick = () => {
   document.body.classList.toggle('advanced-mode', enabled);
   if (!enabled) cancelNotificationPick();
   if (!enabled && boxMode) setBox(false);
+  if (!enabled) {
+    document.body.classList.remove('mobile-drawing-tools-open');
+    $('mobileDrawingToolsBtn').setAttribute('aria-pressed', 'false');
+  } else {
+    ensureTerraDrawControl().catch(error => toast(`Could not load drawing tools: ${error.message}`));
+  }
 };
 const map = new maplibregl.Map({
   container: 'map',
@@ -94,6 +133,48 @@ const map = new maplibregl.Map({
   bearing: sharedMapView?.bearing || 0,
   pitch: sharedMapView?.pitch || 0,
   maxPitch: 80
+});
+let terraDrawControlPromise = null;
+function ensureTerraDrawControl() {
+  if (!terraDrawControlPromise) {
+    terraDrawControlPromise = (async () => {
+      const css = 'https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.css';
+      const script = 'https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.umd.js';
+      await Promise.all([
+        loadOptionalStylesheet(css, 'sha384-kWhXkxsLl6DODYRUoNdPQrEwAFVzLoegtEL9WR3Xybrqmi+2HSENt8VyRofcRDUG'),
+        loadOptionalScript(script, 'sha384-yhep21kwwLZCV1aZfqjNeKXP6znnkpri9p4oBTDjwidlfwiFuxVEDfhTtTaEi1Ag')
+      ]);
+      const Control = window.MaplibreTerradrawControl?.MaplibreTerradrawControl;
+      if (typeof Control !== 'function') throw new Error('The drawing tools did not initialize.');
+      const control = new Control({
+        modes: ['linestring', 'freehand', 'select', 'delete-selection', 'delete', 'download'],
+        open: true
+      });
+      const onAdd = control.onAdd.bind(control);
+      control.onAdd = mapInstance => {
+        const container = onAdd(mapInstance);
+        container.classList.add('advanced-drawing-tools');
+        return container;
+      };
+      map.addControl(control, 'top-right');
+      const locationControl = map.getContainer()
+        .querySelector('.maplibregl-ctrl-geolocate')?.closest('.maplibregl-ctrl');
+      const drawingControl = map.getContainer()
+        .querySelector('.advanced-drawing-tools')?.closest('.maplibregl-ctrl');
+      if (locationControl && drawingControl) locationControl.after(drawingControl);
+      return control;
+    })().catch(error => {
+      terraDrawControlPromise = null;
+      throw error;
+    });
+  }
+  return terraDrawControlPromise;
+}
+const arcgisQueryController = createArcgisQueryController({
+  getOverlays: () => (CONFIG.overlays || []).filter(overlay =>
+    overlay.queryable === true && !overlay.geojson && !overlay.cog &&
+    map.getLayer(overlay.id) && map.getLayoutProperty(overlay.id, 'visibility') !== 'none'),
+  notify: toast
 });
 createSpaceMouseController({
   map,
@@ -420,7 +501,10 @@ $('notificationCopy').onclick = async () => {
   }
 };
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') cancelNotificationPick();
+  if (event.key === 'Escape') {
+    cancelNotificationPick();
+    closeMobileMoreTools(true);
+  }
 });
 document.querySelectorAll('#aboutPage .lgcollapse').forEach(b => b.onclick = () => {
   b.setAttribute('aria-expanded', String(!b.closest('.lgroup').classList.toggle('collapsed')));
@@ -447,31 +531,6 @@ if (boundsValid) map.addControl({
 }, 'top-right');
 map.addControl(new maplibregl.ScaleControl());
 map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'top-right');
-const terraDrawControl = new window.MaplibreTerradrawControl.MaplibreTerradrawControl({
-  modes: [
-    //'point',
-    'linestring',
-    //'polygon',
-    //'rectangle',
-    //'circle',
-    'freehand',
-    //'angled-rectangle',
-    //'sensor',
-    //'sector',
-    'select',
-    'delete-selection',
-    'delete',
-    'download'
-  ],
-  open: true
-});
-const terraDrawOnAdd = terraDrawControl.onAdd.bind(terraDrawControl);
-terraDrawControl.onAdd = mapInstance => {
-  const container = terraDrawOnAdd(mapInstance);
-  container.classList.add('advanced-drawing-tools');
-  return container;
-};
-map.addControl(terraDrawControl, 'top-right');
 map.addControl({
   onAdd() {
     const container = document.createElement('div');
@@ -524,10 +583,11 @@ panelSplitter.addEventListener('keydown', event => {
   else if (event.key === 'End') { event.preventDefault(); setPanelHeight(panelHeightLimits().max, true); }
 });
 
-const isLink = v => typeof v === 'string' && /^https:/i.test(v.trim());
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const cell = v => v === null || v === undefined ? '' :
-  isLink(v) ? `<a href="${esc(v.trim())}" target="_blank" rel="noopener">${esc(v)}</a>` : esc(v);
+const esc = escapeHtml;
+const safeCellUrl = value => typeof value === 'string' && /^https:/i.test(value.trim())
+  ? safeExternalUrl(value.trim(), location.href) : null;
+const cell = value => value === null || value === undefined ? '' :
+  safeCellUrl(value) ? `<a href="${esc(safeCellUrl(value))}" target="_blank" rel="noopener noreferrer">${esc(value)}</a>` : esc(value);
 
 if (CONFIG.showZoom) {
   const zoomEl = $('zoomLevel');
@@ -696,6 +756,29 @@ function syncAddDataButton() {
 }
 document.querySelectorAll('#rail [data-tool]').forEach(b => b.onclick = () => openTool(b.dataset.tool));
 document.querySelectorAll('.dclose').forEach(b => b.onclick = () => openTool(tool));
+$('moreToolsBtn').onclick = () => {
+  const menu = $('mobileMoreToolsMenu');
+  const opening = menu.hidden;
+  menu.hidden = !opening;
+  $('moreToolsBtn').setAttribute('aria-expanded', String(opening));
+};
+const closeMobileMoreTools = (restoreFocus = false) => {
+  $('mobileMoreToolsMenu').hidden = true;
+  $('moreToolsBtn').setAttribute('aria-expanded', 'false');
+  if (restoreFocus) $('moreToolsBtn').focus();
+};
+$('mobileGlobeTool').onclick = () => { $('globeBtn').click(); closeMobileMoreTools(true); };
+$('mobilePrintTool').onclick = () => { $('printBtn').click(); closeMobileMoreTools(true); };
+$('mobileDrawingToolsBtn').onclick = () => {
+  const opening = !document.body.classList.contains('mobile-drawing-tools-open');
+  document.body.classList.toggle('mobile-drawing-tools-open', opening);
+  $('mobileDrawingToolsBtn').setAttribute('aria-pressed', String(opening));
+  if (opening) ensureTerraDrawControl().catch(error => toast(`Could not load drawing tools: ${error.message}`));
+  closeMobileMoreTools(true);
+};
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('#mobileMoreToolsMenu, #moreToolsBtn')) closeMobileMoreTools();
+});
 
 const fallbackTourSteps = [...$('tourSteps').content.querySelectorAll('li')].map(item => ({
   title: item.dataset.title,
@@ -1036,47 +1119,7 @@ function arcgisBoxPolygon(a, b) {
   return { rings: [corners] };
 }
 
-async function queryArcgisOverlays(geometry, geometryType = 'esriGeometryEnvelope', includeGeometry = false) {
-  const overlays = (CONFIG.overlays || []).filter(overlay =>
-    overlay.queryable === true && !overlay.geojson && !overlay.cog &&
-    map.getLayer(overlay.id) && map.getLayoutProperty(overlay.id, 'visibility') !== 'none');
-  if (!overlays.length) return [];
-
-  const jobs = [];
-  const errors = [];
-  overlays.forEach(overlay => {
-    try {
-      arcgisLayerIds(overlay.layers, overlay.url).forEach(layerId => {
-        jobs.push({
-          overlay,
-          promise: async () => {
-            const response = await fetch(buildArcgisQueryUrl(
-              overlay.url, layerId, geometry, geometryType, includeGeometry
-            ));
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return parseArcgisQueryResponse(await response.json(), { includeGeometry }).map(result => ({
-              sourceLayer: overlay.name || overlay.id,
-              layer: { id: overlay.id },
-              properties: includeGeometry ? result.attributes : result,
-              ...(includeGeometry && result.geometry ? { geometry: result.geometry } : {})
-            }));
-          }
-        });
-      });
-    } catch (error) {
-      errors.push(`${overlay.name || overlay.id}: ${error.message}`);
-    }
-  });
-
-  const results = await Promise.allSettled(jobs.map(job => job.promise()));
-  const features = [];
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') features.push(...result.value);
-    else errors.push(`${jobs[index].overlay.name || jobs[index].overlay.id}: ${result.reason.message}`);
-  });
-  if (errors.length) toast(`Could not query ArcGIS layer${errors.length > 1 ? 's' : ''}: ${errors.join('; ')}`);
-  return features;
-}
+const queryArcgisOverlays = arcgisQueryController.query;
 
 // ---------- Click popup ----------
 // CONFIG.dataLinks: { <vector layer>: { field, links: [{ label, file, dataKey?, field? }] } } joins JSON rows to clicked / selected features.
@@ -1186,14 +1229,13 @@ map.on('click', async e => {
     const sec = document.createElement('section');
     sec.className = 'idsec' + (gi ? ' collapsed' : '') + (isLinked ? ' linked' : '');
     sec.innerHTML =
-      `<div class="idhead" tabindex="0" role="button" aria-expanded="${!gi}"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>` +
-      `<span class="idname">${esc(name.replace(/_/g, ' '))}</span><span class="idcount"></span></div>` +
-      `<div class="idbody"><div class="idtab"></div><div class="pophead"><button class="nav" data-d="-1" aria-label="Previous record">&#8592;</button>` +
+      `<button type="button" class="idhead" aria-expanded="${!gi}" aria-controls="result-section-${gi}"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>` +
+      `<span class="idname">${esc(name.replace(/_/g, ' '))}</span><span class="idcount"></span></button>` +
+      `<div class="idbody" id="result-section-${gi}"><div class="idtab"></div><div class="pophead"><button class="nav" data-d="-1" aria-label="Previous record">&#8592;</button>` +
       `<span class="pg"></span><button class="nav" data-d="1" aria-label="Next record">&#8594;</button></div></div>`;
     const head = sec.querySelector('.idhead');
     const toggle = () => toggleSection(sec);
     head.onclick = toggle;
-    head.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); } };
     const render = () => {
       const n = items.length;
       sec.hidden = !n;
@@ -2036,6 +2078,7 @@ function captureThemeOverlayVisibility(name = activeThemeName) {
 const profileStorageSuffix = window.CONFIG_PROFILE === 'internal' ? '.internal' : '';
 const THEME_ADDITIONS_KEY = `mapviewer.theme-additions${profileStorageSuffix}.v1`;
 const SESSION_STATE_KEY = `mapviewer.session${profileStorageSuffix}.v1`;
+const WORKSPACE_STORE = createWorkspaceStore(localStorage, `mapviewer.workspaces${profileStorageSuffix}.v1`);
 const SESSION_STATE_VERSION = 1;
 let startupSessionSnapshot = null;
 let sessionPersistenceReady = false;
@@ -2304,6 +2347,15 @@ function restoreSessionSnapshot(snapshot) {
   updateArcgisLegendInView();
 }
 function prepareSessionSnapshot(snapshot) {
+  const savedVisibility = snapshot?.themeOverlayVisibility;
+  if (savedVisibility && typeof savedVisibility === 'object' && !Array.isArray(savedVisibility)) {
+    Object.entries(savedVisibility).forEach(([name, saved]) => {
+      if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return;
+      themeOverlayVisibility.set(name, new Map(
+        Object.entries(saved).filter(([, visible]) => typeof visible === 'boolean')
+      ));
+    });
+  }
   const savedStyle = snapshot?.hillshadeStyle;
   if (savedStyle) {
     if (HILLSHADE_METHODS.some(([method]) => method === savedStyle.method)) hillshadeStyle.method = savedStyle.method;
@@ -2322,6 +2374,71 @@ function prepareSessionSnapshot(snapshot) {
     });
   }
   if (Number.isFinite(snapshot.contourOpacity)) contourOpacity = Math.max(0, Math.min(1, snapshot.contourOpacity));
+}
+function initializeWorkspaceControls() {
+  const select = $('workspaceSelect');
+  const status = $('workspaceStatus');
+  const remove = $('workspaceRemoveBtn');
+  const refresh = selectedName => {
+    try {
+      const entries = WORKSPACE_STORE.list();
+      select.replaceChildren(new Option('Select a workspace', ''));
+      entries.forEach(entry => select.add(new Option(entry.name, entry.name)));
+      if (selectedName) select.value = selectedName;
+      remove.disabled = !select.value;
+      status.textContent = entries.length
+        ? `${entries.length} saved workspace${entries.length === 1 ? '' : 's'}. Saving the same name updates it.`
+        : 'No saved workspaces yet.';
+      return true;
+    } catch (error) {
+      status.textContent = `Saved workspaces could not be loaded: ${error.message}`;
+      remove.disabled = true;
+      return false;
+    }
+  };
+  select.onchange = () => { remove.disabled = !select.value; };
+  $('workspaceSaveBtn').onclick = () => {
+    try {
+      const saved = WORKSPACE_STORE.save($('workspaceName').value, sessionSnapshot());
+      $('workspaceName').value = saved.name;
+      refresh(saved.name);
+      status.textContent = `Saved workspace "${saved.name}".`;
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  };
+  $('workspaceLoadBtn').onclick = () => {
+    try {
+      if (!select.value) throw new Error('Choose a saved workspace to load.');
+      const saved = WORKSPACE_STORE.get(select.value);
+      if (!saved) throw new Error('Choose a saved workspace to load.');
+      prepareSessionSnapshot(saved.snapshot);
+      const themeIndex = (CONFIG.themes || []).findIndex(theme => theme.name === saved.snapshot.theme);
+      if (themeIndex >= 0 && $('themeSel').value !== String(themeIndex)) {
+        $('themeSel').value = String(themeIndex);
+        $('themeSel').dispatchEvent(new Event('change'));
+      }
+      restoreSessionSnapshot(saved.snapshot);
+      scheduleSessionSave();
+      status.textContent = themeIndex < 0 && saved.snapshot.theme
+        ? `Loaded "${saved.name}"; its saved theme is no longer configured.`
+        : `Loaded workspace "${saved.name}".`;
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  };
+  remove.onclick = () => {
+    try {
+      const selectedName = select.value;
+      if (!selectedName) throw new Error('Choose a saved workspace to remove.');
+      if (!WORKSPACE_STORE.remove(selectedName)) throw new Error(`Workspace "${selectedName}" no longer exists.`);
+      refresh();
+      status.textContent = `Removed workspace "${selectedName}".`;
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  };
+  refresh();
 }
 function updateManualRemovalControls() {
   const additions = themeAdditions.get(activeThemeName);
@@ -2432,6 +2549,7 @@ function setupThemes(preferredThemeName = null, honorSharedJsonState = true) {
   const sel = $('themeSel');
   sel.innerHTML = list.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join('');
   const apply = i => {
+    arcgisQueryController.cancel();
     const t = list[i];
     captureThemeOverlayVisibility();
     activeThemeName = t.name;
@@ -2722,11 +2840,7 @@ $('addOwnLayerBtn').onclick = () => {
 };
 $('userLayerCancel').onclick = () => $('userLayerDialog').close();
 function httpServiceUrl(value) {
-  let url;
-  try { url = new URL(value); } catch { throw new Error('Enter a complete service URL.'); }
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
-    throw new Error('Service URLs must use HTTP or HTTPS and must not contain embedded credentials.');
-  return url;
+  return parseServiceUrl(value);
 }
 const restoreTilePlaceholders = value => value.replace(/%7B(z|x|y)%7D/gi, '{$1}');
 async function getEsriServiceLayers(inputUrl) {
@@ -3647,10 +3761,7 @@ document.addEventListener('pointerdown', event => {
   }
 });
 function jsonThemeSafeUrl(value) {
-  try {
-    const url = new URL(value, location.href);
-    return ['http:', 'https:', 'ftp:'].includes(url.protocol) ? url.href : null;
-  } catch { return null; }
+  return safeExternalUrl(value, location.href);
 }
 function jsonThemeCell(row, tabKey, field) {
   const config = activeJsonThemeConfig();
@@ -3989,19 +4100,20 @@ async function copyJsonThemeLink() {
 // Exports the current JSON theme result sets to a multi-sheet workbook.
 ///////////////////////////////////////////////////////////////////////////
 function exportJsonThemeExcel() {
-  if (!window.XLSX) return toast('Excel export is unavailable.');
-  const config = activeJsonThemeConfig();
-  const workbook = XLSX.utils.book_new();
-  config.tabs.forEach(tab => {
-    const activeRows = jsonThemeRows(tab.key).filter(row => activeJsonThemeState.finalIds.has(row[config.linkField]));
-    const rows = tab.isPrimary || tab.exportRows === 'filtered'
-      ? filterJsonThemeRows(tab.key, activeRows)
-      : activeRows;
-    const clean = rows.map(row => Object.fromEntries(Object.entries(row).filter(([field]) => !config.hiddenColumns.includes(field))));
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(clean), tab.label.slice(0, 31));
-  });
-  XLSX.writeFile(workbook, `${config.title.replace(/\s+/g, '_')}_filtered.xlsx`);
-  toast('Excel export prepared');
+  ensureXlsx().then(xlsx => {
+    const config = activeJsonThemeConfig();
+    const workbook = xlsx.utils.book_new();
+    config.tabs.forEach(tab => {
+      const activeRows = jsonThemeRows(tab.key).filter(row => activeJsonThemeState.finalIds.has(row[config.linkField]));
+      const rows = tab.isPrimary || tab.exportRows === 'filtered'
+        ? filterJsonThemeRows(tab.key, activeRows)
+        : activeRows;
+      const clean = rows.map(row => Object.fromEntries(Object.entries(row).filter(([field]) => !config.hiddenColumns.includes(field))));
+      xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(clean), tab.label.slice(0, 31));
+    });
+    xlsx.writeFile(workbook, `${config.title.replace(/\s+/g, '_')}_filtered.xlsx`);
+    toast('Excel export prepared');
+  }).catch(error => toast(`Excel export failed: ${error.message}`));
 }
 $('jsonClearBtn').onclick = clearJsonThemeFilters;
 $('jsonCopyBtn').onclick = copyJsonThemeLink;
@@ -4947,9 +5059,16 @@ function isCogOverlayVisible(w) {
     });
 }
 function initializeVisibleCogControls() {
-  allOverlays().forEach(w => {
+  const visible = allOverlays().filter(w => w.cogState && isCogOverlayVisible(w));
+  if (!visible.length) return;
+  if (!cogProtocolRegistered) {
+    ensureCogProtocol()
+      .then(initializeVisibleCogControls)
+      .catch(error => toast(`Could not load COG support: ${error.message}`));
+    return;
+  }
+  visible.forEach(w => {
     const state = w.cogState;
-    if (!state || !isCogOverlayVisible(w)) return;
     if (state.contourOption && state.contoursEnabled) createCogContours(w);
     if (state.controlsPanel && state.controlsLegend) initializeCogRampControls(w, state.controlsPanel, state.controlsLegend);
   });
@@ -5642,6 +5761,12 @@ function ensurePendingCogLayer(w) {
   const visibility = layerVisibility.get(w.id);
   if (!cogState?.pendingSource || !visibility?.selected || !visibility.inTheme ||
       visibility.groups.size || map.getLayer(w.id)) return false;
+  if (!cogProtocolRegistered) {
+    ensureCogProtocol().then(() => {
+      if (ensurePendingCogLayer(w)) initializeVisibleCogControls();
+    }).catch(error => toast(`Could not load ${w.name || w.id}: ${error.message}`));
+    return false;
+  }
   if (!map.getSource(w.id)) map.addSource(w.id, cogState.pendingSource);
   const layer = {
     id: w.id,
@@ -5746,11 +5871,11 @@ function bindContourControls(panel) {
 }
 function allOverlays() {   // configured overlays + the built-in hillshade
   const list = validOverlays(), t = CONFIG.terrain;
-  if (t && terrainModels.length && t.contours !== false && window.MaplibreCOGProtocol && window.mlcontour)
+  if (t && terrainModels.length && t.contours !== false)
     list.push({ id: CONTOUR_LINE_ID, layerIds: [CONTOUR_LINE_ID, CONTOUR_LABEL_ID], name: contourSettings?.name || 'Contours', group: t.group || 'Terrain', contours: true, builtin: true, global: true, visible: contoursVisible, opacity: contourOpacity, info: contourSettings?.info });
-  if (t && terrainModels.length && t.hillshade !== false && window.MaplibreCOGProtocol)
+  if (t && terrainModels.length && t.hillshade !== false)
     list.push({ id: 'hillshade', name: t.hillshadeName || 'Hillshade', group: t.group || 'Terrain', hillshade: true, builtin: true, global: t.allThemes !== false, visible: !!t.hillshadeVisible, opacity: 1, info: t.info });
-  if (t && terrainModels.length && window.MaplibreCOGProtocol)
+  if (t && terrainModels.length)
     list.push({ id: 'terrain3d', name: '3D terrain', group: t.group || 'Terrain', terrain: true, builtin: true, global: true });
   return list;
 }
@@ -6299,6 +6424,12 @@ function buildOverlayLegend(overlays = allOverlays()) {
         renderGeojsonLegend(w);
       }
       const setOverlayVisibility = on => {
+        if (w.hillshade && on && !cogProtocolRegistered) {
+          ensureCogProtocol()
+            .then(() => setOverlayVisibility(on))
+            .catch(error => toast(`Could not load COG support: ${error.message}`));
+          return;
+        }
         cb.checked = on;
         d.classList.toggle('legend-off', !on);
         if (w.contours) contoursVisible = cb.checked;
@@ -6558,6 +6689,20 @@ function buildBasemapLegend() {
 
 map.once('style.load', async () => {
   const startup = await chooseSessionStartup();
+  const savedOverlays = startup.snapshot?.overlays || {};
+  const needsCogProtocol = validOverlays().some(overlay => overlay.cog &&
+    (typeof savedOverlays[overlay.id] === 'boolean' ? savedOverlays[overlay.id] : overlay.visible === true)) ||
+    (terrainModels.length > 0 && CONFIG.terrain?.hillshade !== false &&
+      (typeof savedOverlays.hillshade === 'boolean' ? savedOverlays.hillshade : CONFIG.terrain?.hillshadeVisible === true)) ||
+    (terrainModels.length > 0 && CONFIG.terrain?.contours?.visible === true) ||
+    startup.snapshot?.terrain?.enabled === true ||
+    startup.snapshot?.overlays?.['dtm-contour-lines'] === true;
+  const cogProtocolStartup = needsCogProtocol
+    ? ensureCogProtocol().catch(error => {
+      toast(`Could not load COG support: ${error.message}`);
+      return null;
+    })
+    : Promise.resolve(null);
   if (mapHashView) {
     const color = getComputedStyle(document.documentElement).getPropertyValue('--ac').trim() || '#1f2a33';
     new maplibregl.Marker({ color })
@@ -6585,16 +6730,26 @@ map.once('style.load', async () => {
   validBasemaps().slice().reverse().forEach(w => addRasterLayer(w, (firstData || firstSymbol || {}).id, true));
   const tc = CONFIG.terrain;
   terrainLayerBeforeId = firstData && firstData.id;
-  if (tc && terrainModels.length && window.MaplibreCOGProtocol) {
+  if (tc && terrainModels.length) {
     activeTerrainModel = terrainModels.find(m => m.id === tc.defaultModel) || terrainModels[0];
     const savedHillshadeVisible = startupSessionSnapshot?.overlays?.hillshade;
     const hillshadeVisible = typeof savedHillshadeVisible === 'boolean' ? savedHillshadeVisible : tc.hillshadeVisible === true;
-    if (tc.hillshade !== false && hillshadeVisible)
-      addHillshadeLayer(activeTerrainModel, firstData && firstData.id, true);
     if (tc.hillshade !== false) registerLayerVisibility('hillshade', hillshadeVisible);
     if (typeof startupSessionSnapshot?.overlays?.[CONTOUR_LINE_ID] === 'boolean')
       contoursVisible = startupSessionSnapshot.overlays[CONTOUR_LINE_ID];
-    setupTerrainContours(activeTerrainModel, firstData && firstData.id);
+    if (cogProtocolRegistered) {
+      if (tc.hillshade !== false && hillshadeVisible)
+        addHillshadeLayer(activeTerrainModel, firstData && firstData.id, true);
+      setupTerrainContours(activeTerrainModel, firstData && firstData.id);
+    } else {
+      cogProtocolStartup.then(protocol => {
+        if (!protocol) return;
+        if (tc.hillshade !== false && hillshadeVisible)
+          addHillshadeLayer(activeTerrainModel, firstData && firstData.id, true);
+        setupTerrainContours(activeTerrainModel, firstData && firstData.id);
+        initializeVisibleCogControls();
+      });
+    }
   } else $('terrainBtn').style.display = 'none';   // no DTM configured
   reverseWithinGroups(validOverlays()).forEach(w => addRasterLayer(w, firstSymbol && firstSymbol.id));
   buildLegend();
@@ -6603,6 +6758,7 @@ map.once('style.load', async () => {
   enableLegendReordering();
   setupThemes(startupSessionSnapshot?.theme || null, startup.action === 'start' || startup.action === 'shared');
   if (startupSessionSnapshot) restoreSessionSnapshot(startupSessionSnapshot);
+  initializeWorkspaceControls();
   geojsonLoadingEnabled = true;
   loadVisibleGeojsonLayers();
   initializeVisibleCogControls();
@@ -6643,7 +6799,10 @@ let boxKeyboardStart = null;
 
 function setBox(on) {
   if (on) cancelNotificationPick();
-  if (on) selectionGeneration++;
+  if (on) {
+    selectionGeneration++;
+    arcgisQueryController.cancel();
+  }
   boxMode = on;
   boxBtn.classList.toggle('active', on);
   boxBtn.setAttribute('aria-pressed', String(on));
@@ -6851,13 +7010,14 @@ function clearResults() {
 $('closeBtn').onclick = closeResults;
 $('tableBtn').onclick = () => setResults(!resultsOn);
 $('xlsxBtn').onclick = () => {
-  if (!window.XLSX) return toast('Excel export is unavailable.');
   if (!tabRows.length) return;
-  const rows = tabRows.map(feature => Object.fromEntries(tabCols.map(field => [field, feature.properties[field] ?? ''])));
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), (activeTab || 'Boreholes').slice(0, 31));
-  XLSX.writeFile(workbook, 'Boreholes_filtered.xlsx');
-  toast('Excel export prepared');
+  ensureXlsx().then(xlsx => {
+    const rows = tabRows.map(feature => Object.fromEntries(tabCols.map(field => [field, feature.properties[field] ?? ''])));
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(rows), (activeTab || 'Boreholes').slice(0, 31));
+    xlsx.writeFile(workbook, 'Boreholes_filtered.xlsx');
+    toast('Excel export prepared');
+  }).catch(error => toast(`Excel export failed: ${error.message}`));
 };
 $('csvBtn').onclick = () => {
   if (!tabRows.length) return;
@@ -7160,6 +7320,15 @@ function setTerrain3D(on, syncCheckbox = true, tilt = true) {
     if (terrainCb) terrainCb.checked = false;
     $('terrainBtn').setAttribute('aria-pressed', 'false');
     return toast('3D view needs a DTM configured in CONFIG.terrain.models.');
+  }
+  if (on && !cogProtocolRegistered) {
+    ensureCogProtocol()
+      .then(() => setTerrain3D(on, syncCheckbox, tilt))
+      .catch(error => {
+        if (terrainCb && syncCheckbox) terrainCb.checked = false;
+        toast(`Could not load COG support: ${error.message}`);
+      });
+    return;
   }
   terrainOn = on;
   if (terrainCb && syncCheckbox) terrainCb.checked = on;

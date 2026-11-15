@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <title>MAGMA - Mapping and Analysis of Geoscience Models and Archives</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' blob: data: https: http://localhost:* http://127.0.0.1:*; worker-src 'self' blob: https://unpkg.com; child-src blob:; form-action 'self' mailto:">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="modulepreload" href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs" integrity="sha384-tG0qQdL7veKvVoyu6PbnmddDls/OVkTjaK9oVY5eq9afBA6zYptFui69Dx57duAh" crossorigin="anonymous">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.css" integrity="sha384-yFNc3bs28S14jOJo1ZO9SnLiAmtyY2a3H9be8GkLMpDGlO5r1zZNP8fYu+fOCE/w" crossorigin="anonymous">
 <link rel="stylesheet" href="css/app.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.css" integrity="sha384-kWhXkxsLl6DODYRUoNdPQrEwAFVzLoegtEL9WR3Xybrqmi+2HSENt8VyRofcRDUG" crossorigin="anonymous">
 <style id="pageStyle"></style>
 </head>
 <body>
@@ -24,6 +25,8 @@
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/></svg></button>
     <button id="boxBtn" title="Select by box (Esc to cancel)" aria-label="Select by box" aria-pressed="false">
       <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 2.5"/><path d="m13 13 3 7 1.5-3 3-1.5-7.500-2.500Z" fill="currentColor"/></svg></button>
+    <button id="moreToolsBtn" title="More map tools" aria-label="More map tools" aria-expanded="false" aria-controls="mobileMoreToolsMenu">
+      <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
     <button id="globeBtn" title="Switch to globe view" aria-label="Switch to globe view" aria-pressed="false">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></button>
     <button id="terrainBtn" title="3D terrain view" aria-label="3D terrain view" aria-pressed="false">
@@ -38,6 +41,11 @@
     <button data-tool="about" title="Information" aria-label="Information">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
   </nav>
+  <div id="mobileMoreToolsMenu" role="group" aria-label="More map tools" hidden>
+    <button id="mobileGlobeTool" type="button">Toggle globe view</button>
+    <button id="mobilePrintTool" type="button">Print map</button>
+    <button id="mobileDrawingToolsBtn" class="advanced-only" type="button" aria-pressed="false">Drawing tools</button>
+  </div>
   <div id="drawer">
     <div id="drawerDragHandle" role="separator" aria-label="Resize map tools panel" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="80" aria-valuenow="45" tabindex="0"></div>
     <section id="legendPage" class="dpage">
@@ -81,6 +89,22 @@
                 <button id="copyTourLink" type="button">Copy tour link</button>
               </div>
             </div>
+          </div>
+        </section>
+        <section class="lgroup">
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Saved workspaces</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div class="lgbody info-copy" id="workspaceControls">
+            <p>Save and restore named map views, themes, and layer settings in this browser.</p>
+            <label for="workspaceName">Workspace name</label>
+            <input id="workspaceName" type="text" maxlength="60" autocomplete="off">
+            <button id="workspaceSaveBtn" type="button">Save current workspace</button>
+            <label for="workspaceSelect">Saved workspaces</label>
+            <select id="workspaceSelect" aria-label="Saved workspaces"></select>
+            <div class="workspace-actions">
+              <button id="workspaceLoadBtn" type="button">Load</button>
+              <button id="workspaceRemoveBtn" type="button">Remove</button>
+            </div>
+            <p id="workspaceStatus" role="status" aria-live="polite"></p>
           </div>
         </section>
         <!-- Fallback tour used when a configured tour cannot be selected. -->
@@ -316,13 +340,11 @@
   </form>
 </dialog>
 <script src="https://unpkg.com/pmtiles@3.2.0/dist/pmtiles.js" integrity="sha384-QfbOCebHNw8pQiPAOd2IFee2v2A5VYZxBk0+JGZ5H+3mfzVIp6zsQNkTsfGJot93" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.umd.js" integrity="sha384-yhep21kwwLZCV1aZfqjNeKXP6znnkpri9p4oBTDjwidlfwiFuxVEDfhTtTaEi1Ag" crossorigin="anonymous"></script>
 <!--<script src="https://unpkg.com/@geomatico/maplibre-cog-protocol@0.10.0/dist/index.js" integrity="sha384-t1PE7x+ltzMRnLBdPzuY56UPewCP9ZGEFqEuaEa579Mq61Q0psO4LM+lNUFP5WqP" crossorigin="anonymous"></script>-->
-<script src="js/maplibre-cog-protocol.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.22.0/proj4.js" integrity="sha384-RCBbAm8IhfOOoFV7vqUhspSb+BCSvVSd84WJpv5VMq4rNiXJ88VMHtndxQntlbnd" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js" integrity="sha384-f2gK0HoDkM64k6ZBnbv6ZuvMzDqPOwrfTaIU9iv2BN7CWHyyTQJkPC9AoRNuuV39" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 <script src="config/tours.js"></script>
+<script src="js/config-validation.js"></script>
 <script src="js/config-loader.js"></script>
 </body>
 </html>

@@ -44,6 +44,7 @@ export function buildArcgisQueryUrl(
   url.searchParams.set('spatialRel', 'esriSpatialRelIntersects');
   url.searchParams.set('outFields', '*');
   url.searchParams.set('returnGeometry', String(returnGeometry));
+  url.searchParams.set('resultRecordCount', '500');
   if (returnGeometry) url.searchParams.set('outSR', '4326');
   url.searchParams.set('f', 'json');
   return url.href;
@@ -100,7 +101,7 @@ export function parseArcgisQueryResponse(response, { includeGeometry = false } =
     throw new Error('Invalid ArcGIS query response: expected a features array.');
   }
   if (response.exceededTransferLimit === true) {
-    throw new Error('ArcGIS query result exceeded the service record limit.');
+    throw new Error('ArcGIS query result exceeded the record limit; zoom in or draw a smaller box.');
   }
   return response.features.map(feature => {
     if (!feature?.attributes || typeof feature.attributes !== 'object' || Array.isArray(feature.attributes)) {

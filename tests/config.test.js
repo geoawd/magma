@@ -10,9 +10,11 @@ import { cogResamplingUrl } from '../js/cog-resampling.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = path.join(root, 'config/config.js');
 const configWindow = {};
-vm.runInNewContext(fs.readFileSync(configPath, 'utf8'), { window: configWindow }, {
-  filename: configPath
-});
+const configContext = vm.createContext({ window: configWindow });
+for (const source of ['config/overlays.js', 'config/terrain-models.js', 'config/config.js']) {
+  const filePath = path.join(root, source);
+  vm.runInContext(fs.readFileSync(filePath, 'utf8'), configContext, { filename: filePath });
+}
 
 const config = configWindow.CONFIG;
 
@@ -158,36 +160,20 @@ test('Hydrogeology Reports is configured for ArcGIS REST click queries', () => {
   assert.equal(reports.layers, '0');
 });
 
-test('Tellus Waters uses numeric GeoJSON range classes', () => {
+test('Tellus Waters uses its configured GeoJSON point style', () => {
   const waters = config.overlays.find(overlay => overlay.id === 'Tellus Waters');
   assert.ok(waters, 'Tellus Waters GeoJSON overlay must be configured');
-  assert.deepEqual(JSON.parse(JSON.stringify(waters.style.color)), [
-    'step', ['get', 'CU'],
-    '#2c7bb6',
-    0.553, '#abd9e9',
-    0.95, '#ffffbf',
-    1.42, '#fdae61',
-    2.26, '#d7191c'
-  ]);
-  assert.deepEqual(JSON.parse(JSON.stringify(waters.legend)), {
-    title: 'Copper (CU)',
-    entries: [
-      { label: '< 0.553', color: '#2c7bb6' },
-      { label: '0.553 – 0.95', color: '#abd9e9' },
-      { label: '0.95 – 1.42', color: '#ffffbf' },
-      { label: '1.42 – 2.26', color: '#fdae61' },
-      { label: '≥ 2.26', color: '#d7191c' }
-    ]
-  });
+  assert.equal(waters.geometryType, 'Point');
+  assert.equal(waters.style.color, '#1f86db');
 });
 
-test('Hydro GeoJSON polygons use Aquifer colors in their fill and legend', () => {
-  const hydro = config.overlays.find(overlay => overlay.id === 'Hydro');
-  assert.ok(hydro, 'Hydro GeoJSON overlay must be configured');
-  assert.equal(hydro.styleUrl, 'config/hydrostyle.json');
-  assert.equal(hydro.style, undefined, 'Hydro styles should be loaded from the external style file');
-  const stylePath = path.resolve(root, hydro.styleUrl);
-  assert.ok(fs.existsSync(stylePath), `Hydro style file must exist: ${hydro.styleUrl}`);
+test('Bedrock Aquifer Classification uses its external Aquifer style and legend', () => {
+  const aquifer = config.overlays.find(overlay => overlay.id === 'Bedrock Aquifer Classification');
+  assert.ok(aquifer, 'Bedrock Aquifer Classification GeoJSON overlay must be configured');
+  assert.equal(aquifer.styleUrl, 'config/hydrostyle.json');
+  assert.equal(aquifer.style, undefined, 'Aquifer styles should be loaded from the external style file');
+  const stylePath = path.resolve(root, aquifer.styleUrl);
+  assert.ok(fs.existsSync(stylePath), `Aquifer style file must exist: ${aquifer.styleUrl}`);
   const definition = JSON.parse(fs.readFileSync(stylePath, 'utf8'));
   const color = definition.style.color;
   assert.equal(color[0], 'match');
@@ -239,7 +225,11 @@ test('local styles and their sources are valid and available', () => {
   }
 
   for (const dataset of config.datasets) {
-    if (dataset.pmtiles) {
+    if (!dataset.pmtiles) continue;
+    if (/^https:\/\//i.test(dataset.pmtiles)) {
+      assert.equal(new URL(dataset.pmtiles).protocol, 'https:',
+        `dataset "${dataset.id}" must use HTTPS for remote PMTiles archives`);
+    } else {
       assert.ok(fs.existsSync(path.resolve(root, dataset.pmtiles)),
         `dataset "${dataset.id}" references missing PMTiles archive "${dataset.pmtiles}"`);
     }
@@ -307,14 +297,10 @@ test('themes and named groups reference configured layers, datasets, and overlay
   }
 });
 
-test('PMTILES theme includes every configured vector dataset and other themes do not', () => {
+test('every configured vector dataset is available in at least one theme', () => {
   const pmtilesIds = config.datasets.map(dataset => dataset.id);
-  const pmtilesTheme = config.themes.find(theme => theme.name === 'PMTILES');
-
-  assert.ok(pmtilesTheme, 'PMTILES theme must be configured');
-  assert.deepEqual(new Set(pmtilesTheme.datasets), new Set(pmtilesIds));
-  config.themes.filter(theme => theme !== pmtilesTheme).forEach(theme => {
-    assert.ok(!(theme.datasets || []).some(id => pmtilesIds.includes(id)),
-      `theme "${theme.name}" must not include PMTILES datasets`);
+  pmtilesIds.forEach(id => {
+    assert.ok(config.themes.some(theme => (theme.datasets || []).includes(id)),
+      `dataset "${id}" must be available through a configured theme`);
   });
 });

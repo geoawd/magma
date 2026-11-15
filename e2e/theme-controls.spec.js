@@ -10,8 +10,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
   await page.goto('/');
-  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
-  await expect(page.getByRole('combobox', { name: 'Theme' })).toBeVisible();
+  await expect(page.locator('.maplibregl-canvas')).toBeAttached({ timeout: 20_000 });
   await page.evaluate(() => {
     const prototype = window.maplibregl.Map.prototype;
     const setLayoutProperty = prototype.setLayoutProperty;
@@ -26,8 +25,8 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('app title and main landmark identify Sliabh Data', async ({ page }) => {
-  await expect(page).toHaveTitle('Sliabh Data');
+test('app title and main landmark identify MAGMA', async ({ page }) => {
+  await expect(page).toHaveTitle('MAGMA - Mapping and Analysis of Geoscience Models and Archives');
   await expect(page.getByRole('main')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Select by box' })).toHaveAttribute('aria-pressed', 'false');
 });
@@ -60,7 +59,7 @@ async function isolateAndRestoreCategory(layerRow) {
 test('GeoJSON and vector categories isolate and restore prior selections', async ({ page }) => {
   await isolateAndRestoreCategory(page.locator('#legend [data-order-key="overlay:Boreholes"]'));
 
-  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Vector PMTiles' });
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Geological Mapping' });
   const bedrock = page.locator('#legend [data-order-key="layer:bedrock-pmtiles"]');
   await bedrock.locator('.grprow input[type="checkbox"]').check();
   await expect.poll(() => bedrock.locator('.category-isolate').count())
@@ -314,13 +313,13 @@ test('overlay symbology loads on theme activation and is reused when returning',
   const theme = page.getByRole('combobox', { name: 'Theme' });
   await theme.selectOption({ label: 'Hydrogeology' });
   await expect.poll(() => styleRequests).toBe(1);
-  await theme.selectOption({ label: 'Geology WMS' });
+  await theme.selectOption({ label: 'Geophysics WMS' });
   await expect.poll(() => legendRequests).toBeGreaterThan(0);
   const initialLegendRequests = legendRequests;
 
   await theme.selectOption({ label: 'Site Investigations' });
   await theme.selectOption({ label: 'Hydrogeology' });
-  await theme.selectOption({ label: 'Geology WMS' });
+  await theme.selectOption({ label: 'Geophysics WMS' });
   expect(styleRequests).toBe(1);
   expect(legendRequests).toBe(initialLegendRequests);
 });
@@ -344,9 +343,9 @@ test('keyboard users can select a map box', async ({ page }) => {
 
 test('Terra Draw controls are advanced-only and follow Find My Location', async ({ page }) => {
   const drawControl = page.locator('.advanced-drawing-tools');
-  await expect(drawControl).toBeHidden();
+  await expect(drawControl).toHaveCount(0);
   await page.getByRole('button', { name: 'Advanced mode' }).click();
-  await expect(drawControl).toBeVisible();
+  await expect(drawControl).toBeVisible({ timeout: 20_000 });
 
   const drawControlFollowsGeolocate = await page.locator('.maplibregl-ctrl-top-right').evaluate(container => {
     const locationControl = container.querySelector('.maplibregl-ctrl-geolocate')?.closest('.maplibregl-ctrl');
@@ -360,7 +359,9 @@ test('Terra Draw controls are advanced-only and follow Find My Location', async 
 test('advanced mode keeps drawing controls hidden on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Advanced mode' }).click();
-  await expect(page.locator('.advanced-drawing-tools')).toBeHidden();
+  const drawingControl = page.locator('.advanced-drawing-tools');
+  await expect(drawingControl).toBeAttached({ timeout: 20_000 });
+  await expect(drawingControl).toBeHidden();
 });
 
 test('standard mode hides drawing and advanced COG controls until enabled', async ({ page }) => {
@@ -496,13 +497,15 @@ test('GeoJSON download panel offers a vector QGIS export and source URL copy', a
   for await (const chunk of stream) chunks.push(chunk);
   const qlr = Buffer.concat(chunks).toString('utf8');
   expect(qlr).toContain('<provider>ogr</provider>');
-  expect(qlr).toContain('type="graduatedSymbol"');
-  expect(qlr).toContain('attr="CU"');
+  expect(qlr).toContain('type="singleSymbol"');
+  expect(qlr).toContain('31,134,219,255');
   expect(qlr).toContain('type="marker"');
   expect(qlr).toContain('<wkt>GEOGCRS["WGS 84"');
   expect(qlr).toContain('<proj4>+proj=longlat +datum=WGS84 +no_defs</proj4>');
   expect(qlr).toContain('<srid>4326</srid>');
-  expect(qlr).toContain('regionalwatersicp.geojson');
+  const watersUrl = await page.evaluate(() =>
+    window.CONFIG.overlays.find(overlay => overlay.id === 'Tellus Waters').url);
+  expect(qlr).toContain(watersUrl);
 
   await page.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', {
@@ -512,7 +515,7 @@ test('GeoJSON download panel offers a vector QGIS export and source URL copy', a
   });
   await row.locator('.geojson-source-copy').click();
   await expect.poll(() => page.evaluate(() => window.__copiedGeojsonUrl))
-    .toBe(new URL('data/regionalwatersicp.geojson', page.url()).href);
+    .toBe(watersUrl);
 });
 
 test('add-data search only shows matching layers inside matching groups', async ({ page }) => {
@@ -697,7 +700,7 @@ test('Site Investigations exposes its vector layers and updates their map visibi
   await expect(siteReports).toBeChecked();
   await expect.poll(() => page.evaluate(() =>
     window.__visibilityCalls.some(call =>
-      call.layerId.startsWith('Site_Reports') && call.visibility === 'visible'
+      call.layerId.startsWith('Site Reports') && call.visibility === 'visible'
     )
   )).toBe(true);
 
@@ -705,19 +708,20 @@ test('Site Investigations exposes its vector layers and updates their map visibi
   await expect(siteReports).not.toBeChecked();
   await expect.poll(() => page.evaluate(() =>
     window.__visibilityCalls.some(call =>
-      call.layerId.startsWith('Site_Reports') && call.visibility === 'none'
+      call.layerId.startsWith('Site Reports') && call.visibility === 'none'
     )
   )).toBe(true);
 });
 
-test('PMTILES theme activates its layers and Add Data can add them to another theme', async ({ page }) => {
+test('Geological Mapping activates PMTiles layers and Add Data can add them to another theme', async ({ page }) => {
   const theme = page.getByRole('combobox', { name: 'Theme' });
   const labels = ['Bedrock geology', 'Geological linear features', 'Superficial geology'];
-  await theme.selectOption({ label: 'PMTILES' });
+  await theme.selectOption({ label: 'Geological Mapping' });
 
   for (const label of labels) {
     const layer = page.getByRole('checkbox', { name: label, exact: true });
     await expect(layer).toBeVisible();
+    if (!(await layer.isChecked())) await layer.check();
     await expect(layer).toBeChecked();
   }
   const bedrockStyle = await page.evaluate(() => {
@@ -734,15 +738,15 @@ test('PMTILES theme activates its layers and Add Data can add them to another th
     firstLegendLabel: 'LOUGHROS GROUP AND FALCARRAGH PELITES (UNDIFFERENTIATED) - QUARTZITE, SEMIPELITE AND PELITE'
   });
 
-  await theme.selectOption({ label: 'Site Investigations' });
+  await theme.selectOption({ label: 'Geophysics WMS' });
   for (const label of labels) {
     await expect(page.getByRole('checkbox', { name: label, exact: true })).toBeHidden();
   }
 
   await page.getByRole('button', { name: 'Add data to the current theme' }).click();
-  const group = page.locator('#addDataList fieldset[data-group-name="PMTILES"]');
+  const group = page.locator('#addDataList fieldset[data-group-name="250K Geology"]');
   await expect(group).toBeVisible();
-  await group.getByRole('button', { name: 'Expand PMTILES' }).click();
+  await group.getByRole('button', { name: 'Expand 250K Geology' }).click();
   const superficial = group.locator('input[data-kind="layer"][data-id="superficial-pmtiles"]');
   await superficial.check();
   await page.getByRole('button', { name: 'Add selected' }).click();
@@ -824,6 +828,8 @@ test('Tellus Geochemistry samples only the COG layer that is enabled', async ({ 
   const aluminium = page.getByRole('checkbox', { name: /^Aluminium Al %/ });
   const antimony = page.getByRole('checkbox', { name: /^Antimony Sb mg\/kg/ });
   await expect(aluminium).toBeVisible();
+  await expect(aluminium).not.toBeChecked();
+  await aluminium.check();
   await expect(aluminium).toBeChecked();
   await expect(antimony).not.toBeChecked();
   await expect.poll(() => page.evaluate(() => window.__cogMetadataCalls.length)).toBe(1);
@@ -856,7 +862,7 @@ test('switching between Site Investigations and Tellus Geophysics preserves them
   await expect(magnetics).toBeVisible();
   await expect.poll(() => page.evaluate(() =>
     window.__visibilityCalls.some(call =>
-      call.layerId.startsWith('Site_Reports') && call.visibility === 'none'
+      call.layerId.startsWith('Site Reports') && call.visibility === 'none'
     )
   )).toBe(true);
 
@@ -871,7 +877,7 @@ test('switching between Site Investigations and Tellus Geophysics preserves them
   await expect(magnetics).toBeHidden();
   await expect.poll(() => page.evaluate(() =>
     window.__visibilityCalls.some(call =>
-      call.layerId.startsWith('Site_Reports') && call.visibility === 'visible'
+      call.layerId.startsWith('Site Reports') && call.visibility === 'visible'
     )
   )).toBe(true);
   await expect.poll(() => page.evaluate(() =>
@@ -881,7 +887,7 @@ test('switching between Site Investigations and Tellus Geophysics preserves them
   )).toBe(true);
 });
 
-test('overlay groups default to one layer and preserve visibility per theme', async ({ page }) => {
+test('overlay groups preserve visibility per theme', async ({ page }) => {
   await page.evaluate(() => {
     window.MaplibreCOGProtocol.getCogMetadata = async () => ({ bitsPerSample: [16, 16, 16] });
   });
@@ -906,7 +912,8 @@ test('overlay groups default to one layer and preserve visibility per theme', as
 
   await theme.selectOption({ label: 'Tellus Geochemistry' });
   const geochemistry = groupLayers('Tellus Soils A Aqua Regia');
-  await expect(geochemistry.first()).toBeChecked();
+  expect(await geochemistry.evaluateAll(inputs => inputs.some(input => input.checked))).toBe(false);
+  await geochemistry.first().check();
   await geochemistry.first().uncheck();
   await geochemistry.nth(1).check();
 
@@ -926,7 +933,8 @@ test('overlay groups default to one layer and preserve visibility per theme', as
 });
 
 test('GeoJSON data loads on first effective visibility and is reused', async ({ page }) => {
-  const dataUrl = new URL('data/regionalwatersicp.geojson', page.url()).href;
+  const dataUrl = await page.evaluate(() =>
+    window.CONFIG.overlays.find(overlay => overlay.id === 'Tellus Waters').url);
   const initialRequests = await page.evaluate(url =>
     performance.getEntriesByName(url).length, dataUrl);
   expect(initialRequests).toBe(0);
@@ -941,10 +949,8 @@ test('GeoJSON data loads on first effective visibility and is reused', async ({ 
 
   const layer = page.locator('#legend [data-scale-id="Tellus Waters"]');
   const classes = layer.locator('.geojson-class-entry');
-  await expect(classes).toHaveCount(5);
-  await expect(classes.nth(0)).toContainText('< 0.553');
-  await expect(classes.nth(1)).toContainText('0.553 – 0.95');
-  await expect(classes.nth(4)).toContainText('≥ 2.26');
+  await expect(classes).toHaveCount(1);
+  await expect(classes.first()).toContainText('Tellus Waters');
   await expect(layer.locator('.geojson-load-status')).toBeHidden();
   await expect(layer.locator('.grprow .geojson-swatch')).toHaveCount(0);
   await expect(classes.first().locator('.geojson-point')).toBeVisible();
@@ -958,17 +964,21 @@ test('GeoJSON data loads on first effective visibility and is reused', async ({ 
   expect(requestedUrls).toHaveLength(1);
 });
 
-test('Hydro GeoJSON adds a data-driven polygon fill layer', async ({ page }) => {
-  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Tellus Geochemistry' });
-  const hydroLayer = page.locator('#legend [data-scale-id="Hydro"]');
+test('Bedrock Aquifer Classification adds a data-driven polygon fill layer', async ({ page }) => {
+  const hydroUrl = await page.evaluate(() =>
+    window.CONFIG.overlays.find(overlay => overlay.id === 'Bedrock Aquifer Classification').url);
+  const hydroRequest = page.waitForRequest(request => request.url() === hydroUrl);
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Hydrogeology' });
+  await hydroRequest;
+  const hydroLayer = page.locator('#legend [data-scale-id="Bedrock Aquifer Classification"]');
   await expect(hydroLayer).toBeVisible();
   await expect(hydroLayer.locator('.grprow .geojson-swatch')).toHaveCount(0);
   const fillLayer = await page.evaluate(() => {
     const map = window.__mapInstance;
-    const layer = map?.getLayer('Hydro-fill');
+    const layer = map?.getLayer('Bedrock Aquifer Classification-fill');
     return layer && {
       type: layer.type,
-      color: map.getPaintProperty('Hydro-fill', 'fill-color')
+      color: map.getPaintProperty('Bedrock Aquifer Classification-fill', 'fill-color')
     };
   });
   expect(fillLayer?.type).toBe('fill');
@@ -976,9 +986,6 @@ test('Hydro GeoJSON adds a data-driven polygon fill layer', async ({ page }) => 
   expect(fillLayer.color).toContain('Dalradian');
   expect(fillLayer.color).toContain('#c3afd5');
 
-  const hydroRequest = page.waitForRequest(request => request.url() === new URL('data/hydro.geojson', page.url()).href);
-  await hydroLayer.locator('.grprow input[type="checkbox"]').check();
-  await hydroRequest;
   await expect(hydroLayer.locator('.geojson-class-entry .geojson-polygon')).toHaveCount(14);
   await expect(hydroLayer.locator('.geojson-class-entry .geojson-line, .geojson-class-entry .geojson-point')).toHaveCount(0);
 });
@@ -1024,16 +1031,16 @@ test('GeoJSON config legend is shown in Basic mode and can be classified in Adva
   const percentileClassCount = await percentileClasses.count();
   expect(percentileClassCount).toBeGreaterThan(1);
   expect(percentileClassCount).toBeLessThanOrEqual(17);
-  const percentileLabels = await layer.locator('.geojson-class-entry > span:not(.sw)').allTextContents();
+  const percentileLabels = await layer.locator('.geojson-class-entry > label > span:not(.sw)').allTextContents();
   expect(percentileLabels.every(label => /^-?\d+\.\d{2} \(\d+(st|nd|rd|th)\)$/.test(label))).toBe(true);
   const firstPercentileLabel = percentileLabels[0];
   const lastPercentileLabel = percentileLabels.at(-1);
   const sortButton = layer.getByRole('button', { name: 'Show highest percentiles first' });
   await sortButton.click();
-  await expect(percentileClasses.first().locator('span:not(.sw)')).toHaveText(lastPercentileLabel);
-  await expect(percentileClasses.last().locator('span:not(.sw)')).toHaveText(firstPercentileLabel);
+  await expect(percentileClasses.first().locator('label > span:not(.sw)')).toHaveText(lastPercentileLabel);
+  await expect(percentileClasses.last().locator('label > span:not(.sw)')).toHaveText(firstPercentileLabel);
   await layer.getByRole('button', { name: 'Show lowest percentiles first' }).click();
-  await expect(percentileClasses.first().locator('span:not(.sw)')).toHaveText(firstPercentileLabel);
+  await expect(percentileClasses.first().locator('label > span:not(.sw)')).toHaveText(firstPercentileLabel);
 
   await classifyButton.click();
   await dialog.locator('#geojsonStyleMethod').selectOption('manual_breaks');

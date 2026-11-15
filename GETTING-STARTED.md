@@ -14,7 +14,9 @@ Then open `http://localhost:8000`. The included server supports HTTP byte-range 
 
 ## 2. Populate the configuration
 
-For the public profile, the main configuration file is [`config/config.js`](config/config.js). It is a JavaScript file that must assign an object to `window.CONFIG`; an empty file, an empty object, or a plain JSON file will not start the profile. Keep the outer object and add datasets, overlays, and themes inside it.
+For the public profile, the main configuration file is [`config/config.js`](config/config.js). It is a JavaScript file that must assign an object to `window.CONFIG`; an empty file, an empty object, or a plain JSON file will not start the profile. The repository's larger public overlay and terrain inventories live in [`config/overlays.js`](config/overlays.js) and [`config/terrain-models.js`](config/terrain-models.js); the profile loader evaluates those fragments before `config.js`. If you keep those fragments, reference `window.CONFIG_OVERLAYS` and `window.CONFIG_TERRAIN_MODELS` from the main object as the repository does. Small/custom profiles may continue to define `overlays` and `terrain.models` directly.
+
+The shared [`js/config-validation.js`](js/config-validation.js) checks required names and arrays, unique IDs, overlay sources and opacity, theme references, map defaults, and terrain-model references before the map or catalogue starts. Keep references synchronized when renaming or removing a dataset, overlay, group, or terrain model.
 
 This is a minimal starting point:
 

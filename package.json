@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/arcgis-query.test.js tests/config.test.js tests/cog-classes.test.js tests/cog-resampling.test.js tests/cog-style.test.js tests/geojson-classification.test.js tests/json-theme-runtime.test.js tests/qgis-layer.test.js tests/shared-links.test.js tests/spacemouse.test.js tests/startup.test.js",
+    "test": "node --test tests/arcgis-query.test.js tests/arcgis-query-controller.test.js tests/config.test.js tests/config-validation.test.js tests/cog-classes.test.js tests/cog-resampling.test.js tests/cog-style.test.js tests/geojson-classification.test.js tests/json-theme-runtime.test.js tests/qgis-layer.test.js tests/safe-content.test.js tests/shared-links.test.js tests/spacemouse.test.js tests/startup.test.js tests/workspaces.test.js",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

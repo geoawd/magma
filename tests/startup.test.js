@@ -13,7 +13,7 @@ function makeConfigLoaderBrowser(search = '') {
   const scripts = [];
   const alerts = [];
   const errors = [];
-  const window = { location: { search }, TOURS: [] };
+  const window = { location: { search }, TOURS: [], validateAppConfig: () => {} };
   const document = {
     createElement: tagName => ({
       tagName,
@@ -35,6 +35,15 @@ function makeConfigLoaderBrowser(search = '') {
     console: { error: message => errors.push(message) }
   }, { filename: 'js/config-loader.js' });
   return { window, scripts, alerts, errors };
+}
+
+async function loadConfiguration(browser) {
+  let index = 0;
+  while (index < browser.scripts.length && browser.scripts[index].src !== 'js/styles.js') {
+    browser.scripts[index].onload();
+    await new Promise(resolve => setImmediate(resolve));
+    index++;
+  }
 }
 
 function makeStylesBrowser(config, fetch) {
@@ -75,8 +84,7 @@ test('config loader selects the requested profile and starts styles after config
   assert.deepEqual(browser.scripts.map(script => script.src), ['config/config.internal.js']);
 
   browser.window.CONFIG = { title: 'Internal profile' };
-  browser.scripts[0].onload();
-  await new Promise(resolve => setImmediate(resolve));
+  await loadConfiguration(browser);
 
   assert.deepEqual(browser.scripts.map(script => script.src), [
     'config/config.internal.js',
@@ -91,10 +99,11 @@ test('config loader defers GeoJSON styleUrl requests until the overlay is active
   browser.window.CONFIG = {
     overlays: [{ id: 'inactive', geojson: true, styleUrl: 'config/inactive-style.json' }]
   };
-  browser.scripts[0].onload();
-  await new Promise(resolve => setImmediate(resolve));
+  await loadConfiguration(browser);
 
   assert.deepEqual(browser.scripts.map(script => script.src), [
+    'config/overlays.js',
+    'config/terrain-models.js',
     'config/config.js',
     'js/styles.js'
   ]);
@@ -114,8 +123,7 @@ test('config loader URI-encodes overlay and terrain COG URLs before loading styl
       models: [{ cog: 'https://example.org/elevation model.tif' }]
     }
   };
-  browser.scripts[0].onload();
-  await new Promise(resolve => setImmediate(resolve));
+  await loadConfiguration(browser);
 
   assert.equal(browser.window.CONFIG.overlays[0].cog, 'https://example.org/soil%20sample.tif');
   assert.equal(browser.window.CONFIG.overlays[1].cog, 'https://example.org/encoded%2520soil.tif');
@@ -134,12 +142,30 @@ test('config loader reports unknown profiles without loading scripts', () => {
 
 test('config loader reports a missing config and does not start styles', async () => {
   const browser = makeConfigLoaderBrowser();
-  browser.scripts[0].onload();
-  await new Promise(resolve => setImmediate(resolve));
+  await loadConfiguration(browser);
 
-  assert.deepEqual(browser.scripts.map(script => script.src), ['config/config.js']);
+  assert.deepEqual(browser.scripts.map(script => script.src), [
+    'config/overlays.js',
+    'config/terrain-models.js',
+    'config/config.js'
+  ]);
   assert.equal(browser.alerts.length, 1);
   assert.match(browser.alerts[0].textContent, /did not define window\.CONFIG/);
+});
+
+test('config loader blocks startup and reports configuration validation failures', async () => {
+  const browser = makeConfigLoaderBrowser();
+  browser.window.CONFIG = { title: 'Invalid profile' };
+  browser.window.validateAppConfig = () => { throw new Error('schema rejected this profile'); };
+  await loadConfiguration(browser);
+
+  assert.deepEqual(browser.scripts.map(script => script.src), [
+    'config/overlays.js',
+    'config/terrain-models.js',
+    'config/config.js'
+  ]);
+  assert.equal(browser.alerts.length, 1);
+  assert.match(browser.alerts[0].textContent, /schema rejected this profile/);
 });
 
 test('config loader rejects non-boolean tour terrain settings', async () => {
@@ -150,10 +176,13 @@ test('config loader rejects non-boolean tour terrain settings', async () => {
     name: 'Terrain tour',
     stops: [{ title: 'Stop', description: 'Test stop', terrain: 'enabled' }]
   }];
-  browser.scripts[0].onload();
-  await new Promise(resolve => setImmediate(resolve));
+  await loadConfiguration(browser);
 
-  assert.deepEqual(browser.scripts.map(script => script.src), ['config/config.js']);
+  assert.deepEqual(browser.scripts.map(script => script.src), [
+    'config/overlays.js',
+    'config/terrain-models.js',
+    'config/config.js'
+  ]);
   assert.equal(browser.alerts.length, 1);
   assert.match(browser.alerts[0].textContent, /Invalid terrain in stop 0 of tour "terrain-tour"/);
 });
@@ -163,10 +192,10 @@ test('config loader reports profile script network failures', async () => {
   browser.scripts[0].onerror();
   await new Promise(resolve => setImmediate(resolve));
 
-  assert.deepEqual(browser.scripts.map(script => script.src), ['config/config.js']);
+  assert.deepEqual(browser.scripts.map(script => script.src), ['config/overlays.js']);
   assert.equal(browser.alerts.length, 1);
   assert.match(browser.alerts[0].textContent, /Could not start the public profile/);
-  assert.match(browser.alerts[0].textContent, /Could not load config\/config\.js/);
+  assert.match(browser.alerts[0].textContent, /Could not load config\/overlays\.js/);
 });
 
 test('styles merge datasets, rewrite sources, and hand off to the app module', async () => {

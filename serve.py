@@ -36,6 +36,7 @@ server_running = True
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     """Multi-threaded HTTP server — handles concurrent requests."""
     daemon_threads = True
+    request_queue_size = 64
 
 
 class RangeRequestHandler(http.server.SimpleHTTPRequestHandler):

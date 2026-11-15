@@ -13,7 +13,7 @@ test('app starts when PMTiles archives return 404', async ({ page }) => {
       }
     });
   });
-  await page.route(/\/data\/(linear|superficial|bedrock)\.pmtiles(?:\?|$)/, route => {
+  await page.route(/https:\/\/data\.better-open-data\.com\/lidar_zstd\/(linear|superficial|bedrock)\.pmtiles(?:\?.*)?$/, route => {
     missingArchives.push(route.request().url());
     return route.fulfill({ status: 404, body: 'Not Found' });
   });

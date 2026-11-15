@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test';
 
 test('information panel links to the catalogue between About and Copyright', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
   await page.locator('#rail button[data-tool="about"]').click();
 
   const headings = await page.locator('#aboutPage .lgroup .lghead span').allTextContents();
@@ -88,9 +87,10 @@ test('data catalogue offers styled GeoJSON and COG GIS exports and terrain metad
       value: { writeText: async value => { window.__catalogueCopiedUrl = value; } }
     });
   });
+  const watersUrl = await waters.locator('a').getAttribute('href');
   await waters.getByRole('button', { name: 'Copy URL' }).click();
   await expect.poll(() => page.evaluate(() => window.__catalogueCopiedUrl))
-    .toBe(new URL('data/regionalwatersicp.geojson', page.url()).href);
+    .toBe(watersUrl);
 
   const cog = page.locator('.dataset-card').filter({ hasText: 'Aluminium Al % DL = 0.01' });
   await expect(cog).toBeVisible();

@@ -1,5 +1,6 @@
 import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition } from './qgis-layer.js';
 import { validateCogClasses } from './cog-classes.js';
+import './config-validation.js';
 import {
   COG_DEFAULT_QUANTILE_STOPS,
   COG_DEFAULT_RAMP,
@@ -13,9 +14,9 @@ const catalogue = document.querySelector('#catalogue');
 const search = document.querySelector('#catalogueSearch');
 const status = document.querySelector('#catalogueStatus');
 const profile = new URLSearchParams(location.search).get('profile') || 'public';
-const profileConfigs = {
-  public: 'config/config.js',
-  internal: 'config/config.internal.js'
+const profileScripts = {
+  public: ['config/overlays.js', 'config/terrain-models.js', 'config/config.js'],
+  internal: ['config/config.internal.js']
 };
 let cogProtocolPromise;
 document.querySelector('#backToMap').href = profile === 'public'
@@ -611,10 +612,12 @@ function render(config) {
 }
 
 async function start() {
-  const configPath = profileConfigs[profile];
-  if (!configPath) throw new Error(`Unknown profile "${profile}".`);
-  await loadScript(configPath);
+  const sources = profileScripts[profile];
+  if (!sources) throw new Error(`Unknown profile "${profile}".`);
+  for (const source of sources) await loadScript(source);
+  const configPath = sources.at(-1);
   if (!window.CONFIG) throw new Error(`${configPath} did not define window.CONFIG.`);
+  window.validateAppConfig(window.CONFIG);
   encodeCogUrls(window.CONFIG);
   await loadGeojsonStyles(window.CONFIG);
   render(window.CONFIG);

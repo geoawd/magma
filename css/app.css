@@ -28,6 +28,11 @@
   .space-mouse-settings-actions { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; margin-top: 4px; }
   .session-restore-actions { display: grid; gap: 8px; }
   .session-restore-actions button { min-height: 40px; text-align: left; }
+  #workspaceControls { display: grid; gap: 7px; }
+  #workspaceControls > p { margin: 0; }
+  #workspaceControls > input, #workspaceControls > select { width: 100%; min-width: 0; min-height: 36px; padding: 6px 8px; border: 1px solid #8a949e; border-radius: 4px; background: #fff; }
+  #workspaceControls button { min-height: 36px; }
+  .workspace-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #notificationDialog { width: min(520px, calc(100vw - 32px)); max-height: min(90dvh, 760px); overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 0; color: var(--ink); box-shadow: 0 8px 32px rgba(0,0,0,.28); }
   #notificationDialog::backdrop { background: rgba(14,22,28,.58); }
   #geojsonStyleDialog { width: min(520px, calc(100vw - 32px)); max-height: min(90dvh, 760px); overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 20px; color: var(--ink); box-shadow: 0 8px 32px rgba(0,0,0,.28); }
@@ -73,6 +78,7 @@
   #rail button:hover { background: rgba(255,255,255,.12); }
   #rail button.active { background: rgba(255,255,255,.2); color: #fff; box-shadow: inset 3px 0 0 #fff; }
   #rail button:focus-visible { outline-color: #fff; }
+  #moreToolsBtn, #mobileMoreToolsMenu { display: none; }
   input[type=checkbox], input[type=range] { accent-color: var(--rail-bg); }
   button.primary:hover { background: #2b3a46; }
   #rail svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -453,7 +459,7 @@
   .idtitle { flex: none; background: var(--rail-bg); color: #fff; font-size: 14px; font-weight: 600; padding: 8px 40px 8px 10px; }
   .idlayers { min-width: 0; }
   .idsec { min-width: 0; }
-  .idhead { display: flex; align-items: center; gap: 6px; background: var(--rail-bg); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 10px; cursor: pointer; user-select: none; }
+  .idhead { display: flex; width: 100%; align-items: center; gap: 6px; border: 0; border-radius: 0; text-align: left; background: var(--rail-bg); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 10px; cursor: pointer; user-select: none; }
   .idsec + .idsec .idhead { border-top: 1px solid rgba(255,255,255,.18); }
   .idhead:hover { background: #2b3a46; }
   .idsec.linked .idhead { opacity: .7; }
@@ -490,12 +496,17 @@
   /* ---- mobile: menu along the bottom, drawer expands upwards ---- */
   @media (max-width: 700px) {
     .advanced-drawing-tools { display: none !important; }
+    body.advanced-mode.mobile-drawing-tools-open .advanced-drawing-tools { display: flex !important; }
     body { flex-direction: column-reverse; }
     #side { flex-direction: column-reverse; border-right: 0; border-top: 1px solid var(--line); }
     #rail { width: auto; height: 52px; flex-direction: row; justify-content: space-around; padding: 4px 0 env(safe-area-inset-bottom, 0); height: calc(52px + env(safe-area-inset-bottom, 0)); }
     #rail .gap { display: none; }
-    #rail button { width: 48px; height: 44px; }
+    #rail button { width: min(12vw, 44px); height: 44px; flex: none; }
     #rail #globeBtn, #rail #printBtn { display: none; }
+    #moreToolsBtn { display: grid; }
+    #mobileMoreToolsMenu:not([hidden]) { position: fixed; z-index: 20; right: 8px; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); display: grid; min-width: 176px; gap: 5px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.24); }
+    #mobileMoreToolsMenu button { min-height: 40px; text-align: left; }
+    #mobileDrawingToolsBtn[aria-pressed="true"] { background: #e6edf2; }
     #drawer { display: flex; flex-direction: column; width: auto; height: 0; max-height: 80dvh; transition: height .18s ease; }
     body.drawer-open #drawer { width: auto; height: min(var(--mobile-drawer-height, 45dvh), 80dvh); }
     #drawerDragHandle { display: grid; place-items: center; width: 100%; height: 22px; min-height: 22px; flex: none; border: 0; border-radius: 0; background: #fff; cursor: ns-resize; touch-action: none; user-select: none; }

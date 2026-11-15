@@ -25,6 +25,7 @@ test('ArcGIS query URL targets the layer and requests attributes intersecting th
   assert.equal(url.searchParams.get('spatialRel'), 'esriSpatialRelIntersects');
   assert.equal(url.searchParams.get('outFields'), '*');
   assert.equal(url.searchParams.get('returnGeometry'), 'false');
+  assert.equal(url.searchParams.get('resultRecordCount'), '500');
   assert.equal(url.searchParams.get('f'), 'json');
 });
 
@@ -63,7 +64,7 @@ test('ArcGIS query response returns feature attributes and surfaces service erro
   assert.throws(() => parseArcgisQueryResponse({}), /expected a features array/);
   assert.throws(() => parseArcgisQueryResponse({ features: [{}] }), /missing attributes/);
   assert.throws(() => parseArcgisQueryResponse({ features: [], exceededTransferLimit: true }),
-    /exceeded the service record limit/);
+    /exceeded the record limit/);
 });
 
 test('ArcGIS box-query responses provide a zoom point from returned geometry', () => {
