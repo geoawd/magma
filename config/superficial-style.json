@@ -27,7 +27,7 @@
   "metadata": {
     "legend-groups": [
       {
-        "name": "PMTILES",
+        "name": "250K Geology",
         "layers": ["superficial-pmtiles"]
       }
     ]
