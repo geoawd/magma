@@ -1883,6 +1883,17 @@ layers: '4', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
 layers: '6', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
 
+{ id: 'Groundwater Data Repository', name: 'Groundwater Data Repository', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '1', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+{ id: 'Hydrogeology Reports', name: 'Hydrogeology Reports', group: 'Hydrogeology',
+url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
+layers: '0', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+
+
+
+
 
 ///////////////////////////////////////////////////////////////////////////
 //  Geophysics Layers
@@ -2057,7 +2068,7 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
       { name: 'Tellus Geochemistry', 
       overlays: ['Tellus Waters','Hydro','Tellus Soils','Tellus Soils A Aqua Regia','esri_world_imagery'] },      
       { name: 'Hydrogeology', 
-      overlays: ['Bedrock Aquifer Classification','Bedrock Aquifer', 'Groundwater Vulnerability', 'Superficial Aquifer', 'esri_world_imagery'] },
+      overlays: ['Hydrogeology Reports','Groundwater Data Repository','Bedrock Aquifer Classification','Bedrock Aquifer', 'Groundwater Vulnerability', 'Superficial Aquifer', 'esri_world_imagery'] },
   ],
 
 
