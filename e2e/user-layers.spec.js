@@ -103,6 +103,16 @@ test('adds each MapServer sublayer separately in the selected group', async ({ p
     if (url.pathname.endsWith('/legend')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ layers: [] }) });
     }
+    if (/\/MapServer\/\d+\/query$/.test(url.pathname)) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({
+          features: [{ attributes: { TEST_RESULT: `Query result for layer ${url.pathname.match(/\/MapServer\/(\d+)\/query$/)[1]}` } }]
+        })
+      });
+    }
     return route.fulfill({ status: 200, contentType: 'image/png', body: pixel });
   });
   await openUserLayerForm(
@@ -115,11 +125,18 @@ test('adds each MapServer sublayer separately in the selected group', async ({ p
   await expect(rows.filter({ hasText: 'Faults' })).toBeVisible();
   await expect(rows.filter({ hasText: 'Bedrock geology' })).toBeVisible();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mapviewer.user-layers.v1')));
-  expect(saved.map(({ name, group, layers, visible }) => ({ name, group, layers, visible }))).toEqual([
-    { name: 'Dykes', group: 'Bedrock', layers: '0', visible: true },
-    { name: 'Faults', group: 'Bedrock', layers: '2', visible: false },
-    { name: 'Bedrock geology', group: 'Bedrock', layers: '3', visible: true }
+  expect(saved.map(({ name, group, layers, visible, queryable }) =>
+    ({ name, group, layers, visible, queryable }))).toEqual([
+    { name: 'Dykes', group: 'Bedrock', layers: '0', visible: true, queryable: true },
+    { name: 'Faults', group: 'Bedrock', layers: '2', visible: false, queryable: true },
+    { name: 'Bedrock geology', group: 'Bedrock', layers: '3', visible: true, queryable: true }
   ]);
+
+  const queryRequest = page.waitForRequest(request =>
+    new URL(request.url()).pathname.endsWith('/MapServer/0/query'));
+  await page.locator('#map canvas').click({ position: { x: 400, y: 250 } });
+  await queryRequest;
+  await expect(page.locator('.idpop')).toContainText('Query result for layer 0');
 });
 
 test('adds a cached MapServer without sublayers as one layer', async ({ page }) => {
@@ -151,4 +168,5 @@ test('adds a cached MapServer without sublayers as one layer', async ({ page }) 
     group: 'Cached layers',
     tiles: 'https://services.example.test/arcgis/rest/services/Cached/MapServer/tile/{z}/{y}/{x}'
   });
+  expect(saved[0].queryable).toBeUndefined();
 });

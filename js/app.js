@@ -38,7 +38,10 @@ function loadUserLayers() {
       try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); } catch { return; }
       if (typeof layer.url === 'string') restored.url = layer.url;
       if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
-      if (typeof layer.layers === 'string') restored.layers = layer.layers;
+      if (typeof layer.layers === 'string') {
+        restored.layers = layer.layers;
+        if (typeof layer.url === 'string') restored.queryable = true;
+      }
       ids.add(restored.id);
       CONFIG.overlays ||= [];
       CONFIG.overlays.push(restored);
@@ -2787,6 +2790,7 @@ async function submitUserLayer(event) {
       global: false,
       visible: layer.visible,
       opacity: 1,
+      ...(layer.url && layer.layers ? { queryable: true } : {}),
       ...(layer.url ? { url: layer.url } : {}),
       ...(layer.tiles ? { tiles: layer.tiles } : {}),
       ...(layer.layers ? { layers: layer.layers } : {})
