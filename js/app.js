@@ -1021,13 +1021,24 @@ function arcgisClickEnvelope(point, tolerance = 5) {
   };
 }
 
-async function queryArcgisOverlays(point) {
+function arcgisBoxPolygon(a, b) {
+  const left = Math.min(a.x, b.x), right = Math.max(a.x, b.x);
+  const top = Math.min(a.y, b.y), bottom = Math.max(a.y, b.y);
+  const corners = [
+    [left, top], [right, top], [right, bottom], [left, bottom], [left, top]
+  ].map(point => {
+    const coordinate = map.unproject(point);
+    return [coordinate.lng, coordinate.lat];
+  });
+  return { rings: [corners] };
+}
+
+async function queryArcgisOverlays(geometry, geometryType = 'esriGeometryEnvelope', includeGeometry = false) {
   const overlays = (CONFIG.overlays || []).filter(overlay =>
     overlay.queryable === true && !overlay.geojson && !overlay.cog &&
     map.getLayer(overlay.id) && map.getLayoutProperty(overlay.id, 'visibility') !== 'none');
   if (!overlays.length) return [];
 
-  const envelope = arcgisClickEnvelope(point);
   const jobs = [];
   const errors = [];
   overlays.forEach(overlay => {
@@ -1036,12 +1047,15 @@ async function queryArcgisOverlays(point) {
         jobs.push({
           overlay,
           promise: async () => {
-            const response = await fetch(buildArcgisQueryUrl(overlay.url, layerId, envelope));
+            const response = await fetch(buildArcgisQueryUrl(
+              overlay.url, layerId, geometry, geometryType, includeGeometry
+            ));
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return parseArcgisQueryResponse(await response.json()).map(properties => ({
+            return parseArcgisQueryResponse(await response.json(), { includeGeometry }).map(result => ({
               sourceLayer: overlay.name || overlay.id,
               layer: { id: overlay.id },
-              properties
+              properties: includeGeometry ? result.attributes : result,
+              ...(includeGeometry && result.geometry ? { geometry: result.geometry } : {})
             }));
           }
         });
@@ -1130,14 +1144,14 @@ map.on('click', async e => {
       activeJsonThemeState.featureById.has(String(f.properties?.[geometryConfig.geometryLinkField || geometryConfig.linkField])));
     if (hit) {
       const popupContent = showJsonThemePopup({ features: [hit], lngLat: e.lngLat });
-      const arcgisFeatures = await queryArcgisOverlays(e.point);
+      const arcgisFeatures = await queryArcgisOverlays(arcgisClickEnvelope(e.point));
       if (queryGeneration === clickQueryGeneration && !boxMode && !justBoxed && !notificationPicking) {
         appendArcgisFeaturesToJsonThemePopup(popupContent, arcgisFeatures);
       }
       return;
     }
   }
-  feats = [...feats, ...await queryArcgisOverlays(e.point)];
+  feats = [...feats, ...await queryArcgisOverlays(arcgisClickEnvelope(e.point))];
   if (queryGeneration !== clickQueryGeneration || boxMode || justBoxed || notificationPicking) return;
   if (!feats.length) return;
   const groups = {};   // one collapsible section per layer, each with its own pager
@@ -6615,7 +6629,7 @@ map.once('style.load', async () => {
 });
 
 // ---------- Box selection (mouse and touch) ----------
-let start = null, selected = [];
+let start = null, selected = [], selectionGeneration = 0;
 const boxBtn = $('boxBtn');
 const boxEl = document.createElement('div');
 boxEl.id = 'selbox';
@@ -6625,6 +6639,7 @@ let boxKeyboardStart = null;
 
 function setBox(on) {
   if (on) cancelNotificationPick();
+  if (on) selectionGeneration++;
   boxMode = on;
   boxBtn.classList.toggle('active', on);
   boxBtn.setAttribute('aria-pressed', String(on));
@@ -6702,13 +6717,26 @@ mapBox.addEventListener('pointerdown', e => {
 });
 
 ///////////////////////////////////////////////////////////////////////////
-// Runs a vector feature query for a dragged map rectangle and opens results.
+// Queries rendered vector features and visible queryable ArcGIS overlays for a map rectangle.
 ///////////////////////////////////////////////////////////////////////////
-function runSelection(a, b) {
+async function runSelection(a, b) {
   setBox(false);
   justBoxed = true; setTimeout(() => justBoxed = false, 50);   // stops the drag from also opening a popup
   if (Math.abs(a.x - b.x) < 3 && Math.abs(a.y - b.y) < 3) return;
-  selected = queryData([[a.x, a.y], [b.x, b.y]]);
+  const generation = ++selectionGeneration;
+  const bounds = [
+    [Math.min(a.x, b.x), Math.min(a.y, b.y)],
+    [Math.max(a.x, b.x), Math.max(a.y, b.y)]
+  ];
+  const vectorFeatures = queryData(bounds);
+  let arcgisFeatures = [];
+  try {
+    arcgisFeatures = await queryArcgisOverlays(arcgisBoxPolygon(a, b), 'esriGeometryPolygon', true);
+  } catch (error) {
+    toast(`Could not query ArcGIS layers: ${error.message}`);
+  }
+  if (generation !== selectionGeneration) return;
+  selected = [...vectorFeatures, ...arcgisFeatures];
   showTable(selected, `${selected.length} record(s) selected`);
 }
 
@@ -6793,6 +6821,7 @@ function renderTable(feats, label) {
 // Global results panel switch (rail button); JSON themes keep their legend eye in step.
 let resultsOn = false;
 function setResults(on) {
+  if (!on) selectionGeneration++;
   resultsOn = on;
   document.body.classList.toggle('has-table', on);
   $('tableBtn').classList.toggle('active', on);

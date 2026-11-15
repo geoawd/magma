@@ -35,6 +35,46 @@ test('queries visible ArcGIS overlays on map click and shows returned attributes
   await expect(page.locator('.idpop')).toContainText('Test hydrogeology report');
 });
 
+test('box selection queries visible ArcGIS overlays and lists attributes in results', async ({ page }) => {
+  await page.route('https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/0/query**',
+    route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({
+        features: [{
+          attributes: { REPORT_TITLE: 'Box-selected hydrogeology report', OBJECTID: 2 },
+          geometry: { rings: [[[-6.5, 54.5], [-6.4, 54.5], [-6.4, 54.6], [-6.5, 54.6], [-6.5, 54.5]]] }
+        }]
+      })
+    }));
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Hydrogeology' });
+  await page.getByRole('checkbox', { name: 'Hydrogeology Reports', exact: true }).check();
+  const canvas = page.locator('#map canvas');
+  const rect = await canvas.boundingBox();
+  const queryRequest = page.waitForRequest(request =>
+    new URL(request.url()).pathname.endsWith('/MapServer/0/query'));
+
+  await page.getByRole('button', { name: 'Select by box' }).click();
+  await page.mouse.move(rect.x + 250, rect.y + 180);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + 450, rect.y + 320, { steps: 4 });
+  await page.mouse.up();
+
+  const request = await queryRequest;
+  const queryUrl = new URL(request.url());
+  expect(queryUrl.searchParams.get('geometryType')).toBe('esriGeometryPolygon');
+  expect(queryUrl.searchParams.get('returnGeometry')).toBe('true');
+  const reportsTab = page.locator('#tabs .tab').filter({ hasText: 'Hydrogeology Reports' });
+  await expect(reportsTab).toBeVisible();
+  await reportsTab.click();
+  await expect(page.locator('#tablewrap')).toContainText('Box-selected hydrogeology report');
+  const zoomButton = page.locator('#tablewrap .vector-row-zoom');
+  await expect(zoomButton).toBeEnabled();
+  await zoomButton.click();
+  await expect(page.locator('#map .ring')).toBeVisible();
+});
+
 async function openUserLayerForm(page, url, group) {
   await page.getByRole('button', { name: 'Add data to the current theme' }).click();
   await page.getByRole('button', { name: 'Add your own layer' }).click();

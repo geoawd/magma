@@ -28,6 +28,26 @@ test('ArcGIS query URL targets the layer and requests attributes intersecting th
   assert.equal(url.searchParams.get('f'), 'json');
 });
 
+test('ArcGIS query URL accepts a polygon for box selection', () => {
+  const geometry = {
+    rings: [[[-6, 55], [-5, 55], [-5, 54], [-6, 54], [-6, 55]]]
+  };
+  const url = new URL(buildArcgisQueryUrl(
+    'https://example.org/arcgis/rest/services/test/MapServer/',
+    '0',
+    geometry,
+    'esriGeometryPolygon',
+    true
+  ));
+  assert.equal(url.searchParams.get('geometryType'), 'esriGeometryPolygon');
+  assert.deepEqual(JSON.parse(url.searchParams.get('geometry')), {
+    ...geometry,
+    spatialReference: { wkid: 4326 }
+  });
+  assert.equal(url.searchParams.get('returnGeometry'), 'true');
+  assert.equal(url.searchParams.get('outSR'), '4326');
+});
+
 test('ArcGIS query supports configured IDs and a layer ID embedded in the service URL', () => {
   assert.deepEqual(arcgisLayerIds('show:0, 2', 'https://example.org/MapServer/'), ['0', '2']);
   assert.deepEqual(arcgisLayerIds(undefined, 'https://example.org/MapServer/3'), ['3']);
@@ -46,6 +66,24 @@ test('ArcGIS query response returns feature attributes and surfaces service erro
     /exceeded the service record limit/);
 });
 
+test('ArcGIS box-query responses provide a zoom point from returned geometry', () => {
+  assert.deepEqual(parseArcgisQueryResponse({
+    features: [{
+      attributes: { REPORT: 'Borehole report' },
+      geometry: { rings: [[[-6, 54], [-4, 54], [-4, 56], [-6, 56], [-6, 54]]] }
+    }]
+  }, { includeGeometry: true }), [{
+    attributes: { REPORT: 'Borehole report' },
+    geometry: { type: 'Point', coordinates: [-5, 55] }
+  }]);
+  assert.deepEqual(parseArcgisQueryResponse({
+    features: [{ attributes: { REPORT: 'No geometry' } }]
+  }, { includeGeometry: true }), [{
+    attributes: { REPORT: 'No geometry' },
+    geometry: null
+  }]);
+});
+
 test('ArcGIS query rejects invalid service URLs and envelopes', () => {
   assert.throws(() => buildArcgisQueryUrl('https://example.org/tiles/', '0', {
     xmin: 0, ymin: 0, xmax: 1, ymax: 1
@@ -56,4 +94,6 @@ test('ArcGIS query rejects invalid service URLs and envelopes', () => {
   assert.throws(() => buildArcgisQueryUrl('https://example.org/MapServer/', '0', {
     xmin: 2, ymin: 0, xmax: 1, ymax: 1
   }), /Invalid ArcGIS query envelope/);
+  assert.throws(() => buildArcgisQueryUrl('https://example.org/MapServer/', '0', {}, 'esriGeometryPolygon'),
+    /Invalid ArcGIS query polygon/);
 });
