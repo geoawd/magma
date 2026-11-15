@@ -41,6 +41,7 @@ import { createLegendCategoryController } from './legend-category-controller.js'
 import { createLegendInViewController } from './legend-in-view-controller.js';
 import { createVectorLegendController } from './vector-legend-controller.js';
 import { createOverlayLegendController } from './overlay-legend-controller.js';
+import { createTerraDrawController } from './terra-draw-controller.js';
 import { escapeHtml, parseServiceUrl, safeExternalUrl } from './safe-content.js';
 import { createWorkspaceStore } from './workspaces.js';
 import { loadOptionalScript, loadOptionalStylesheet } from './optional-vendors.js';
@@ -172,41 +173,14 @@ const {
   arcgisBoxPolygon,
   withLinked
 } = mapFeatureQueries;
-let terraDrawControlPromise = null;
+const terraDrawController = createTerraDrawController({
+  map,
+  window,
+  loadStylesheet: loadOptionalStylesheet,
+  loadScript: loadOptionalScript
+});
 function ensureTerraDrawControl() {
-  if (!terraDrawControlPromise) {
-    terraDrawControlPromise = (async () => {
-      const css = 'https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.css';
-      const script = 'https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.umd.js';
-      await Promise.all([
-        loadOptionalStylesheet(css, 'sha384-kWhXkxsLl6DODYRUoNdPQrEwAFVzLoegtEL9WR3Xybrqmi+2HSENt8VyRofcRDUG'),
-        loadOptionalScript(script, 'sha384-yhep21kwwLZCV1aZfqjNeKXP6znnkpri9p4oBTDjwidlfwiFuxVEDfhTtTaEi1Ag')
-      ]);
-      const Control = window.MaplibreTerradrawControl?.MaplibreTerradrawControl;
-      if (typeof Control !== 'function') throw new Error('The drawing tools did not initialize.');
-      const control = new Control({
-        modes: ['linestring', 'freehand', 'select', 'delete-selection', 'delete', 'download'],
-        open: true
-      });
-      const onAdd = control.onAdd.bind(control);
-      control.onAdd = mapInstance => {
-        const container = onAdd(mapInstance);
-        container.classList.add('advanced-drawing-tools');
-        return container;
-      };
-      map.addControl(control, 'top-right');
-      const locationControl = map.getContainer()
-        .querySelector('.maplibregl-ctrl-geolocate')?.closest('.maplibregl-ctrl');
-      const drawingControl = map.getContainer()
-        .querySelector('.advanced-drawing-tools')?.closest('.maplibregl-ctrl');
-      if (locationControl && drawingControl) locationControl.after(drawingControl);
-      return control;
-    })().catch(error => {
-      terraDrawControlPromise = null;
-      throw error;
-    });
-  }
-  return terraDrawControlPromise;
+  return terraDrawController.ensureLoaded();
 }
 const arcgisQueryController = createArcgisQueryController({
   getOverlays: () => (CONFIG.overlays || []).filter(overlay =>
