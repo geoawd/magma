@@ -8,7 +8,13 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const window = {};
 const context = vm.createContext({ window });
-for (const source of ['config/overlays.js', 'config/terrain-models.js', 'config/config.js', 'js/config-validation.js']) {
+for (const source of [
+  'config/overlays.js',
+  'config/terrain-models.js',
+  'config/notifications.js',
+  'config/config.js',
+  'js/config-validation.js'
+]) {
   const filePath = path.join(root, source);
   vm.runInContext(fs.readFileSync(filePath, 'utf8'), context, { filename: filePath });
 }

@@ -1,6 +1,6 @@
 (() => {
   const profileScripts = {
-    public: ['config/overlays.js', 'config/terrain-models.js', 'config/config.js'],
+    public: ['config/overlays.js', 'config/terrain-models.js', 'config/notifications.js', 'config/config.js'],
     internal: ['config/config.internal.js']
   };
   const profile = new URLSearchParams(window.location.search).get('profile') || 'public';

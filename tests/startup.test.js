@@ -104,6 +104,7 @@ test('config loader defers GeoJSON styleUrl requests until the overlay is active
   assert.deepEqual(browser.scripts.map(script => script.src), [
     'config/overlays.js',
     'config/terrain-models.js',
+    'config/notifications.js',
     'config/config.js',
     'js/styles.js'
   ]);
@@ -147,6 +148,7 @@ test('config loader reports a missing config and does not start styles', async (
   assert.deepEqual(browser.scripts.map(script => script.src), [
     'config/overlays.js',
     'config/terrain-models.js',
+    'config/notifications.js',
     'config/config.js'
   ]);
   assert.equal(browser.alerts.length, 1);
@@ -162,6 +164,7 @@ test('config loader blocks startup and reports configuration validation failures
   assert.deepEqual(browser.scripts.map(script => script.src), [
     'config/overlays.js',
     'config/terrain-models.js',
+    'config/notifications.js',
     'config/config.js'
   ]);
   assert.equal(browser.alerts.length, 1);
@@ -181,6 +184,7 @@ test('config loader rejects non-boolean tour terrain settings', async () => {
   assert.deepEqual(browser.scripts.map(script => script.src), [
     'config/overlays.js',
     'config/terrain-models.js',
+    'config/notifications.js',
     'config/config.js'
   ]);
   assert.equal(browser.alerts.length, 1);

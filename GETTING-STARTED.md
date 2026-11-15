@@ -14,7 +14,7 @@ Then open `http://localhost:8000`. The included server supports HTTP byte-range 
 
 ## 2. Populate the configuration
 
-For the public profile, the main configuration file is [`config/config.js`](config/config.js). It is a JavaScript file that must assign an object to `window.CONFIG`; an empty file, an empty object, or a plain JSON file will not start the profile. The repository's larger public overlay and terrain inventories live in [`config/overlays.js`](config/overlays.js) and [`config/terrain-models.js`](config/terrain-models.js); the profile loader evaluates those fragments before `config.js`. If you keep those fragments, reference `window.CONFIG_OVERLAYS` and `window.CONFIG_TERRAIN_MODELS` from the main object as the repository does. Small/custom profiles may continue to define `overlays` and `terrain.models` directly.
+For the public profile, the main configuration file is [`config/config.js`](config/config.js). It is a JavaScript file that must assign an object to `window.CONFIG`; an empty file, an empty object, or a plain JSON file will not start the profile. The repository's public overlay, terrain, and notification configurations live in [`config/overlays.js`](config/overlays.js), [`config/terrain-models.js`](config/terrain-models.js), and [`config/notifications.js`](config/notifications.js); the profile loader evaluates these before `config.js`. The main object references `window.CONFIG_OVERLAYS`, `window.CONFIG_TERRAIN_MODELS`, and `window.CONFIG_NOTIFICATIONS`. Small/custom profiles may continue to define overlays, terrain models, and notifications directly.
 
 The shared [`js/config-validation.js`](js/config-validation.js) checks required names and arrays, unique IDs, overlay sources and opacity, theme references, map defaults, and terrain-model references before the map or catalogue starts. Keep references synchronized when renaming or removing a dataset, overlay, group, or terrain model.
 
@@ -61,7 +61,7 @@ themes: [
 defaultTheme: 0
 ```
 
-Theme names and IDs are case-sensitive. A theme can select overlay IDs, PMTiles dataset IDs, vector layer names, or configured groups. Anything not selected is normally hidden in that theme. Read the examples below before replacing an existing configuration: the repository's `config/config.js` also contains extensive layer metadata, terrain, search, and notification settings.
+Theme names and IDs are case-sensitive. A theme can select overlay IDs, PMTiles dataset IDs, vector layer names, or configured groups. Anything not selected is normally hidden in that theme. Read the examples below before replacing an existing configuration: the repository's `config/config.js` also contains extensive layer metadata, terrain, and search settings, while notification forms are defined separately in `config/notifications.js`.
 
 ## 3. Add vector data in PMTiles
 

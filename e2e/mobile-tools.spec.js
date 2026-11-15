@@ -24,6 +24,13 @@ test('mobile More map tools provides globe and print actions', async ({ page }) 
   await expect.poll(() => page.evaluate(() => window.__printCalled)).toBe(true);
 });
 
+test('desktop keeps globe and print tools on the rail instead of More map tools', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByRole('button', { name: 'More map tools' })).toBeHidden();
+  await expect(page.locator('#globeBtn')).toBeVisible();
+  await expect(page.locator('#printBtn')).toBeVisible();
+});
+
 test('drawing controls load on demand and are available from the mobile tools menu', async ({ page }) => {
   await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Legend and layers' }).click();

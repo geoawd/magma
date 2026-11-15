@@ -86,17 +86,16 @@ window.TOURS = [
         terrain: true,
         duration: 8000
       },
-      /**
-            {
+      {
         title: 'Video explanation',
         description: 'Garron Point is also affectionately known as the Magpie Coast thanks to its distinctive limestone and basalt strips. Watch a short explanation of the geological setting.',
         target: '#map',
         popup: {
           lngLat: [-5.97201, 55.0515],
-          html: '<video controls width="320" src="media/video.mp4"></video>'
+          maxWidth: 'min(560px, calc(100vw - 32px))',
+          html: '<iframe width="560" height="315" style="display:block;width:100%;height:auto;aspect-ratio:16/9;border:0" src="https://www.youtube.com/embed/7nMXtsZty6g?si=-UqeOfDjA5qcX6i0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>'
         }
       },
-      */
     ]
   },
   {

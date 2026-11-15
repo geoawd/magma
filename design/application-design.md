@@ -18,7 +18,7 @@ On mobile, the tools drawer opens at 45% of the viewport height, can be dragged 
 
 ## SpaceMouse Navigation
 
-Set `CONFIG.spaceMouse.enabled` to `true` to enable the SpaceMouse connection and preferences controls. Set `CONFIG.spaceMouse.advancedModeOnly` to `true` to show them only while Advanced mode is on. In a WebHID-capable browser on a secure context, users can connect a 3Dconnexion device from the connection control; discovery supports current and legacy vendor IDs and generic multi-axis HID collections, and previously authorized devices reconnect automatically. Translation axes can be assigned to horizontal pan, vertical pan, zoom, or left unassigned; rotation axes can be assigned to pitch, heading, or left unassigned. The defaults are translation X/Y/Z to horizontal pan/vertical pan/zoom and rotation X/Y/Z to pitch/unassigned/heading. Vertical pan and pitch directions are reversed by default. Multiple inputs assigned to the same action are combined and clamped to the supported range. Both separate translation/rotation reports and combined six-axis reports are supported. Browsers without WebHID continue to work normally and do not show the controls. `panPixelsPerSecond`, `zoomLevelsPerSecond`, and `rotationDegreesPerSecond` set the default navigation speeds. The preferences dialog provides dropdowns for each axis, speed controls, and independent direction reversal for each action. User preferences are stored separately from map sessions in browser `localStorage`, scoped to the active profile, and can be reset to the configured defaults.
+Set `CONFIG.spaceMouse.enabled` to `true` to enable the SpaceMouse connection and preferences controls. Set `CONFIG.spaceMouse.advancedModeOnly` to `true` to show them only while Advanced mode is on. In a WebHID-capable browser on a secure context, users can connect a 3Dconnexion device from the connection control; discovery supports current and legacy vendor IDs and generic multi-axis HID collections, and previously authorized devices reconnect automatically. Without WebHID, the controls remain discoverable in Advanced mode, the connection control is disabled, and preferences remain available. Translation axes can be assigned to horizontal pan, vertical pan, zoom, or left unassigned; rotation axes can be assigned to pitch, heading, or left unassigned. The defaults are translation X/Y/Z to horizontal pan/vertical pan/zoom and rotation X/Y/Z to pitch/unassigned/heading. Vertical pan and pitch directions are reversed by default. Multiple inputs assigned to the same action are combined and clamped to the supported range. Both separate translation/rotation reports and combined six-axis reports are supported. `panPixelsPerSecond`, `zoomLevelsPerSecond`, and `rotationDegreesPerSecond` set the default navigation speeds. The preferences dialog provides dropdowns for each axis, speed controls, and independent direction reversal for each action. User preferences are stored separately from map sessions in browser `localStorage`, scoped to the active profile, and can be reset to the configured defaults.
 
 ## Session Recovery
 
@@ -45,6 +45,7 @@ The video-export plugin is intentionally not loaded by default. A future exporte
 ## Directory Layout
 
 - `config/config.js`: public profile's `window.CONFIG` for map defaults, vector datasets, basemaps, raster overlays, themes, legend metadata, search, and terrain.
+- `config/notifications.js`: public profile's notification types and form fields, exposed to the app through `CONFIG.notifications`.
 - `config/config.internal.js`: internal profile's `window.CONFIG`; present only on the internal branch.
 - `config/tours.js`: independently loaded `window.TOURS` definitions for interactive tours.
 - `js/config-loader.js`: loads the public profile by default, or the internal profile when opened with `?profile=internal`.
@@ -62,6 +63,8 @@ Advanced GeoJSON classification supports quantile ranges, equal intervals, manua
 ## Map Configuration
 
 Edit the profile config to change its map-wide setup: `config/config.js` for public, or `config/config.internal.js` for internal. The internal URL must include `?profile=internal`; omitting the parameter loads the public profile.
+
+Edit `config/notifications.js` to add or change public-profile notification types and form fields. The loader evaluates it before `config/config.js`, which assigns the definitions to `CONFIG.notifications`.
 
 - `datasets` associates a dataset ID and display name with a complete MapLibre style file and PMTiles URL. Keep each dataset's sources, vector layers, paint expressions, and optional `metadata["legend-groups"]` in its configured style file. Layer metadata can set `theme-layer` to give archives with identical source-layer names distinct controls, and `legend-label` for their display names. Data-driven class legend labels can be supplied as layer metadata `legend` with matching `entries` in expression order. `layerDefaults` controls each vector layer's initial visibility in the assembled style, before MapLibre's first render; layers not set to `true` start hidden and can be enabled in the legend.
 - `basemaps` describes persistent raster basemaps.

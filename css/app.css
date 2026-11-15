@@ -78,7 +78,7 @@
   #rail button:hover { background: rgba(255,255,255,.12); }
   #rail button.active { background: rgba(255,255,255,.2); color: #fff; box-shadow: inset 3px 0 0 #fff; }
   #rail button:focus-visible { outline-color: #fff; }
-  #moreToolsBtn, #mobileMoreToolsMenu { display: none; }
+  #rail #moreToolsBtn, #mobileMoreToolsMenu { display: none; }
   input[type=checkbox], input[type=range] { accent-color: var(--rail-bg); }
   button.primary:hover { background: #2b3a46; }
   #rail svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -503,7 +503,7 @@
     #rail .gap { display: none; }
     #rail button { width: min(12vw, 44px); height: 44px; flex: none; }
     #rail #globeBtn, #rail #printBtn { display: none; }
-    #moreToolsBtn { display: grid; }
+    #rail #moreToolsBtn { display: grid; }
     #mobileMoreToolsMenu:not([hidden]) { position: fixed; z-index: 20; right: 8px; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); display: grid; min-width: 176px; gap: 5px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.24); }
     #mobileMoreToolsMenu button { min-height: 40px; text-align: left; }
     #mobileDrawingToolsBtn[aria-pressed="true"] { background: #e6edf2; }

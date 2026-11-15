@@ -89,24 +89,50 @@ test('SpaceMouse reports decode translation and rotation axes', () => {
   assert.equal(decodeSpaceMouseReport(1, new DataView(new ArrayBuffer(4))), null);
 });
 
-test('SpaceMouse control stays hidden when WebHID is unavailable or disabled', () => {
+test('SpaceMouse controls remain discoverable without WebHID or a connected device', () => {
+  const unavailableSettings = mockSettings();
   const unavailableButton = mockButton();
-  assert.equal(createSpaceMouseController({
+  const unavailableController = createSpaceMouseController({
     button: unavailableButton,
-    settingsButton: mockButton(),
+    settingsButton: unavailableSettings.settingsButton,
     config: { enabled: true },
-    hid: undefined
-  }).enabled, false);
-  assert.equal(unavailableButton.hidden, true);
+    hid: undefined,
+    window: { localStorage: { getItem: () => null, setItem() {}, removeItem() {} } },
+    document: unavailableSettings.document,
+    notify() {}
+  });
+  assert.equal(unavailableController.enabled, false);
+  assert.equal(unavailableButton.hidden, false);
+  assert.equal(unavailableButton.disabled, true);
+  assert.match(unavailableButton.title, /WebHID/);
+  assert.equal(unavailableSettings.settingsButton.hidden, false);
+
+  const disconnectedSettings = mockSettings();
+  const disconnectedButton = mockButton();
+  const disconnectedController = createSpaceMouseController({
+    button: disconnectedButton,
+    settingsButton: disconnectedSettings.settingsButton,
+    config: { enabled: true },
+    hid: { addEventListener() {}, getDevices: async () => [], requestDevice: async () => [] },
+    window: { localStorage: { getItem: () => null, setItem() {}, removeItem() {} } },
+    document: disconnectedSettings.document,
+    notify() {}
+  });
+  assert.equal(disconnectedController.enabled, true);
+  assert.equal(disconnectedButton.hidden, false);
+  assert.equal(disconnectedButton.disabled, false);
+  assert.equal(disconnectedSettings.settingsButton.hidden, false);
 
   const disabledButton = mockButton();
+  const disabledSettingsButton = mockButton();
   assert.equal(createSpaceMouseController({
     button: disabledButton,
-    settingsButton: mockButton(),
+    settingsButton: disabledSettingsButton,
     config: { enabled: false },
     hid: {}
   }).enabled, false);
   assert.equal(disabledButton.hidden, true);
+  assert.equal(disabledSettingsButton.hidden, true);
 });
 
 test('SpaceMouse control can be restricted to advanced mode', () => {

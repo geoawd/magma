@@ -11,7 +11,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = path.join(root, 'config/config.js');
 const configWindow = {};
 const configContext = vm.createContext({ window: configWindow });
-for (const source of ['config/overlays.js', 'config/terrain-models.js', 'config/config.js']) {
+for (const source of [
+  'config/overlays.js',
+  'config/terrain-models.js',
+  'config/notifications.js',
+  'config/config.js'
+]) {
   const filePath = path.join(root, source);
   vm.runInContext(fs.readFileSync(filePath, 'utf8'), configContext, { filename: filePath });
 }

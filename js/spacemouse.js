@@ -132,7 +132,7 @@ export function createSpaceMouseController({
   notify
 }) {
   if (!button || !settingsButton) throw new Error('SpaceMouse controls are missing.');
-  if (config?.enabled !== true || !hid) {
+  if (config?.enabled !== true) {
     button.hidden = true;
     settingsButton.hidden = true;
     return { enabled: false };
@@ -235,15 +235,22 @@ export function createSpaceMouseController({
 
   button.hidden = false;
   settingsButton.hidden = false;
+  button.disabled = !hid;
 
   function setButtonState(connected) {
-    button.disabled = false;
+    button.disabled = !hid;
     button.classList.toggle('active', connected);
     button.setAttribute('aria-pressed', String(connected));
-    const label = connected ? 'Disconnect 3Dconnexion SpaceMouse' : 'Connect 3Dconnexion SpaceMouse';
+    const label = connected
+      ? 'Disconnect 3Dconnexion SpaceMouse'
+      : hid
+        ? 'Connect 3Dconnexion SpaceMouse'
+        : 'SpaceMouse connection requires WebHID in a secure context';
     button.title = label;
     button.setAttribute('aria-label', label);
   }
+
+  setButtonState(false);
 
   function resetAxes() {
     axes.translation.fill(0);
@@ -351,24 +358,26 @@ export function createSpaceMouseController({
 
   button.addEventListener('click', () => {
     if (device) void disconnect();
-    else void connectFromButton();
+    else if (hid) void connectFromButton();
   });
-  hid.addEventListener('disconnect', event => {
-    if (event.device !== device) return;
-    device.removeEventListener('inputreport', onInputReport);
-    device = null;
-    resetAxes();
-    setButtonState(false);
-    notify('The SpaceMouse was disconnected.');
-  });
+  if (hid) {
+    hid.addEventListener('disconnect', event => {
+      if (event.device !== device) return;
+      device.removeEventListener('inputreport', onInputReport);
+      device = null;
+      resetAxes();
+      setButtonState(false);
+      notify('The SpaceMouse was disconnected.');
+    });
 
-  hid.getDevices().then(devices => {
-    const authorizedDevice = devices.find(isSpaceMouseDevice);
-    if (authorizedDevice) return openDevice(authorizedDevice);
-  }).catch(error => {
-    console.error('Could not check for an authorized SpaceMouse:', error);
-    notify(`Could not check for an authorized SpaceMouse: ${error.message}`);
-  });
+    hid.getDevices().then(devices => {
+      const authorizedDevice = devices.find(isSpaceMouseDevice);
+      if (authorizedDevice) return openDevice(authorizedDevice);
+    }).catch(error => {
+      console.error('Could not check for an authorized SpaceMouse:', error);
+      notify(`Could not check for an authorized SpaceMouse: ${error.message}`);
+    });
+  }
 
-  return { enabled: true, disconnect };
+  return { enabled: !!hid, disconnect };
 }

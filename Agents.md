@@ -16,8 +16,9 @@ The server opens the app in a browser on port 8000 by default. Use `python3 serv
 
 ## Startup and structure
 
-- `index.html` defines the application shell and loads the browser libraries, `config/config.js`, and `js/styles.js`.
+- `index.html` defines the application shell; `js/config-loader.js` loads the profile configuration before `js/styles.js`.
 - `config/config.js` defines the global `window.CONFIG`: map defaults, datasets and styles, overlays, themes, terrain, search, and layer metadata.
+- `config/notifications.js` defines the public profile's notification types and form fields, exposed through `CONFIG.notifications`.
 - `js/styles.js` fetches and merges the configured MapLibre styles, then loads `js/app.js`.
 - `js/app.js` implements the map UI and interactions, including layers, search, results, exports, popups, and theme switching.
 - `js/json-theme-runtime.js` loads JSON theme modules and data, builds map features, and provides shared JSON-theme filtering and geometry helpers.
