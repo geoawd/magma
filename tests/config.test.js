@@ -151,6 +151,13 @@ test('configured raster and tile sources have valid source settings', () => {
   }
 });
 
+test('Hydrogeology Reports is configured for ArcGIS REST click queries', () => {
+  const reports = config.overlays.find(overlay => overlay.id === 'Hydrogeology Reports');
+  assert.ok(reports);
+  assert.equal(reports.queryable, true);
+  assert.equal(reports.layers, '0');
+});
+
 test('Tellus Waters uses numeric GeoJSON range classes', () => {
   const waters = config.overlays.find(overlay => overlay.id === 'Tellus Waters');
   assert.ok(waters, 'Tellus Waters GeoJSON overlay must be configured');

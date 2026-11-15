@@ -1873,23 +1873,23 @@ layers: '10', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
 ///////////////////////////////////////////////////////////////////////////
 { id: 'Superficial Aquifer', name: 'Superficial Aquifer', group: 'Hydrogeology',
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '5', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+layers: '5', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
 { id: 'Bedrock Aquifer', name: 'Bedrock Aquifer', group: 'Hydrogeology',
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '4', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+layers: '4', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
 { id: 'Groundwater Vulnerability', name: 'Groundwater Vulnerability', group: 'Hydrogeology',
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '6', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+layers: '6', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
 { id: 'Groundwater Data Repository', name: 'Groundwater Data Repository', group: 'Hydrogeology',
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '1', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+layers: '1', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
 { id: 'Hydrogeology Reports', name: 'Hydrogeology Reports', group: 'Hydrogeology',
 url: 'https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/',
-layers: '0', opacity: 0.6, visible: false, attribution: '&copy; GSNI' },
+layers: '0', opacity: 0.6, visible: false, queryable: true, attribution: '&copy; GSNI' },
 
 
 

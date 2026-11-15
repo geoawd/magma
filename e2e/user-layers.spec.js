@@ -11,6 +11,30 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
 });
 
+test('queries visible ArcGIS overlays on map click and shows returned attributes', async ({ page }) => {
+  await page.route('https://map.bgs.ac.uk/arcgis/rest/services/GeoIndex_GSNI/GSNI_Hydrogeology/MapServer/0/query**',
+    route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({
+        features: [{ attributes: { REPORT_TITLE: 'Test hydrogeology report', OBJECTID: 1 } }]
+      })
+    }));
+  await page.getByRole('combobox', { name: 'Theme' }).selectOption({ label: 'Hydrogeology' });
+  const layer = page.getByRole('checkbox', { name: 'Hydrogeology Reports', exact: true });
+  await layer.check();
+
+  const queryRequest = page.waitForRequest(request =>
+    new URL(request.url()).pathname.endsWith('/MapServer/0/query'));
+  await page.locator('#map canvas').click({ position: { x: 400, y: 250 } });
+  const request = await queryRequest;
+  const url = new URL(request.url());
+  expect(url.searchParams.get('outFields')).toBe('*');
+  expect(url.searchParams.get('returnGeometry')).toBe('false');
+  await expect(page.locator('.idpop')).toContainText('Test hydrogeology report');
+});
+
 async function openUserLayerForm(page, url, group) {
   await page.getByRole('button', { name: 'Add data to the current theme' }).click();
   await page.getByRole('button', { name: 'Add your own layer' }).click();

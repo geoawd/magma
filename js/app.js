@@ -15,6 +15,7 @@ import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition, QGIS_TURBO_C
 import { isJsonThemeShareState, jsonThemeMapView, parseMapViewHash } from './shared-links.js';
 import { buildJsonFeatures, createJsonThemeState, filterJsonRows, hasJsonFilters, jsonGeometryCenter, jsonGeometryIntersectsBounds, loadJsonThemeConfig, loadJsonThemeData } from './json-theme-runtime.js';
 import { createSpaceMouseController } from './spacemouse.js';
+import { arcgisLayerIds, buildArcgisQueryUrl, parseArcgisQueryResponse } from './arcgis-query.js';
 
 window.maplibregl = maplibregl;
 const CONFIG = window.CONFIG;
@@ -1003,6 +1004,63 @@ function queryData(geom) {
 const around = (p, r = 5) => [[p.x - r, p.y - r], [p.x + r, p.y + r]];
 const wholeMap = () => { const c = map.getCanvas(); return [[0, 0], [c.clientWidth, c.clientHeight]]; };
 
+function arcgisClickEnvelope(point, tolerance = 5) {
+  const coordinates = [
+    map.unproject([point.x - tolerance, point.y - tolerance]),
+    map.unproject([point.x + tolerance, point.y - tolerance]),
+    map.unproject([point.x - tolerance, point.y + tolerance]),
+    map.unproject([point.x + tolerance, point.y + tolerance])
+  ];
+  const longitudes = coordinates.map(coordinate => coordinate.lng);
+  const latitudes = coordinates.map(coordinate => coordinate.lat);
+  return {
+    xmin: Math.min(...longitudes),
+    ymin: Math.min(...latitudes),
+    xmax: Math.max(...longitudes),
+    ymax: Math.max(...latitudes)
+  };
+}
+
+async function queryArcgisOverlays(point) {
+  const overlays = (CONFIG.overlays || []).filter(overlay =>
+    overlay.queryable === true && !overlay.geojson && !overlay.cog &&
+    map.getLayer(overlay.id) && map.getLayoutProperty(overlay.id, 'visibility') !== 'none');
+  if (!overlays.length) return [];
+
+  const envelope = arcgisClickEnvelope(point);
+  const jobs = [];
+  const errors = [];
+  overlays.forEach(overlay => {
+    try {
+      arcgisLayerIds(overlay.layers, overlay.url).forEach(layerId => {
+        jobs.push({
+          overlay,
+          promise: async () => {
+            const response = await fetch(buildArcgisQueryUrl(overlay.url, layerId, envelope));
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return parseArcgisQueryResponse(await response.json()).map(properties => ({
+              sourceLayer: overlay.name || overlay.id,
+              layer: { id: overlay.id },
+              properties
+            }));
+          }
+        });
+      });
+    } catch (error) {
+      errors.push(`${overlay.name || overlay.id}: ${error.message}`);
+    }
+  });
+
+  const results = await Promise.allSettled(jobs.map(job => job.promise()));
+  const features = [];
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') features.push(...result.value);
+    else errors.push(`${jobs[index].overlay.name || jobs[index].overlay.id}: ${result.reason.message}`);
+  });
+  if (errors.length) toast(`Could not query ArcGIS layer${errors.length > 1 ? 's' : ''}: ${errors.join('; ')}`);
+  return features;
+}
+
 // ---------- Click popup ----------
 // CONFIG.dataLinks: { <vector layer>: { field, links: [{ label, file, dataKey?, field? }] } } joins JSON rows to clicked / selected features.
 const linkIndexes = new Map();
@@ -1057,19 +1115,30 @@ async function linkedFor(layer, parents) {
 }
 
 let boxMode = false, justBoxed = false;
+let clickQueryGeneration = 0;
 map.on('click', async e => {
+  const queryGeneration = ++clickQueryGeneration;
   if (notificationPicking) {
     selectNotificationLocation(e.lngLat);
     return;
   }
   if (boxMode || justBoxed) return;
-  const feats = queryData(around(e.point));
+  let feats = queryData(around(e.point));
   const geometryConfig = activeJsonThemeState.active ? activeJsonThemeConfig() : null;
   if (geometryConfig?.geometryDataset) {
     const hit = feats.find(f => datasetGeometryLayerIds(geometryConfig).includes(f.layer.id) &&
       activeJsonThemeState.featureById.has(String(f.properties?.[geometryConfig.geometryLinkField || geometryConfig.linkField])));
-    if (hit) { showJsonThemePopup({ features: [hit], lngLat: e.lngLat }); return; }
+    if (hit) {
+      const popupContent = showJsonThemePopup({ features: [hit], lngLat: e.lngLat });
+      const arcgisFeatures = await queryArcgisOverlays(e.point);
+      if (queryGeneration === clickQueryGeneration && !boxMode && !justBoxed && !notificationPicking) {
+        appendArcgisFeaturesToJsonThemePopup(popupContent, arcgisFeatures);
+      }
+      return;
+    }
   }
+  feats = [...feats, ...await queryArcgisOverlays(e.point)];
+  if (queryGeneration !== clickQueryGeneration || boxMode || justBoxed || notificationPicking) return;
   if (!feats.length) return;
   const groups = {};   // one collapsible section per layer, each with its own pager
   (await withLinked(feats)).forEach(f => (groups[f.sourceLayer || f.layer.id] ||= []).push(f));
@@ -2979,6 +3048,57 @@ function showJsonThemePopup(event) {
   });
   new maplibregl.Popup({ maxWidth: '360px', className: 'idpop' })
     .setLngLat(clickedAt).setDOMContent(content).addTo(map);
+  return content;
+}
+function appendArcgisFeaturesToJsonThemePopup(content, features) {
+  if (!content || !features.length) return;
+  const grouped = new Map();
+  features.forEach(feature => {
+    const name = feature.sourceLayer || feature.layer.id;
+    if (!grouped.has(name)) grouped.set(name, []);
+    grouped.get(name).push(feature);
+  });
+  grouped.forEach((items, name) => {
+    const section = createJsonThemePopupSection(`${name} (${items.length})`, true, content);
+    let current = 0;
+    let pageLabel = null;
+    if (items.length > 1) {
+      const pager = document.createElement('div');
+      pager.className = 'pophead';
+      const previous = document.createElement('button');
+      previous.type = 'button';
+      previous.className = 'nav';
+      previous.textContent = '\u25c0';
+      previous.setAttribute('aria-label', `Previous ${name} result`);
+      const page = document.createElement('span');
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.className = 'nav';
+      next.textContent = '\u25b6';
+      next.setAttribute('aria-label', `Next ${name} result`);
+      previous.onclick = () => { current = (current + items.length - 1) % items.length; render(); };
+      next.onclick = () => { current = (current + 1) % items.length; render(); };
+      pageLabel = page;
+      pager.append(previous, pageLabel, next);
+      section.body.appendChild(pager);
+    }
+    const render = () => {
+      const properties = items[current].properties || {};
+      section.records.replaceChildren();
+      if (pageLabel) pageLabel.textContent = `${current + 1} of ${items.length}`;
+      Object.entries(properties).filter(([, value]) =>
+        value !== null && value !== undefined && (typeof value !== 'string' || value.trim() !== '')
+      ).forEach(([field, value]) => {
+        const line = document.createElement('div'); line.className = 'arow';
+        const key = document.createElement('div'); key.className = 'akey'; key.textContent = field;
+        const cell = document.createElement('div'); cell.className = 'aval';
+        cell.textContent = typeof value === 'object' ? JSON.stringify(value) : String(value);
+        line.append(key, cell); section.records.appendChild(line);
+      });
+    };
+    render();
+    content.appendChild(section.section);
+  });
 }
 function createJsonThemePopupSection(label, collapsed, accordionRoot) {
   const section = document.createElement('section');
