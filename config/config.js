@@ -2058,7 +2058,7 @@ attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Commun
         overlays: ['Geotechnical', 'esri_world_imagery', 'lot1_ortho_ni'] },
       { name: 'Geological Mapping',
       datasets: ['linear-pmtiles', 'superficial-pmtiles', 'bedrock-pmtiles', ], 
-      overlays: ['10K_bedrock', '10K_superficial', '10K_linear', '10K_mass_movement', '10K_artificial','10K_landform', '250K_bedrock', '250K_superficial', '250K_linear','esri_world_imagery'] },
+      overlays: ['10K_bedrock', '10K_superficial', '10K_linear', '10K_mass_movement', '10K_artificial','10K_landform', '250K_bedrock', '250K_superficial', '250K_linear','esri_world_imagery','lot1_ortho_ni'] },
       { name: 'Geophysics WMS', 
       overlays: ['Geophysics - Magnetics','Geophysics - Electromagnetics','Geophysics - Radiometrics', 'esri_world_imagery'] },
       { name: 'Tellus Geophysics', 
