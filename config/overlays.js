@@ -61,7 +61,7 @@ window.CONFIG_OVERLAYS = [
     style: { color: '#070707', width: 0.25}, 
     opacity: 1, 
     visible: false,
-    minzoom: 9, maxzoom: 22,  
+    minzoom: 8, maxzoom: 22,  
   },
 
 
@@ -76,7 +76,7 @@ window.CONFIG_OVERLAYS = [
     style: { color: '#1f86db', width: 0.25}, 
     opacity: 1, 
     visible: false,
-    minzoom: 9, maxzoom: 22,  
+    minzoom: 8, maxzoom: 22,  
   },
 
 { id: 'Bedrock Aquifer Classification',
