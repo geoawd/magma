@@ -15,12 +15,64 @@
       "source-layer": "mylayer",
       "metadata": {
         "theme-layer": "superficial-pmtiles",
-        "legend-label": "Superficial geology"
+        "legend-label": "Superficial geology",
+        "legend": {
+          "title": "LEX_RCS",
+          "entries": [
+            {"label": "ALLUVIUM - SAND AND SILT", "color": "#ffff54"},
+            {"label": "GLACIOLACUSTRINE DEPOSITS - SILT AND CLAY", "color": "#ff3375"},
+            {"label": "BLOWN SAND - SAND", "color": "#00ff00"},
+            {"label": "DIATOMITE - DIATOMITE", "color": "#949494"},
+            {"label": "GLACIOFLUVIAL SHEET DEPOSITS - SAND, SILT AND CLAY", "color": "#ff54ff"},
+            {"label": "GLACIAL SAND AND GRAVEL - SAND AND GRAVEL", "color": "#ffb0ff"},
+            {"label": "LACUSTRINE ALLUVIUM - CLAY, SILT AND SAND", "color": "#ffffc9"},
+            {"label": "PEAT - PEAT", "color": "#b07554"},
+            {"label": "RAISED BEACH DEPOSITS - GRAVEL, SAND AND SILT", "color": "#ff9475"},
+            {"label": "RAISED MARINE DEPOSITS - CLAY, SILT AND SAND", "color": "#dbdbdb"},
+            {"label": "LANDSLIDE DEPOSITS - UNKNOWN/UNCLASSIFIED ENTRY", "color": "#ffffed"},
+            {"label": "TILL - DIAMICTON", "color": "#c9ffff"},
+            {"label": "Other", "color": "#808080"}
+          ]
+        }
       },
       "paint": {
-        "fill-color": "#c6c6c6",
-        "fill-opacity": 0.55,
-        "fill-outline-color": "#6f6f6f"
+        "fill-opacity": 0.65,
+        "fill-outline-color": [
+          "case",
+          ["in", ["get", "LEX_RCS_D "], ["literal", [
+            "ALLUVIUM - SAND AND SILT",
+            "GLACIOLACUSTRINE DEPOSITS - SILT AND CLAY",
+            "BLOWN SAND - SAND",
+            "DIATOMITE - DIATOMITE",
+            "GLACIOFLUVIAL SHEET DEPOSITS - SAND, SILT AND CLAY",
+            "GLACIAL SAND AND GRAVEL - SAND AND GRAVEL",
+            "LACUSTRINE ALLUVIUM - CLAY, SILT AND SAND",
+            "PEAT - PEAT",
+            "RAISED BEACH DEPOSITS - GRAVEL, SAND AND SILT",
+            "RAISED MARINE DEPOSITS - CLAY, SILT AND SAND",
+            "LANDSLIDE DEPOSITS - UNKNOWN/UNCLASSIFIED ENTRY",
+            "TILL - DIAMICTON"
+          ]]],
+          "#00ff00",
+          "#808080"
+        ],
+        "fill-color": [
+          "match",
+          ["get", "LEX_RCS"],
+          "ALV-XSZ", "#ffff54",
+          "GLLD-XZC", "#ff3375",
+          "BSA-S", "rgba(0,0,0,0)",
+          "DIAT-DIATOM", "#949494",
+          "GFSD-XSZC", "#ff54ff",
+          "GSG-XSV", "#ffb0ff",
+          "LAT-XCZS", "#ffffc9",
+          "PEAT-P", "#b07554",
+          "RBDU-XVSZ", "#ff9475",
+          "RMD-XCZS", "#dbdbdb",
+          "SLIP-UKNOWN", "#ffffed",
+          "TILL-DMTN", "#c9ffff",
+          "#808080"
+        ]
       }
     }
   ],
