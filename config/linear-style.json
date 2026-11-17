@@ -9,21 +9,28 @@
   },
   "layers": [
     {
-      "id": "linear",
-      "type": "line",
-      "source": "linear",
-      "source-layer": "mylayer",
-      "metadata": {
-        "theme-layer": "linear-pmtiles",
-        "legend-label": "Geological linear features"
-      },
-      "paint": {
-        "line-color": "#666666",
-        "line-width": 2.0,
-        "line-dasharray": [2, 2],
-        "line-opacity": 0.9
-      }
-    }
+  "id": "linear",
+  "type": "line",
+  "source": "linear",
+  "source-layer": "mylayer",
+  "metadata": {
+    "theme-layer": "linear-pmtiles",
+    "legend-label": "Geological linear features"
+  },
+  "paint": {
+    "line-color": "#666666",
+    "line-width": 2.0,
+    "line-opacity": 1.0,
+    "line-dasharray": [
+      "step",
+      ["zoom"],
+      ["literal", [1, 1]],
+      9,  ["literal", [2.5, 2.5]],
+      12, ["literal", [5, 5]],
+      14, ["literal", [10, 10]]
+    ]
+  }
+}
   ],
   "metadata": {
     "legend-groups": [

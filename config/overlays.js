@@ -24,9 +24,9 @@ window.CONFIG_OVERLAYS = [
       ],
       radius: [
           'interpolate', ['linear'], ['zoom'],
-          10, 2,  // zoom 10: radius 2 px
-          14, 5,  // zoom 14: radius 5 px
-          18, 9,  // zoom 18: radius 9 px
+          10, 2.5,  // zoom, radius
+          14, 5,  // zoom, radius
+          18, 9,  // zoom, radius
         ],
         width: 1.0,    },
     opacity: 1, 
@@ -58,7 +58,16 @@ window.CONFIG_OVERLAYS = [
     geometryType: 'Point',
     url: 'https://data.better-open-data.com/lidar_zstd/regional-soils-a-xrf.geojson', 
     projection: 'EPSG:4326',
-    style: { color: '#070707', width: 0.25}, 
+    style: { 
+      color: '#070707',
+      radius: [
+          'interpolate', ['linear'], ['zoom'],
+          10, 2,  // zoom, radius
+          12, 4,  // zoom, radius
+          14, 8,  // zoom, radius
+          16, 16,  // zoom, radius
+        ], 
+    }, 
     opacity: 1, 
     visible: false,
     minzoom: 8, maxzoom: 22,  
@@ -73,7 +82,15 @@ window.CONFIG_OVERLAYS = [
     geometryType: 'Point',
     url: 'https://data.better-open-data.com/lidar_zstd/regionalwatersicp.geojson',
     projection: 'EPSG:4326',
-    style: { color: '#1f86db', width: 0.25}, 
+    style: { color: '#1f86db', 
+    radius: [
+    'interpolate', ['linear'], ['zoom'],
+    10, 2,  // zoom, radius
+    12, 4,  // zoom, radius
+    14, 8,  // zoom, radius
+    16, 16,  // zoom, radius
+    ],  
+    }, 
     opacity: 1, 
     visible: false,
     minzoom: 8, maxzoom: 22,  
