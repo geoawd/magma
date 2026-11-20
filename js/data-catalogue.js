@@ -1,5 +1,6 @@
 import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition } from './qgis-layer.js';
 import { validateCogClasses } from './cog-classes.js';
+import { registerCogProjections } from './cog-projections.js';
 import './config-validation.js';
 import {
   COG_DEFAULT_QUANTILE_STOPS,
@@ -186,10 +187,14 @@ function downloadDefinition(content, name) {
 }
 
 async function getCogProtocol() {
-  if (window.MaplibreCOGProtocol) return window.MaplibreCOGProtocol;
+  if (window.MaplibreCOGProtocol) {
+    registerCogProjections(window.MaplibreCOGProtocol, window.CONFIG.cogProjections);
+    return window.MaplibreCOGProtocol;
+  }
   if (!cogProtocolPromise) {
     cogProtocolPromise = loadScript('js/maplibre-cog-protocol.js').then(() => {
       if (!window.MaplibreCOGProtocol) throw new Error('The COG protocol script did not initialize.');
+      registerCogProjections(window.MaplibreCOGProtocol, window.CONFIG.cogProjections);
       return window.MaplibreCOGProtocol;
     }).catch(error => {
       cogProtocolPromise = null;

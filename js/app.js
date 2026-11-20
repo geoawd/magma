@@ -1,5 +1,6 @@
 import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs';
 import { cogClassColorLut } from './cog-classes.js';
+import { registerCogProjections } from './cog-projections.js';
 import {
   COG_DEFAULT_QUANTILE_STOPS,
   COG_RAMP_COLORS,
@@ -124,6 +125,7 @@ function ensureCogProtocol() {
     cogProtocolPromise = (async () => {
       if (!window.MaplibreCOGProtocol) await loadOptionalScript('js/maplibre-cog-protocol.js');
       if (!window.MaplibreCOGProtocol?.cogProtocol) throw new Error('The COG protocol did not initialize.');
+      registerCogProjections(window.MaplibreCOGProtocol, CONFIG.cogProjections);
       registerCogProtocol();
       return window.MaplibreCOGProtocol;
     })().catch(error => {

@@ -44,6 +44,8 @@ test('application configuration has valid defaults and project bounds', () => {
   assert.equal(typeof config.title, 'string');
   assert.ok(config.title.trim().length > 0);
   assert.equal(typeof config.copytourlocation, 'boolean');
+  assert.equal(config.cogProjections[0].code, 27700);
+  assert.match(config.cogProjections[0].definition, /\+proj=tmerc/);
   assert.equal(config.spaceMouse?.enabled, true);
   assert.equal(config.spaceMouse?.advancedModeOnly, true);
   for (const speed of ['panPixelsPerSecond', 'zoomLevelsPerSecond', 'rotationDegreesPerSecond']) {

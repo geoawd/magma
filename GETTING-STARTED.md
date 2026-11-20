@@ -270,21 +270,19 @@ COGs must be tiled Cloud Optimized GeoTIFFs. The server must support HTTP range 
 
 ### Register an additional COG projection
 
-The COG protocol reads the CRS embedded in the GeoTIFF. It recognizes common EPSG codes, including `EPSG:29902` and `EPSG:2157`. If the COG uses an EPSG code the protocol does not know, register that code with the protocol before the COG is opened. Add this near the top of `config/config.js`, after the protocol script has loaded:
+The COG protocol reads the CRS embedded in the GeoTIFF. It recognizes common EPSG codes, including `EPSG:29902` and `EPSG:2157`. If the COG uses an EPSG code the protocol does not know, add it to the profile's `cogProjections` configuration. The app registers these definitions when it lazily loads the protocol, before opening a COG:
 
 ```js
-window.MaplibreCOGProtocol.registerProjection(
-  27700,
-  '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 ' +
-  '+x_0=400000 +y_0=-100000 +ellps=airy +units=m +no_defs'
-);
-
-window.CONFIG = {
-  // ...
-};
+cogProjections: [
+  {
+    code: 27700,
+    definition: '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 ' +
+      '+x_0=400000 +y_0=-100000 +ellps=airy +units=m +no_defs'
+  }
+],
 ```
 
-Pass the integer EPSG code stored in the GeoTIFF (without the `EPSG:` prefix) and the authoritative PROJ definition for that CRS. Include any required datum transformation parameters or grids; the abbreviated British National Grid definition above illustrates the registration call, but may not be sufficiently accurate for every dataset. This registration is specific to the COG protocol; defining the same CRS with the global `proj4.defs()` alone does not register it for COG rendering. User-defined CRS GeoTIFFs without an EPSG code and rotated or sheared COGs are not supported by this renderer; assign a suitable EPSG CRS or reproject the file to a north-up EPSG-coded CRS such as EPSG:3857.
+Pass the integer EPSG code stored in the GeoTIFF (without the `EPSG:` prefix) and the authoritative PROJ definition for that CRS. Include any required datum transformation parameters or grids; the abbreviated British National Grid definition above may not be sufficiently accurate for every dataset. This registration is specific to the COG protocol; defining the same CRS with the global `proj4.defs()` alone does not register it for COG rendering. User-defined CRS GeoTIFFs without an EPSG code and rotated or sheared COGs are not supported by this renderer; assign a suitable EPSG CRS or reproject the file to a north-up EPSG-coded CRS such as EPSG:3857.
 
 For GeoJSON or JSON-theme geometry in a custom CRS, register it separately with the global Proj4js instance before the map starts:
 

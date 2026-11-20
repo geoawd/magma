@@ -40,6 +40,22 @@
     const overlayIds = requireUniqueIds(overlays, 'overlays');
     requireUniqueIds(basemaps, 'basemaps');
 
+    if (config.cogProjections !== undefined) {
+      if (!Array.isArray(config.cogProjections)) fail('cogProjections', 'must be an array');
+      const projectionCodes = new Set();
+      config.cogProjections.forEach((projection, index) => {
+        requireRecord(projection, `cogProjections[${index}]`);
+        if (!Number.isInteger(projection.code) || projection.code <= 0) {
+          fail(`cogProjections[${index}].code`, 'must be a positive integer');
+        }
+        if (projectionCodes.has(projection.code)) {
+          fail(`cogProjections[${index}].code`, `duplicates "${projection.code}"`);
+        }
+        projectionCodes.add(projection.code);
+        requireName(projection.definition, `cogProjections[${index}].definition`);
+      });
+    }
+
     datasets.forEach((dataset, index) => {
       if (dataset.style !== undefined) requireName(dataset.style, `datasets[${index}].style`);
       if (dataset.pmtiles !== undefined) requireName(dataset.pmtiles, `datasets[${index}].pmtiles`);

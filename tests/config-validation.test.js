@@ -34,3 +34,14 @@ test('configuration validation rejects missing overlay sources and broken theme 
   invalidConfig.overlays[0].url = 'https://example.org/data';
   assert.throws(() => window.validateAppConfig(invalidConfig), /references unknown overlay or group/);
 });
+
+test('configuration validation checks custom COG projection definitions', () => {
+  const invalidConfig = {
+    title: 'Invalid config',
+    cogProjections: [{ code: '27700', definition: '+proj=tmerc' }]
+  };
+  assert.throws(() => window.validateAppConfig(invalidConfig), /code.*positive integer/);
+
+  invalidConfig.cogProjections[0].code = 27700;
+  assert.equal(window.validateAppConfig(invalidConfig), invalidConfig);
+});
