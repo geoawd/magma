@@ -193,5 +193,6 @@ window.CONFIG_TERRAIN_MODELS = [
       { id: 'Tirgoland_DTM', name: 'Tirgoland_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Tirgoland_DTM.tif', tileSize: 256, maxzoom: 16 },
       { id: 'Tullaghoge_DSM', name: 'Tullaghoge_DSM', cog: 'https://data.better-open-data.com/lidar_zstd/Tullaghoge_DSM.tif', tileSize: 256, maxzoom: 16 },
       { id: 'Tullaghoge_DTM', name: 'Tullaghoge_DTM', cog: 'https://data.better-open-data.com/lidar_zstd/Tullaghoge_DTM.tif', tileSize: 256, maxzoom: 16 },
-
+      { id: 'Wales_DTM', name: 'Wales_DTM', cog: 'https://dmwproductionblob.blob.core.windows.net/cogs/lidar/wales_dtm_32bit_cog.tif', tileSize: 256, maxzoom: 18 },
+      { id: 'Wales_DSM', name: 'Wales_DSM', cog: 'https://dmwproductionblob.blob.core.windows.net/cogs/lidar/wales_dsm_32bit_cog.tif', tileSize: 256, maxzoom: 18 },
     ];
