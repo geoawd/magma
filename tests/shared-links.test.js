@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isJsonThemeShareState, jsonThemeMapView, parseMapViewHash } from '../js/shared-links.js';
+import {
+  isJsonThemeShareState,
+  jsonThemeMapView,
+  parseMapViewHash,
+  sharedSessionMapView,
+  sharedSessionSnapshot
+} from '../js/shared-links.js';
 
 test('parses MapLibre zoom, latitude, and longitude hashes', () => {
   assert.deepEqual(parseMapViewHash('#8.00/54.221977/-6.081146'), {
@@ -30,14 +36,33 @@ test('recognizes JSON theme share state and extracts its map view', () => {
     dropdown: {},
     special: null,
     hiddenTabs: [],
-    map: { lat: 54.221977, lng: -6.081146, zoom: 8 }
+    map: { lat: 54.221977, lng: -6.081146, zoom: 8, bearing: 24, pitch: 35 }
   };
   assert.equal(isJsonThemeShareState(state), true);
   assert.deepEqual(jsonThemeMapView(state), {
     center: [-6.081146, 54.221977],
     zoom: 8,
-    bearing: 0,
-    pitch: 0
+    bearing: 24,
+    pitch: 35
   });
   assert.equal(isJsonThemeShareState({ map: {}, other: true }), false);
+});
+
+test('recognizes shared session state and extracts its view', () => {
+  const state = {
+    session: {
+      version: 1,
+      theme: 'Geological Mapping',
+      view: { center: [-6, 54], zoom: 8, bearing: 24, pitch: 35 },
+      vector: { 'bedrock-pmtiles': { selected: true } }
+    }
+  };
+  assert.equal(sharedSessionSnapshot(state), state.session);
+  assert.deepEqual(sharedSessionMapView(state), {
+    center: [-6, 54],
+    zoom: 8,
+    bearing: 24,
+    pitch: 35
+  });
+  assert.equal(sharedSessionSnapshot({ session: { version: 1, view: { center: [0, 0], zoom: 40 } } }), null);
 });

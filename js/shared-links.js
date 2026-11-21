@@ -21,10 +21,25 @@ export function isJsonThemeShareState(state) {
     .some(key => Object.hasOwn(state, key));
 }
 
+export function sharedSessionSnapshot(state) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
+  const snapshot = state.session;
+  const view = snapshot?.view;
+  if (!snapshot || snapshot.version !== 1 ||
+      (snapshot.theme !== null && typeof snapshot.theme !== 'string') ||
+      !validMapView(view?.center, view?.zoom, view?.bearing ?? 0, view?.pitch ?? 0)) return null;
+  return snapshot;
+}
+
+export function sharedSessionMapView(state) {
+  const view = sharedSessionSnapshot(state)?.view;
+  return view ? validMapView(view.center, view.zoom, view.bearing ?? 0, view.pitch ?? 0) : null;
+}
+
 export function jsonThemeMapView(state) {
   if (!isJsonThemeShareState(state) || !state.map || typeof state.map !== 'object') return null;
   const center = Array.isArray(state.map.center)
     ? state.map.center
     : [state.map.lng, state.map.lat];
-  return validMapView(center, state.map.zoom);
+  return validMapView(center, state.map.zoom, state.map.bearing ?? 0, state.map.pitch ?? 0);
 }

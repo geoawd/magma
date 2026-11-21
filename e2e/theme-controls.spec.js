@@ -665,6 +665,56 @@ test('shared map view URLs bypass the saved-session prompt', async ({ page }) =>
   await expect.poll(() => page.evaluate(() => localStorage.getItem('mapviewer.session.v1'))).not.toBeNull();
 });
 
+test('copy map link includes the current map view', async ({ page }) => {
+  await page.goto('/index.html#8.00/54.221977/-6.081146/25/30');
+  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Copy a link to this map view' })).toBeVisible();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async text => { window.__copiedMapLink = text; } }
+    });
+  });
+  await page.getByRole('button', { name: 'Copy a link to this map view' }).click();
+
+  const url = new URL(await page.evaluate(() => window.__copiedMapLink));
+  const sharedState = JSON.parse(Buffer.from(url.hash.slice(1), 'base64').toString('utf8'));
+  const mapView = await page.evaluate(async state => {
+    const { sharedSessionMapView } = await import('/js/shared-links.js');
+    return sharedSessionMapView(state);
+  }, sharedState);
+  expect(sharedState.session.theme).toBeTruthy();
+  expect(mapView).toMatchObject({
+    center: [-6.081146, 54.221977],
+    zoom: 8,
+    bearing: 25,
+    pitch: 30
+  });
+});
+
+test('share link restores the selected theme and enabled layer', async ({ page }) => {
+  const theme = page.getByRole('combobox', { name: 'Theme' });
+  await theme.selectOption({ label: 'Geological Mapping' });
+  const bedrock = page.locator('#legend [data-order-key="layer:bedrock-pmtiles"]');
+  const checkbox = bedrock.locator('.grprow input[type="checkbox"]');
+  await checkbox.check();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async text => { window.__copiedMapLink = text; } }
+    });
+  });
+  await page.getByRole('button', { name: 'Copy a link to this map view' }).click();
+  const url = await page.evaluate(() => window.__copiedMapLink);
+
+  await page.goto(url);
+  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
+  await expect.poll(() => theme.evaluate(select => select.selectedOptions[0]?.textContent))
+    .toBe('Geological Mapping');
+  await expect(page.locator('#legend [data-order-key="layer:bedrock-pmtiles"] .grprow input[type="checkbox"]'))
+    .toBeChecked();
+});
+
 test('encoded JSON theme share URLs bypass the saved-session prompt', async ({ page }) => {
   const state = {
     search: {},

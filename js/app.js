@@ -12,7 +12,13 @@ import {
 import { cogResamplingUrl } from './cog-resampling.js';
 import { geojsonFieldStats } from './geojson-classification.js';
 import { buildGeojsonQgisLayerDefinition, buildQgisLayerDefinition, QGIS_TURBO_COLORS } from './qgis-layer.js';
-import { isJsonThemeShareState, jsonThemeMapView, parseMapViewHash } from './shared-links.js';
+import {
+  isJsonThemeShareState,
+  jsonThemeMapView,
+  parseMapViewHash,
+  sharedSessionMapView,
+  sharedSessionSnapshot
+} from './shared-links.js';
 import { buildJsonFeatures, createJsonThemeState, filterJsonRows, hasJsonFilters, jsonGeometryCenter, jsonGeometryIntersectsBounds, loadJsonThemeConfig, loadJsonThemeData } from './json-theme-runtime.js';
 import { createSpaceMouseController } from './spacemouse.js';
 import { createArcgisQueryController } from './arcgis-query-controller.js';
@@ -136,10 +142,11 @@ function ensureCogProtocol() {
   return cogProtocolPromise;
 }
 const $ = id => document.getElementById(id);
-const sharedJsonHashState = decodeJsonThemeHash();
+const sharedJsonHashState = decodeShareHash();
+const sharedSnapshot = sharedSessionSnapshot(sharedJsonHashState);
 const mapHashView = parseMapViewHash(location.hash);
-const sharedMapView = mapHashView || jsonThemeMapView(sharedJsonHashState);
-const isSharedUrl = !!sharedMapView || isJsonThemeShareState(sharedJsonHashState);
+const sharedMapView = mapHashView || jsonThemeMapView(sharedJsonHashState) || sharedSessionMapView(sharedJsonHashState);
+const isSharedUrl = !!sharedMapView || isJsonThemeShareState(sharedJsonHashState) || !!sharedSnapshot;
 const advancedModeBtn = $('advancedModeBtn');
 advancedModeBtn.onclick = () => {
   const enabled = advancedModeBtn.getAttribute('aria-pressed') !== 'true';
@@ -318,10 +325,10 @@ map.addControl({
   onAdd() {
     const container = document.createElement('div');
     container.className = 'maplibregl-ctrl map-copy-link-control';
-    container.appendChild($('jsonCopyBtn'));
+    container.appendChild($('shareMapBtn'));
     return container;
   },
-  onRemove() { $('jsonCopyBtn').remove(); }
+  onRemove() { $('shareMapBtn').remove(); }
 }, 'top-right');
 new ResizeObserver(() => map.resize()).observe($('mapwrap'));   // keeps the map right when menu / results change
 const panelSplitter = $('panelSplitter');
@@ -1452,7 +1459,7 @@ function readSessionSnapshot() {
   }
 }
 function chooseSessionStartup() {
-  if (isSharedUrl) return Promise.resolve({ action: 'shared', snapshot: null });
+  if (isSharedUrl) return Promise.resolve({ action: 'shared', snapshot: sharedSnapshot });
   const snapshot = readSessionSnapshot();
   if (!snapshot) return Promise.resolve({ action: 'start', snapshot: null });
   const dialog = $('sessionRestoreDialog');
@@ -2496,7 +2503,6 @@ function setJsonThemeActive(active) {
   $('jsonControls').hidden = !active;
   $('jsonExcelBtn').hidden = !active;
   $('xlsxBtn').hidden = true;
-  $('jsonCopyBtn').hidden = !active;
   $('jsonClearBtn').hidden = !active;
   $('csvBtn').hidden = active;
   $('boxBtn').disabled = active;
@@ -2506,7 +2512,6 @@ function setJsonThemeActive(active) {
   if (!activeJsonConfig) {
     $('jsonControls').hidden = true;
     $('jsonExcelBtn').hidden = true;
-    $('jsonCopyBtn').hidden = true;
     $('jsonClearBtn').hidden = true;
     $('csvBtn').hidden = false;
     $('boxBtn').disabled = false;
@@ -3175,10 +3180,16 @@ function jsonThemeShareState() {
     dropdown: activeJsonThemeState.filters.dropdown,
     special: activeJsonThemeState.specialFilter,
     hiddenTabs: [...activeJsonThemeState.hiddenTabs],
-    map: { lat: center.lat, lng: center.lng, zoom: map.getZoom() }
+    map: {
+      lat: center.lat,
+      lng: center.lng,
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+      pitch: map.getPitch()
+    }
   };
 }
-function decodeJsonThemeHash() {
+function decodeShareHash() {
   if (!location.hash || location.hash.length > 10000) return null;
   try {
     const decoded = decodeURIComponent(escape(atob(location.hash.slice(1))));
@@ -3189,7 +3200,7 @@ function decodeJsonThemeHash() {
 // Restores validated JSON theme filters and map position from the URL hash.
 ///////////////////////////////////////////////////////////////////////////
 function restoreJsonThemeState() {
-  const saved = decodeJsonThemeHash();
+  const saved = decodeShareHash();
   if (!saved || typeof saved !== 'object') return;
   const config = activeJsonThemeConfig();
   const tabKeys = new Set(config.tabs.map(tab => tab.key));
@@ -3240,16 +3251,39 @@ function restoreJsonThemeState() {
       Number.isFinite(zoom) && zoom >= 0 && zoom <= 28) map.jumpTo({ center, zoom });
 }
 ///////////////////////////////////////////////////////////////////////////
-// Copies the current JSON theme filters and map view as a shareable URL.
+// Copies the current map view, including JSON theme filters when applicable.
 ///////////////////////////////////////////////////////////////////////////
-async function copyJsonThemeLink() {
-  const state = btoa(unescape(encodeURIComponent(JSON.stringify(jsonThemeShareState()))));
-  const url = `${location.origin}${location.pathname}${location.search}#${state}`;
+async function copyMapLink() {
+  const url = new URL(location.href);
+  const saved = sessionSnapshot();
+  const state = {
+    ...(activeJsonThemeState.active ? jsonThemeShareState() : {}),
+    session: {
+      version: saved.version,
+      theme: saved.theme,
+      view: saved.view,
+      vector: Object.fromEntries(Object.entries(saved.vector).map(([id, layer]) =>
+        [id, { selected: layer.selected }])),
+      overlays: saved.overlays,
+      themeOverlayVisibility: saved.theme ? {
+        [saved.theme]: saved.themeOverlayVisibility[saved.theme] || {}
+      } : {},
+      basemaps: saved.basemaps,
+      hiddenGroups: saved.hiddenGroups,
+      terrain: saved.terrain
+    }
+  };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+  if (encoded.length + 1 > 10000) {
+    toast('Map link is too large to share.');
+    return;
+  }
+  url.hash = encoded;
   try {
-    await navigator.clipboard.writeText(url);
-    toast('Filtered map link copied');
+    await navigator.clipboard.writeText(url.href);
+    toast('Map link copied');
   } catch {
-    window.prompt('Copy this link', url);
+    window.prompt('Copy this map link', url.href);
   }
 }
 ///////////////////////////////////////////////////////////////////////////
@@ -3272,7 +3306,7 @@ function exportJsonThemeExcel() {
   }).catch(error => toast(`Excel export failed: ${error.message}`));
 }
 $('jsonClearBtn').onclick = clearJsonThemeFilters;
-$('jsonCopyBtn').onclick = copyJsonThemeLink;
+$('shareMapBtn').onclick = copyMapLink;
 $('jsonExcelBtn').onclick = exportJsonThemeExcel;
 const inViewGroups = [];
 function styleLayerKey(layer) {
@@ -4329,12 +4363,12 @@ map.once('style.load', async () => {
       .setLngLat(mapHashView.center)
       .addTo(map);
   }
-  startupSessionSnapshot = startup.action === 'resume' ? startup.snapshot : null;
+  startupSessionSnapshot = startup.action === 'reset' ? null : (startup.snapshot || null);
   if (startup.action === 'reset') clearSavedThemeAdditions();
   if (startup.action === 'reset') {
     history.replaceState(null, '', `${location.pathname}${location.search}`);
   }
-  if (startup.action === 'resume') {
+  if (startupSessionSnapshot) {
     prepareSessionSnapshot(startupSessionSnapshot);
   } else if (startup.action !== 'shared') {
     try { localStorage.removeItem(SESSION_STATE_KEY); }
