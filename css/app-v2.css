@@ -8,3 +8,6 @@ html[data-ui="v2"] {
   --rail-active-bg: #fff;
   --rail-active-ink: #1f2a33;
 }
+
+/* Saved workspaces: show how many exist next to the collapsible heading. */
+html[data-ui="v2"] .ws-count { display: inline; font-weight: 400; opacity: .8; }

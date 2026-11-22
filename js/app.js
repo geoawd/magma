@@ -1701,6 +1701,7 @@ function initializeWorkspaceControls() {
       entries.forEach(entry => select.add(new Option(entry.name, entry.name)));
       if (selectedName) select.value = selectedName;
       remove.disabled = !select.value;
+      $('workspaceCount').textContent = entries.length ? ` (${entries.length})` : '';
       status.textContent = entries.length
         ? `${entries.length} saved workspace${entries.length === 1 ? '' : 's'}. Saving the same name updates it.`
         : 'No saved workspaces yet.';
@@ -1712,6 +1713,10 @@ function initializeWorkspaceControls() {
     }
   };
   select.onchange = () => { remove.disabled = !select.value; };
+  if (document.documentElement.dataset.ui === 'v2') {
+    $('workspaceGroup').classList.add('collapsed');
+    $('workspaceGroup').querySelector('.lgcollapse').setAttribute('aria-expanded', 'false');
+  }
   $('workspaceSaveBtn').onclick = () => {
     try {
       const saved = WORKSPACE_STORE.save($('workspaceName').value, sessionSnapshot());
