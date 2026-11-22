@@ -31,7 +31,7 @@ window.CONFIG_OVERLAYS = [
         width: 1.0,    },
     opacity: 1, 
     visible: false,
-    minzoom: 10, maxzoom: 22,  
+    minzoom: 10, maxzoom: 22,
   },   
 
   { id: 'Site Reports', 

@@ -176,7 +176,8 @@ overlays: window.CONFIG_OVERLAYS,
 //  Layer Metadata
 ///////////////////////////////////////////////////////////////////////////
 // Layer information (the "i" button on a layer). Key = vector layer name as in the legend, or an overlay id.
-//   { metadata: '<record url>' }  -> fetches the JSON record and shows `infoFields`; a link to the record page (without f=json) goes at the bottom.
+//   { metadata: 'https://<record url>' } -> fetches the JSON record and shows `infoFields`; a link to the record page goes at the bottom.
+//   { metadata: '<descriptive text>' }  -> displays the text and links any HTTP(S) URLs in it.
 //   { metadata, fields: [...] }   -> same, but with this layer's own fields / order.   Optional: linkText, page (override the link target).
 //   'https://…'                   -> just an "About this layer" link inside the layer's panel.
 // The metadata server must allow cross-origin (CORS) requests from the site hosting this page.
@@ -198,7 +199,7 @@ overlays: window.CONFIG_OVERLAYS,
     'Geophysics - Radiometrics': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/43e0d940-c82e-40bb-abc0-a775158500b5?f=json' },
     'Tellus Soils': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/062d0e21-a0b2-41f4-a39f-56381c8db86c?f=json' },
     'Tellus Soils A Aqua Regia': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/062d0e21-a0b2-41f4-a39f-56381c8db86c?f=json' },
-  
+    'Terrain' : {metadata: 'Contains evelation data used under the OGLV3. The OSNI 10m DEM is derived from data on Open Data NI. https://admin.opendatani.gov.uk/organization/land-property-services-ordnance-survey-of-northern-ireland?q=%22OSNI+Open+Data+-+10M+DTM%22&sort=score+desc%2C+metadata_modified+desc. Northern Ireland data has been derived from data on Open Data NI and processed by https://better-open-data.com. The Welsh LiDAR data is available from https://datamap.gov.wales/maps/lidar-viewer/' }
   },
 
   

@@ -1176,8 +1176,8 @@ function infoTool(meta) {
   btn.setAttribute('aria-label', 'Layer information'); btn.setAttribute('aria-expanded', 'false');
   const panel = document.createElement('div');
   panel.className = 'lpanel infopanel'; panel.hidden = true;
-  const urls = metaUrls(meta);
-  const foot = `<div class="ifoot"><a href="${esc(urls.page)}" target="_blank" rel="noopener">${ICON_EXT}${esc(meta.linkText || 'View full metadata record')}</a></div>`;
+  const urls = isUrl(meta.metadata) ? metaUrls(meta) : null;
+  const foot = urls ? `<div class="ifoot"><a href="${esc(urls.page)}" target="_blank" rel="noopener">${ICON_EXT}${esc(meta.linkText || 'View full metadata record')}</a></div>` : '';
   let state = 0;   // 0 = not loaded, 1 = loading, 2 = done
   btn.onclick = async () => {
     panel.hidden = !panel.hidden;
@@ -1187,9 +1187,14 @@ function infoTool(meta) {
     if (c) { c.classList.remove('lcollapsed'); const cb = c.querySelector('.cbtn'); if (cb) cb.setAttribute('aria-expanded', 'true'); }
     if (state === 0) {
       state = 1;
-      panel.innerHTML = '<span class="hint">Loading…</span>' + foot;
-      try { panel.innerHTML = renderInfo(await fetchMeta(urls.json), meta) + foot; state = 2; }
-      catch (e) { state = 0; panel.innerHTML = '<span class="hint">The information could not be loaded here. Use the link to view the record.</span>' + foot; }
+      if (!urls) {
+        panel.innerHTML = `<div class="irow">${linkify(meta.metadata).replace(/\r?\n/g, '<br>')}</div>`;
+        state = 2;
+      } else {
+        panel.innerHTML = '<span class="hint">Loading…</span>' + foot;
+        try { panel.innerHTML = renderInfo(await fetchMeta(urls.json), meta) + foot; state = 2; }
+        catch (e) { state = 0; panel.innerHTML = '<span class="hint">The information could not be loaded here. Use the link to view the record.</span>' + foot; }
+      }
     }
     panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   };
