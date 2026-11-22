@@ -469,6 +469,8 @@ function loadThirdPartyNotices() {
     });
   return thirdPartyNoticesRequest;
 }
+const RAIL_STATE_KEY = 'mapviewer.rail.v1';
+const RAIL_TOOLS = ['legend', 'search', 'about'];
 ///////////////////////////////////////////////////////////////////////////
 // Opens the selected side drawer tool and updates the active rail button.
 ///////////////////////////////////////////////////////////////////////////
@@ -487,6 +489,9 @@ function openTool(name) {
   if (tool === 'search') { updateSearchFields(); if (!isMobile()) $('searchText').focus(); }
   if (tool && boxMode) setBox(false);
   syncAddDataButton();
+  if (uiV2 && !isMobile()) {
+    try { localStorage.setItem(RAIL_STATE_KEY, tool || 'closed'); } catch { /* storage unavailable */ }
+  }
 }
 const drawerDragHandle = $('drawerDragHandle');
 let drawerDrag = null;
@@ -4468,7 +4473,14 @@ map.once('style.load', async () => {
   updateArcgisLegendInView();
   loadScaleInfo().then(updateScaleState);
   populateSearchLayers();
-  if (!isMobile() && !uiV2) openTool('legend');   // start with the legend open on desktop only; v2 starts with the rail collapsed
+  if (!isMobile()) {
+    if (!uiV2) openTool('legend');   // classic starts with the legend open on desktop only
+    else {
+      let saved = null;
+      try { saved = localStorage.getItem(RAIL_STATE_KEY); } catch { /* storage unavailable */ }
+      if (RAIL_TOOLS.includes(saved)) openTool(saved);   // v2 restores the last rail state; first visit starts collapsed
+    }
+  }
   if (requestedTourId) {
     if (requestedTour) startTour(requestedTour);
     else toast(`Tour "${requestedTourId}" was not found.`);

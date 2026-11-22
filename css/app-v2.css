@@ -56,18 +56,20 @@ html[data-ui="v2"] .cbtn:hover { background: var(--hover); color: var(--ink); }
 html[data-ui="v2"] .cspace { width: var(--lg-gutter); }
 html[data-ui="v2"] #legend .grprow { display: grid; grid-template-columns: var(--lg-gutter) minmax(0, 1fr) 24px 24px 24px; align-items: center; gap: 2px; }
 html[data-ui="v2"] body.advanced-mode #legend .grprow { grid-template-columns: var(--lg-gutter) minmax(0, 1fr) 24px 24px 24px 24px; }
+html[data-ui="v2"] #legend .grprow > * { grid-row: 1; }
 html[data-ui="v2"] #legend .grprow > .lname input { margin-left: 0; }
 html[data-ui="v2"] #legend .grprow > .cbtn,
 html[data-ui="v2"] #legend .grprow > .cspace { grid-column: 1; }
 html[data-ui="v2"] #legend .grprow > .lname { grid-column: 2; }
-html[data-ui="v2"] #legend .grprow > .dataset-zoom { grid-column: 3; }
-html[data-ui="v2"] #legend .grprow > .tbtn[aria-label="Layer information"] { grid-column: 4; }
+/* Tool columns, left to right: info, layer tools (classify, transparency or terrain settings), zoom to extent. */
+html[data-ui="v2"] #legend .grprow > .tbtn[aria-label="Layer information"] { grid-column: 3; }
 html[data-ui="v2"] #legend .grprow > .tbtn[aria-label^="Transparency"],
-html[data-ui="v2"] #legend .grprow > .terrain-tools { grid-column: 5; }
+html[data-ui="v2"] #legend .grprow > .terrain-tools { grid-column: 4; }
+html[data-ui="v2"] #legend .grprow > .dataset-zoom { grid-column: 5; }
 html[data-ui="v2"] body.advanced-mode #legend .grprow > .geojson-classify-button { grid-column: 4; }
-html[data-ui="v2"] body.advanced-mode #legend .grprow > .tbtn[aria-label="Layer information"] { grid-column: 5; }
 html[data-ui="v2"] body.advanced-mode #legend .grprow > .tbtn[aria-label^="Transparency"],
-html[data-ui="v2"] body.advanced-mode #legend .grprow > .terrain-tools { grid-column: 6; }
+html[data-ui="v2"] body.advanced-mode #legend .grprow > .terrain-tools { grid-column: 5; }
+html[data-ui="v2"] body.advanced-mode #legend .grprow > .dataset-zoom { grid-column: 6; }
 
 /* Everything beneath a layer starts at the layer's checkbox. */
 html[data-ui="v2"] #legend .ent,
@@ -85,6 +87,7 @@ html[data-ui="v2"] #legend .arcgis-legend { margin-left: var(--lg-indent); }
 html[data-ui="v2"] body.add-data-open #legendPage > .dhead,
 html[data-ui="v2"] body.add-data-open #legendPage > .themebar { display: none; }
 html[data-ui="v2"] .add-data-head { padding: 8px 12px; font-size: 14px; font-weight: 600; }
+html[data-ui="v2"] .add-data-head strong { font-weight: inherit; }
 html[data-ui="v2"] .add-data-head button { width: auto; height: auto; padding: 2px 8px; font-size: 18px; line-height: 1; }
 html[data-ui="v2"] .add-data-actions { position: sticky; bottom: 0; background: #fff; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 html[data-ui="v2"] #addDataApply { min-height: 36px; }
