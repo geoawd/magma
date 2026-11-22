@@ -26,3 +26,16 @@ html[data-ui="v2"] #rail button[aria-pressed="true"]:focus-visible { outline-col
   html[data-ui="v2"] #rail button.active::before,
   html[data-ui="v2"] #rail button[aria-pressed="true"]::before { left: 10px; right: 10px; top: -4px; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
 }
+
+/* Share view, Copy tour stop and the Report buttons sit together in the bottom-right stack. */
+html[data-ui="v2"] .map-copy-link-control { margin-bottom: 10px; }
+html[data-ui="v2"] #shareMapBtn { min-width: 120px; min-height: 30px; padding: 5px 8px; border-radius: 8px; background: var(--chip-bg); color: var(--ink); text-decoration: none; box-shadow: var(--chip-shadow); }
+html[data-ui="v2"] #shareMapBtn:hover { background: #fff; }
+html[data-ui="v2"] .maplibregl-ctrl-group.tour-copy-control,
+html[data-ui="v2"] .maplibregl-ctrl-group.notification-control-group { border-radius: 8px; box-shadow: var(--chip-shadow); }
+html[data-ui="v2"] .maplibregl-ctrl-group.tour-copy-control button { min-width: 120px; text-align: left; }
+@media (max-width: 700px) {
+  html[data-ui="v2"] #shareMapBtn { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+  html[data-ui="v2"] #shareMapBtn span { display: none; }
+  html[data-ui="v2"] #shareMapBtn svg { width: 20px; height: 20px; }
+}

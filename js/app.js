@@ -143,6 +143,7 @@ function ensureCogProtocol() {
   return cogProtocolPromise;
 }
 const $ = id => document.getElementById(id);
+const uiV2 = document.documentElement.dataset.ui === 'v2';
 const sharedJsonHashState = decodeShareHash();
 const sharedSnapshot = sharedSessionSnapshot(sharedJsonHashState);
 const mapHashView = parseMapViewHash(location.hash);
@@ -291,7 +292,7 @@ if (CONFIG.copytourlocation === true) map.addControl({
     return group;
   },
   onRemove() {}
-}, 'top-right');
+}, uiV2 ? 'bottom-right' : 'top-right');
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') {
     notificationController.cancelPick();
@@ -331,7 +332,7 @@ map.addControl({
     return container;
   },
   onRemove() { $('shareMapBtn').remove(); }
-}, 'top-right');
+}, uiV2 ? 'bottom-right' : 'top-right');
 new ResizeObserver(() => map.resize()).observe($('mapwrap'));   // keeps the map right when menu / results change
 const panelSplitter = $('panelSplitter');
 const resultsPanel = $('panel');
@@ -3291,6 +3292,14 @@ async function copyMapLink() {
     return;
   }
   url.hash = encoded;
+  if (uiV2 && isMobile() && typeof navigator.share === 'function') {
+    try {
+      await navigator.share({ title: document.title, url: url.href });
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+    }
+  }
   try {
     await navigator.clipboard.writeText(url.href);
     toast('Map link copied');
