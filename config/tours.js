@@ -55,7 +55,7 @@ window.TOURS = [
         duration: 5000,
       },
             {
-        title: 'New tour stop',
+        title: 'Garron Point',
         description: ' It provides a scenic and distinctive backdrop for Red Bay and forms part of The Antrim Coast and Glens Area of Outstanding Natural Beauty.',
         target: '#map',
         theme: "Site Investigations",
@@ -71,7 +71,7 @@ window.TOURS = [
         duration: 8000
       },
             {
-        title: 'New tour stop',
+        title: 'Garron Point',
         description: 'The name Garron comes from the Gaelic Gearr Rinn meaning cut or short headland and yet Moira O’Neill, the poetress of the Glens, is happy to refer to it in one her poems as ‘the long blue head of Garron from the sea’. ',
         target: '#map',
         theme: "Site Investigations",
@@ -86,16 +86,17 @@ window.TOURS = [
         terrain: true,
         duration: 8000
       },
-      {
-        title: 'Video explanation',
-        description: 'Garron Point is also affectionately known as the Magpie Coast thanks to its distinctive limestone and basalt strips. Watch a short explanation of the geological setting.',
-        target: '#map',
-        popup: {
-          lngLat: [-5.97201, 55.0515],
-          maxWidth: 'min(560px, calc(100vw - 32px))',
-          html: '<iframe width="560" height="315" style="display:block;width:100%;height:auto;aspect-ratio:16/9;border:0" src="https://www.youtube.com/embed/7nMXtsZty6g?si=-UqeOfDjA5qcX6i0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>'
-        }
-      },
+      
+//      {
+//        title: 'Video explanation',
+//        description: 'Garron Point is also affectionately known as the Magpie Coast thanks to its distinctive limestone and basalt strips. Watch a short explanation of the geological setting.',
+//        target: '#map',
+//       popup: {
+//          lngLat: [-5.97201, 55.0515],
+//          maxWidth: 'min(560px, calc(100vw - 32px))',
+//         html: '<iframe width="560" height="315" style="display:block;width:100%;height:auto;aspect-ratio:16/9;border:0" src="https://www.youtube.com/embed/7nMXtsZty6g?si=-UqeOfDjA5qcX6i0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>'
+//        }
+//      },
     ]
   },
   {

@@ -1592,6 +1592,23 @@ legendunits: '%',
 },
 
 {
+  id: 'TELLUS_MAG_MERGE_2022_TMI',
+  name: 'GSI-GSNI Magnetics TMI',
+  group: 'Tellus Magnetics',
+  cog: 'https://data.better-open-data.com/lidar_zstd/GSI_MAG_COG.tif',
+  legendunits: 'nT',
+  tileSize: 256,
+  opacity: 1,
+  visible: false,
+  hillshade_option: true,
+
+},
+
+
+
+
+
+{
   id: 'High Frequency EM',
   name: 'High Frequency (14kHz) EM',
   group: 'Tellus Electromagnetics',
