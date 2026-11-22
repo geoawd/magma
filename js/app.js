@@ -164,6 +164,7 @@ advancedModeBtn.onclick = () => {
 const map = new maplibregl.Map({
   container: 'map',
   style: window.MAP_STYLE || CONFIG.styleUrl,
+  attributionControl: { compact: true, customAttribution: CONFIG.customAttribution },
   center: sharedMapView?.center || CONFIG.center,
   zoom: sharedMapView?.zoom ?? CONFIG.zoom,
   bearing: sharedMapView?.bearing || 0,

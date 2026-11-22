@@ -4,6 +4,7 @@
 
 window.CONFIG = {
   title: 'MAGMA - Mapping and Analysis of Geoscience Models and Archives',
+  customAttribution: 'Contains public sector information licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" target="_blank" rel="noopener noreferrer">Open Government Licence v3.0</a>.',
   showZoom: true, // development helper: show the current zoom level beside the grid reference; set to false for production
   copytourlocation: true,
   // Optional 3Dconnexion SpaceMouse support (requires a WebHID-capable browser and a secure context).

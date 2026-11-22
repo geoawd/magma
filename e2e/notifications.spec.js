@@ -6,6 +6,18 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
 });
 
+test('map attribution includes the public-sector licence alongside source attribution', async ({ page }) => {
+  const attribution = page.locator('.maplibregl-ctrl-attrib');
+  const toggle = attribution.locator('.maplibregl-ctrl-attrib-button');
+  await expect(toggle).toBeVisible();
+  await expect(attribution).toHaveClass(/maplibregl-compact/);
+  await toggle.click();
+  await expect(attribution.locator('a[href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"]'))
+    .toHaveText('Open Government Licence v3.0');
+  await expect(attribution.locator('a[href="https://www.openstreetmap.org/copyright"]'))
+    .toHaveText('OpenStreetMap');
+});
+
 test('configured map notifications are advanced-only and collect a six-digit grid point', async ({ page }) => {
   const boreholeButton = page.getByRole('button', { name: 'Report a borehole' });
   await expect(boreholeButton).toBeHidden();
