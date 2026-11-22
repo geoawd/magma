@@ -83,6 +83,31 @@ html[data-ui="v2"] #legend .terrain-model-row,
 html[data-ui="v2"] #legend .category-isolation-status,
 html[data-ui="v2"] #legend .arcgis-legend { margin-left: var(--lg-indent); }
 
+/* Results panel and JSON themes: floating card, light segmented tabs, legend rows on the shared indent. */
+html[data-ui="v2"] #panel { margin: 0 var(--float-gap) var(--float-gap); border: 0; border-radius: var(--card-radius); box-shadow: var(--chip-shadow); overflow: hidden; }
+html[data-ui="v2"] #panelSplitter { height: 12px; background: transparent; border-top: 0; }
+html[data-ui="v2"] #panelSplitter:hover, html[data-ui="v2"] #panelSplitter:focus-visible { background: rgba(0,0,0,.06); }
+html[data-ui="v2"] #panel header { padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--line); }
+html[data-ui="v2"] #count { font-weight: 600; }
+html[data-ui="v2"] #jsonControls { padding: 4px 12px; background: #fafbfc; }
+html[data-ui="v2"] .json-pill { border-radius: 999px; }
+html[data-ui="v2"] #tabs { gap: 4px; padding: 6px 10px; background: #f3f5f7; border-bottom: 1px solid var(--line); }
+html[data-ui="v2"] #tabs .tab { border: 0; border-radius: 999px; background: transparent; color: var(--ink); }
+html[data-ui="v2"] #tabs .tab:hover { background: #e3e9ee; }
+html[data-ui="v2"] #tabs .tab.on { background: var(--rail-bg); color: #fff; }
+html[data-ui="v2"] #tabs .json-tab-help,
+html[data-ui="v2"] #tabs .json-tab-hide { background: transparent; color: var(--muted); border-radius: 999px; }
+html[data-ui="v2"] #tabs .json-tab-help:hover,
+html[data-ui="v2"] #tabs .json-tab-hide:hover { background: #e3e9ee; color: var(--ink); }
+html[data-ui="v2"] th { background: #f3f5f7; }
+html[data-ui="v2"] th, html[data-ui="v2"] td { border-color: #e6eaed; }
+html[data-ui="v2"] #tablewrap thead tr.json-filter-row th,
+html[data-ui="v2"] #tablewrap thead tr.vector-filter-row th { background: #fafbfc; }
+html[data-ui="v2"] .json-legend-list { padding: 4px 0 4px var(--lg-indent); }
+html[data-ui="v2"] .json-legend-row { padding: 2px 0 2px var(--lg-indent); }
+html[data-ui="v2"] .json-link-filters { margin-bottom: 6px; }
+html[data-ui="v2"] .json-link-filters .lgbody { padding: 6px 0 2px; }
+
 /* Add data: behaves like the Search and Information pages (own header, no theme bar or legend header). */
 html[data-ui="v2"] body.add-data-open #legendPage > .dhead,
 html[data-ui="v2"] body.add-data-open #legendPage > .themebar { display: none; }
