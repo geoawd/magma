@@ -27,12 +27,25 @@ html[data-ui="v2"] #rail button[aria-pressed="true"]:focus-visible { outline-col
   html[data-ui="v2"] #rail button[aria-pressed="true"]::before { left: 10px; right: 10px; top: -4px; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
 }
 
+/* Rounded chip style (as used by the attribution) shared by map overlays and controls. */
+html[data-ui="v2"] #zoomLevel,
+html[data-ui="v2"] #coords,
+html[data-ui="v2"] #cogValues { padding: 4px 10px; border-radius: 14px; background: var(--chip-bg); box-shadow: var(--chip-shadow); font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .mapinfo-coordinates { gap: 0; border-radius: 14px; background: var(--chip-bg); box-shadow: var(--chip-shadow); overflow: hidden; }
+html[data-ui="v2"] .mapinfo-coordinates #zoomLevel,
+html[data-ui="v2"] .mapinfo-coordinates #coords { border-radius: 0; background: none; box-shadow: none; }
+html[data-ui="v2"] #zoomLevel:not([hidden]) { border-right: 1px solid var(--line); }
+html[data-ui="v2"] .maplibregl-ctrl-group { border-radius: 10px; box-shadow: var(--chip-shadow); }
+html[data-ui="v2"] .maplibregl-ctrl-scale { padding: 1px 8px; border-radius: 8px; background: var(--chip-bg); box-shadow: var(--chip-shadow); }
+html[data-ui="v2"] .geobox { border-radius: var(--chip-radius); box-shadow: var(--chip-shadow); }
+html[data-ui="v2"] #geoIn { padding-left: 16px; }
+html[data-ui="v2"] #geoList { border-radius: 14px; box-shadow: var(--chip-shadow); }
+html[data-ui="v2"] .maplibregl-ctrl-attrib { border-radius: 14px; background: var(--chip-bg); box-shadow: var(--chip-shadow); }
+
 /* Share view, Copy tour stop and the Report buttons sit together in the bottom-right stack. */
 html[data-ui="v2"] .map-copy-link-control { margin-bottom: 10px; }
-html[data-ui="v2"] #shareMapBtn { min-width: 120px; min-height: 30px; padding: 5px 8px; border-radius: 8px; background: var(--chip-bg); color: var(--ink); text-decoration: none; box-shadow: var(--chip-shadow); }
+html[data-ui="v2"] #shareMapBtn { min-width: 120px; min-height: 30px; padding: 5px 8px; border-radius: 10px; background: var(--chip-bg); color: var(--ink); text-decoration: none; box-shadow: var(--chip-shadow); }
 html[data-ui="v2"] #shareMapBtn:hover { background: #fff; }
-html[data-ui="v2"] .maplibregl-ctrl-group.tour-copy-control,
-html[data-ui="v2"] .maplibregl-ctrl-group.notification-control-group { border-radius: 8px; box-shadow: var(--chip-shadow); }
 html[data-ui="v2"] .maplibregl-ctrl-group.tour-copy-control button { min-width: 120px; text-align: left; }
 @media (max-width: 700px) {
   html[data-ui="v2"] #shareMapBtn { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
