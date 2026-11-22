@@ -187,7 +187,7 @@ overlays: window.CONFIG_OVERLAYS,
     'Site Reports': { metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/2bd4d1e5-9401-4da9-9566-f481b84fa110?f=json' },
     'Boreholes': {metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/09757268-929d-4203-b1fc-56d9391e4688?f=json'} ,
     'Bedrock Aquifer Classification': {metadata: 'https://gsni-data.bgs.ac.uk/geonetwork/api/collections/main/items/eeee2244-953d-4b81-8124-9e1ce602bf2e?f=json'} ,
-
+    'lot1_ortho_ni' : {metadata: 'Orthophotography is provided from the DAERA Coastal Observatory: https://experience.arcgis.com/experience/b8454f3d62164518817e4c581b5555c8/page/Data-Details---Orthophotography'},
   },
 
   // Group-level information: key = group name exactly as shown in the legend (overlay `group`, or a vector legend group).

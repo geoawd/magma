@@ -32,6 +32,7 @@ window.CONFIG_OVERLAYS = [
     opacity: 1, 
     visible: false,
     minzoom: 10, maxzoom: 22,
+    attribution: 'GSNI',
   },   
 
   { id: 'Site Reports', 
@@ -49,6 +50,8 @@ window.CONFIG_OVERLAYS = [
     opacity: 0.5, 
     visible: false,
     minzoom: 10, maxzoom: 22,  
+    attribution: 'GSNI',
+
   },   
 
 { id: 'Tellus Shallow Soil - XRF', 
@@ -70,7 +73,9 @@ window.CONFIG_OVERLAYS = [
     }, 
     opacity: 1, 
     visible: false,
-    minzoom: 8, maxzoom: 22,  
+    minzoom: 8, maxzoom: 22,
+    attribution: 'GSNI',
+  
   },
 
 
@@ -94,6 +99,8 @@ window.CONFIG_OVERLAYS = [
     opacity: 1, 
     visible: false,
     minzoom: 8, maxzoom: 22,  
+    attribution: 'GSNI',
+
   },
 
 { id: 'Bedrock Aquifer Classification',
@@ -107,7 +114,8 @@ url: 'https://data.better-open-data.com/lidar_zstd/hydro.geojson',
     styleUrl: 'config/hydrostyle.json',
     opacity: 0.7, 
     visible: false,
-    minzoom: 7, maxzoom: 22,  
+    minzoom: 7, maxzoom: 22, 
+    attribution: 'GSNI',
   },
 
 ///////////////////////////////////////////////////////////////////////////
