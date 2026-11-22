@@ -99,8 +99,10 @@
   .dbody.form select, .dbody.form input[type=text] { width: 100%; padding: 6px 8px; border: 1px solid #8a949e; border-radius: 4px; background: #fff; }
   .info-copy { line-height: 1.6; }
   .info-copy p { margin: 0 0 8px; }
-  .tour-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .tour-picker { display: grid; gap: 6px; margin-top: 10px; }
+  .tour-actions { display: grid; gap: 7px; }
+  .tour-actions button { width: 100%; min-height: 36px; }
+  .tour-picker .tour-actions { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tour-picker { display: grid; gap: 6px; }
   .tour-picker[hidden] { display: none; }
   .tour-picker label { font-weight: 600; }
   .tour-picker select { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid #8a949e; border-radius: 4px; background: #fff; }

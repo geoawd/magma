@@ -1,13 +1,45 @@
 import { expect, test } from '@playwright/test';
 
-test('information panel links to the catalogue between About and Copyright', async ({ page }) => {
+test('information panel orders its groups and matches interactive tour action sizes', async ({ page }) => {
   await page.goto('/');
   await page.locator('#rail button[data-tool="about"]').click();
 
-  const headings = await page.locator('#aboutPage .lgroup .lghead span').allTextContents();
-  expect(headings.indexOf('About')).toBeLessThan(headings.indexOf('Data Catalogue'));
-  expect(headings.indexOf('Data Catalogue')).toBeLessThan(headings.indexOf('Copyright'));
+  const headings = await page.locator('#aboutPage .lgroup .lghead .lgcollapse > span:first-child').allTextContents();
+  expect(headings.slice(0, 7)).toEqual([
+    'About',
+    'Help',
+    'Interactive tour',
+    'Saved workspaces',
+    'Data Catalogue',
+    'Copyright',
+    'Third-party notices'
+  ]);
+  await expect(page.locator('#interactiveTourGroup')).toBeVisible();
+  await expect(page.locator('#startTour')).toBeVisible();
+  await expect(page.locator('#interactiveTourGroup #startInteractiveTour')).toBeVisible();
   await expect(page.locator('#dataCatalogueLink')).toHaveAttribute('href', 'data-catalogue.html');
+
+  const workspaceToggle = page.locator('#workspaceGroup .lgcollapse');
+  if (await workspaceToggle.getAttribute('aria-expanded') !== 'true') await workspaceToggle.click();
+
+  const startButtonSizes = await page.locator('#startTour, #workspaceSaveBtn').evaluateAll(buttons =>
+    buttons.map(button => ({
+      width: button.getBoundingClientRect().width,
+      height: button.getBoundingClientRect().height
+    }))
+  );
+  expect(startButtonSizes[0]).toEqual(startButtonSizes[1]);
+
+  const interactiveButtonSizes = await page.locator(
+    '#startInteractiveTour, #copyTourLink, #workspaceLoadBtn, #workspaceRemoveBtn'
+  ).evaluateAll(buttons =>
+    buttons.map(button => ({
+      width: button.getBoundingClientRect().width,
+      height: button.getBoundingClientRect().height
+    }))
+  );
+  expect(interactiveButtonSizes[0]).toEqual(interactiveButtonSizes[2]);
+  expect(interactiveButtonSizes[1]).toEqual(interactiveButtonSizes[3]);
 });
 
 test('data catalogue offers styled GeoJSON and COG GIS exports and terrain metadata', async ({ page }) => {

@@ -599,7 +599,7 @@ configuredTours.forEach(tour => {
   option.textContent = tour.name;
   tourSelect.appendChild(option);
 });
-$('interactiveTourControls').hidden = configuredTours.length === 0;
+$('interactiveTourGroup').hidden = configuredTours.length === 0;
 if (requestedTour) tourSelect.value = requestedTour.id;
 let currentTourSteps = fallbackTourSteps;
 let tourPopover = null;

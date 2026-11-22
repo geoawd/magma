@@ -77,17 +77,28 @@
       <div class="dbody">
         <!-- Edit the headings and text below. Add more sections by copying a <section class="lgroup"> block. -->
         <section class="lgroup">
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>About</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div class="lgbody info-copy">
+            <p>An experimental geospatial data map viewer using cloud-native technologies. The application is configured predominently on data available in Northern Ireland. Data is derived from Open Data or consumed via OGL services. The project is available on <a href="https://github.com/geoawd/magma">Github</a>.</p>
+          </div>
+        </section>
+        <section class="lgroup">
           <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Help</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody info-copy">
             <p>To help get you started, take a quick, guided look at the map controls.</p>
             <div class="tour-actions">
-              <button id="startTour" class="primary" type="button">Start tour</button>
+              <button id="startTour" type="button">Start tour</button>
             </div>
-            <div id="interactiveTourControls" class="tour-picker" hidden>
-              <label for="tourSelect">Interactive tour</label>
+          </div>
+        </section>
+        <section class="lgroup" id="interactiveTourGroup" hidden>
+          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Interactive tour</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div class="lgbody info-copy">
+            <div id="interactiveTourControls" class="tour-picker">
+              <label for="tourSelect">Choose a tour</label>
               <select id="tourSelect"></select>
               <div class="tour-actions">
-                <button id="startInteractiveTour" class="primary" type="button">Start selected tour</button>
+                <button id="startInteractiveTour" type="button">Start selected tour</button>
                 <button id="copyTourLink" type="button">Copy tour link</button>
               </div>
             </div>
@@ -125,12 +136,6 @@
             <li data-title="3D terrain options" data-target="#legend .terrain-exaggeration" data-open="terrain">Open the 3D terrain options to choose among configured terrain models and adjust vertical exaggeration. Use the toolbar button to turn 3D terrain on or off.</li>
           </ol>
         </template>
-        <section class="lgroup">
-          <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>About</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
-          <div class="lgbody info-copy">
-            <p>An unofficial, experimental map viewer for Geological Survey of Northern Ireland datasets. Data is derived from Open Data or consumed via OGL services. The project is available on <a href="https://github.com/geoawd/pmtiles">Github</a></p>
-          </div>
-        </section>
         <section class="lgroup">
           <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>Data Catalogue</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody info-copy">
