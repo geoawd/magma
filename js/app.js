@@ -30,6 +30,7 @@ import { createArcgisLegendController } from './arcgis-legend-controller.js';
 import { createTerrainControlsController } from './terrain-controls.js';
 import { createTerrainLegendRowController } from './terrain-legend-row.js';
 import { createTerrainRuntimeController } from './terrain-runtime-controller.js';
+import { terrainErrorToast } from './terrain-error-toast.js';
 import { createCogContourSourceController } from './cog-contour-source.js';
 import { createTerrainRangeValidator, normalizeTerrainModels } from './terrain-models.js';
 import { createJsonThemePopupController } from './json-theme-popup.js';
@@ -4662,12 +4663,12 @@ function hideToast() {
   t.classList.remove('toast-confirm');
   t.replaceChildren();
 }
-function toast(msg) {
+function toast(msg, duration = 14000) {
   const t = $('toast');
   clearTimeout(toastTimer);
   t.classList.remove('toast-confirm');
   t.textContent = msg; t.style.display = 'block';
-  toastTimer = setTimeout(hideToast, 14000);
+  toastTimer = setTimeout(hideToast, duration);
 }
 function confirmToast(msg, onConfirm, returnFocus) {
   const t = $('toast');
@@ -4728,7 +4729,8 @@ map.on('error', async e => {
   if (dtmChecking) return;
   dtmChecking = true;
   const why = await diagnoseDtm(model);
-  toast('3D / hillshade: ' + (why || `the file is reachable but could not be read${msg ? ' (' + msg + ')' : ''}. It must be a single-band elevation COG, tiled, with overviews.`));
+  const notification = terrainErrorToast(msg, why);
+  toast(notification.message, notification.duration);
   setTimeout(() => dtmChecking = false, 15000);
 });
 let terrainOn = false, terrainCb = null, terrainGroupHidden = false;   // checkbox selection is preserved when its group is hidden

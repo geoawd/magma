@@ -269,7 +269,8 @@ test('themes and named groups reference configured layers, datasets, and overlay
     ...Object.keys(configuredGroups),
     ...overlayGroups,
     ...styleGroups,
-    ...themeNames
+    ...themeNames,
+    ...(config.terrain ? [config.terrain.group || 'Terrain'] : [])
   ]);
   const validOverlayReferences = new Set([...overlayIds, ...overlayGroups]);
 
