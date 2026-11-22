@@ -38,6 +38,49 @@ html[data-ui="v2"] #geoIn { padding-left: 16px; }
 html[data-ui="v2"] #geoList { border-radius: 14px; box-shadow: var(--chip-shadow); }
 html[data-ui="v2"] .maplibregl-ctrl-attrib { border-radius: 14px; background: var(--chip-bg); box-shadow: var(--chip-shadow); }
 
+/* Legend: lighter group headers, a single gutter and fixed tool columns so every group lines up. */
+html[data-ui="v2"] { --lg-gutter: 18px; --lg-indent: 20px; }
+html[data-ui="v2"] .dbody { padding: 8px 10px; }
+html[data-ui="v2"] .lgroup { margin-bottom: 6px; }
+html[data-ui="v2"] .lghead { padding-right: 2px; border-radius: 8px; background: #eef2f5; color: var(--ink); }
+html[data-ui="v2"] .lghead:hover { background: #e3e9ee; }
+html[data-ui="v2"] .lgexpand:hover, html[data-ui="v2"] .lremove:hover,
+html[data-ui="v2"] .lgeye:hover, html[data-ui="v2"] .lgeye[aria-pressed=true] { background: rgba(0,0,0,.08); }
+html[data-ui="v2"] .lgbody { padding-top: 2px; }
+html[data-ui="v2"] #addDataList legend.add-data-group-head { border-radius: 8px; background: #eef2f5; color: var(--ink); }
+html[data-ui="v2"] #addDataList .add-data-group-head:hover { background: #e3e9ee; }
+html[data-ui="v2"] #addDataList .add-data-collapse:hover { background: rgba(0,0,0,.08); }
+
+html[data-ui="v2"] .cbtn { width: var(--lg-gutter); height: var(--lg-gutter); margin: 0; background: transparent; color: var(--muted); }
+html[data-ui="v2"] .cbtn:hover { background: var(--hover); color: var(--ink); }
+html[data-ui="v2"] .cspace { width: var(--lg-gutter); }
+html[data-ui="v2"] #legend .grprow { display: grid; grid-template-columns: var(--lg-gutter) minmax(0, 1fr) 24px 24px 24px; align-items: center; gap: 2px; }
+html[data-ui="v2"] body.advanced-mode #legend .grprow { grid-template-columns: var(--lg-gutter) minmax(0, 1fr) 24px 24px 24px 24px; }
+html[data-ui="v2"] #legend .grprow > .lname input { margin-left: 0; }
+html[data-ui="v2"] #legend .grprow > .cbtn,
+html[data-ui="v2"] #legend .grprow > .cspace { grid-column: 1; }
+html[data-ui="v2"] #legend .grprow > .lname { grid-column: 2; }
+html[data-ui="v2"] #legend .grprow > .dataset-zoom { grid-column: 3; }
+html[data-ui="v2"] #legend .grprow > .tbtn[aria-label="Layer information"] { grid-column: 4; }
+html[data-ui="v2"] #legend .grprow > .tbtn[aria-label^="Transparency"],
+html[data-ui="v2"] #legend .grprow > .terrain-tools { grid-column: 5; }
+html[data-ui="v2"] body.advanced-mode #legend .grprow > .geojson-classify-button { grid-column: 4; }
+html[data-ui="v2"] body.advanced-mode #legend .grprow > .tbtn[aria-label="Layer information"] { grid-column: 5; }
+html[data-ui="v2"] body.advanced-mode #legend .grprow > .tbtn[aria-label^="Transparency"],
+html[data-ui="v2"] body.advanced-mode #legend .grprow > .terrain-tools { grid-column: 6; }
+
+/* Everything beneath a layer starts at the layer's checkbox. */
+html[data-ui="v2"] #legend .ent,
+html[data-ui="v2"] #legend .lnote,
+html[data-ui="v2"] #legend .lpanel,
+html[data-ui="v2"] #legend .op,
+html[data-ui="v2"] #legend .geojson-load-status,
+html[data-ui="v2"] #legend .geojson-class-legend,
+html[data-ui="v2"] #legend .cog-ramp-legend,
+html[data-ui="v2"] #legend .terrain-model-row,
+html[data-ui="v2"] #legend .category-isolation-status,
+html[data-ui="v2"] #legend .arcgis-legend { margin-left: var(--lg-indent); }
+
 /* Add data: behaves like the Search and Information pages (own header, no theme bar or legend header). */
 html[data-ui="v2"] body.add-data-open #legendPage > .dhead,
 html[data-ui="v2"] body.add-data-open #legendPage > .themebar { display: none; }
