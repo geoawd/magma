@@ -112,9 +112,9 @@ test('box selection queries visible ArcGIS overlays and lists attributes in resu
     new URL(request.url()).pathname.endsWith('/MapServer/0/query'));
 
   await page.getByRole('button', { name: 'Select by box' }).click();
-  await page.mouse.move(rect.x + 250, rect.y + 180);
+  await page.mouse.move(rect.x + 550, rect.y + 180);
   await page.mouse.down();
-  await page.mouse.move(rect.x + 450, rect.y + 320, { steps: 4 });
+  await page.mouse.move(rect.x + 750, rect.y + 320, { steps: 4 });
   await page.mouse.up();
 
   const request = await queryRequest;

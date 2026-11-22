@@ -25,7 +25,7 @@ The server opens the app in a browser on port 8000 by default. Use `python3 serv
 - `config/config_*.js` contains per-theme JSON configuration. These modules are loaded dynamically when their themes are selected.
 - `config/*.json` contains MapLibre styles and deployment/link metadata.
 - JSON records live under `data/geomaterials/`, `data/site-investigations/`, and `data/test-deployment/`. PMTiles archives are optional and configured per vector dataset.
-- `css/app.css` styles the interface. `design/application-design.md` documents map and JSON-theme behavior in more detail.
+- `css/app.css` styles the classic interface and `css/app-v2.css` overrides it for the default v2 variant (`?ui=classic` restores classic; see `js/ui-variant.js`). `design/application-design.md` documents map and JSON-theme behavior in more detail.
 
 ## Configuration and data conventions
 

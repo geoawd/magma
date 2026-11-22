@@ -804,7 +804,7 @@ test('Geological Mapping activates PMTiles layers and Add Data can add them to a
   await group.getByRole('button', { name: 'Expand 250K Geology' }).click();
   const superficial = group.locator('input[data-kind="layer"][data-id="superficial-pmtiles"]');
   await superficial.check();
-  await page.getByRole('button', { name: 'Add selected' }).click();
+  await page.getByRole('button', { name: /^Add( \d+)? selected$/ }).click();
   await expect(page.getByRole('checkbox', { name: 'Superficial geology', exact: true })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Bedrock geology', exact: true })).toBeHidden();
   await expect(page.getByRole('checkbox', { name: 'Geological linear features', exact: true })).toBeHidden();

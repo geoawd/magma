@@ -5,6 +5,9 @@ test('users can save, restore, and remove named map workspaces', async ({ page }
   await page.goto('/');
   await expect(page.getByRole('combobox', { name: 'Theme' })).toBeVisible();
   await page.getByRole('button', { name: 'Information', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Saved workspaces/ })).toHaveAttribute('aria-expanded', 'false');
+  await page.getByRole('button', { name: /^Saved workspaces/ }).click();
+  await expect(page.locator('#workspaceName')).toBeVisible();
 
   await page.locator('#workspaceName').fill('Field sites');
   await page.getByRole('button', { name: 'Save current workspace' }).click();

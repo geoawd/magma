@@ -149,5 +149,5 @@ html[data-ui="v2"] .maplibregl-ctrl-group.tour-copy-control button { min-width: 
   html[data-ui="v2"] #rail { height: 52px; padding-bottom: 4px; }
   html[data-ui="v2"] #drawerDragHandle { border-radius: 16px 16px 0 0; }
   html[data-ui="v2"] #mobileMoreToolsMenu:not([hidden]) { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); right: calc(var(--float-gap) + 4px); border-radius: 12px; }
-  html[data-ui="v2"] .idpop.maplibregl-popup { bottom: calc(69px + env(safe-area-inset-bottom, 0px)) !important; }
+  html[data-ui="v2"] .idpop.maplibregl-popup { bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important; }
 }

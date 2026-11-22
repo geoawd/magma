@@ -8,6 +8,11 @@ export default defineConfig({
   use: {
     ...devices['Desktop Chrome'],
     baseURL: 'http://127.0.0.1:8123',
+    // Returning-visitor state: the rail remembers the legend as open. Tests that cover a first visit override this.
+    storageState: {
+      cookies: [],
+      origins: [{ origin: 'http://127.0.0.1:8123', localStorage: [{ name: 'mapviewer.rail.v1', value: 'legend' }] }]
+    },
     trace: 'retain-on-failure'
   },
   webServer: {

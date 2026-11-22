@@ -34,7 +34,7 @@ test('configured map notifications are advanced-only and collect a six-digit gri
   expect(controlsAboveAttribution).toBe(true);
   await boreholeButton.click();
   await expect(boreholeButton).toHaveAttribute('aria-pressed', 'true');
-  await page.locator('#map canvas').click({ position: { x: 300, y: 250 } });
+  await page.locator('#map canvas').click({ position: { x: 600, y: 250 } });
 
   const dialog = page.getByRole('dialog', { name: 'Borehole notification' });
   await expect(dialog).toBeVisible();
@@ -84,7 +84,7 @@ test('keyboard users can select a notification point from the map centre', async
 test('notification forms are selected from configuration', async ({ page }) => {
   await page.getByRole('button', { name: 'Advanced mode' }).click();
   await page.getByRole('button', { name: 'Report a landslide' }).click();
-  await page.locator('#map canvas').click({ position: { x: 300, y: 250 } });
+  await page.locator('#map canvas').click({ position: { x: 600, y: 250 } });
   await expect(page.getByRole('dialog', { name: 'Landslide notification' })).toBeVisible();
   await expect(page.getByLabel('Date observed')).toBeVisible();
   await expect(page.getByLabel('Description and notes')).toBeVisible();
