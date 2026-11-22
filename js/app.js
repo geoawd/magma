@@ -316,7 +316,10 @@ if (boundsValid) map.addControl({
     button.className = 'maplibregl-ctrl-icon maplibregl-ctrl-zoomall';
     button.type = 'button'; button.title = 'Zoom to all extents'; button.setAttribute('aria-label', button.title);
     button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M4 4l6 6M20 15v5h-5m5 0-6-6"/></svg>';
-    button.onclick = () => map.fitBounds(CONFIG.bounds, { padding: 40, duration: 700 });
+    button.onclick = () => {
+      const sideEdge = uiV2 && !isMobile() ? Math.round($('side').getBoundingClientRect().right) : 0;
+      map.fitBounds(CONFIG.bounds, { padding: { top: 40, right: 40, bottom: 40, left: 40 + sideEdge }, duration: 700 });
+    };
     group.appendChild(button);
     return group;
   },

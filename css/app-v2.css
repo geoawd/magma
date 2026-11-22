@@ -7,7 +7,9 @@ html[data-ui="v2"] {
   --float-gap: 8px;
   --rail-active-bg: #fff;
   --rail-active-ink: #1f2a33;
+  --side-w: var(--rail);
 }
+html[data-ui="v2"] body.drawer-open { --side-w: calc(var(--rail) + var(--drawer)); }
 
 /* Saved workspaces: show how many exist next to the collapsible heading. */
 html[data-ui="v2"] .ws-count { display: inline; font-weight: 400; opacity: .8; }
@@ -59,4 +61,28 @@ html[data-ui="v2"] .maplibregl-ctrl-group.tour-copy-control button { min-width: 
   html[data-ui="v2"] #shareMapBtn { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
   html[data-ui="v2"] #shareMapBtn span { display: none; }
   html[data-ui="v2"] #shareMapBtn svg { width: 20px; height: 20px; }
+}
+
+/* Floating tools panel: the map runs edge to edge and shows around the panel. */
+@media (min-width: 701px) {
+  html[data-ui="v2"] body { position: relative; background: #e9edf0; }
+  html[data-ui="v2"] #side { position: absolute; top: var(--float-gap); bottom: var(--float-gap); left: var(--float-gap); border: 0; border-radius: var(--card-radius); overflow: hidden; box-shadow: var(--chip-shadow); }
+  html[data-ui="v2"] #geo { left: calc(var(--side-w) + 2 * var(--float-gap)); transition: left .18s ease; }
+  html[data-ui="v2"] #mapinfo { left: calc(var(--side-w) + 2 * var(--float-gap)); transition: left .18s ease; }
+  html[data-ui="v2"] .maplibregl-ctrl-bottom-left { left: calc(var(--side-w) + var(--float-gap)); transition: left .18s ease; }
+  html[data-ui="v2"] body.has-table #panel,
+  html[data-ui="v2"] body.has-table #panelSplitter { margin-left: calc(var(--side-w) + 2 * var(--float-gap)); }
+}
+@media (min-width: 701px) and (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] #geo, html[data-ui="v2"] #mapinfo, html[data-ui="v2"] .maplibregl-ctrl-bottom-left { transition: none; }
+}
+
+/* Mobile: the bottom dock floats with margins and rounded corners; the sheet expands from it. */
+@media (max-width: 700px) {
+  html[data-ui="v2"] body { background: #e9edf0; }
+  html[data-ui="v2"] #side { margin: 0 var(--float-gap) calc(var(--float-gap) + env(safe-area-inset-bottom, 0px)); border: 0; border-radius: 16px; overflow: hidden; box-shadow: var(--chip-shadow); }
+  html[data-ui="v2"] #rail { height: 52px; padding-bottom: 4px; }
+  html[data-ui="v2"] #drawerDragHandle { border-radius: 16px 16px 0 0; }
+  html[data-ui="v2"] #mobileMoreToolsMenu:not([hidden]) { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); right: calc(var(--float-gap) + 4px); border-radius: 12px; }
+  html[data-ui="v2"] .idpop.maplibregl-popup { bottom: calc(69px + env(safe-area-inset-bottom, 0px)) !important; }
 }
