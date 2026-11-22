@@ -31,6 +31,33 @@ test('desktop keeps globe and print tools on the rail instead of More map tools'
   await expect(page.locator('#printBtn')).toBeVisible();
 });
 
+test('tablet drawer hides location search and restores it when closed', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  const locationSearch = page.locator('#geo');
+  await expect(locationSearch).toBeVisible();
+
+  await page.getByRole('button', { name: 'Legend and layers' }).click();
+  await expect(locationSearch).toBeHidden();
+
+  await page.getByRole('button', { name: 'Close' }).first().click();
+  await expect(locationSearch).toBeVisible();
+});
+
+test('coordinates sit just above the scale bar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const mapInfo = page.locator('#mapinfo');
+  const scaleBar = page.locator('.maplibregl-ctrl-scale');
+  await expect(scaleBar).toBeVisible();
+  const gap = await page.evaluate(() => {
+    const info = document.querySelector('#mapinfo').getBoundingClientRect();
+    const scale = document.querySelector('.maplibregl-ctrl-scale').getBoundingClientRect();
+    return scale.top - info.bottom;
+  });
+  expect(gap).toBeGreaterThanOrEqual(6);
+  expect(gap).toBeLessThanOrEqual(16);
+  await expect(mapInfo).toBeVisible();
+});
+
 test('drawing controls load on demand and are available from the mobile tools menu', async ({ page }) => {
   await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Legend and layers' }).click();
