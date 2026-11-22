@@ -4468,7 +4468,7 @@ map.once('style.load', async () => {
   updateArcgisLegendInView();
   loadScaleInfo().then(updateScaleState);
   populateSearchLayers();
-  if (!isMobile()) openTool('legend');   // start with the legend open on desktop only
+  if (!isMobile() && !uiV2) openTool('legend');   // start with the legend open on desktop only; v2 starts with the rail collapsed
   if (requestedTourId) {
     if (requestedTour) startTour(requestedTour);
     else toast(`Tour "${requestedTourId}" was not found.`);

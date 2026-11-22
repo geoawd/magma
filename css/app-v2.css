@@ -14,20 +14,14 @@ html[data-ui="v2"] body.drawer-open { --side-w: calc(var(--rail) + var(--drawer)
 /* Saved workspaces: show how many exist next to the collapsible heading. */
 html[data-ui="v2"] .ws-count { display: inline; font-weight: 400; opacity: .8; }
 
-/* Rail: selected tools are solid white tiles with an accent bar on the outer edge. */
+/* Rail: selected tools are solid white tiles. */
 html[data-ui="v2"] #rail button { position: relative; transition: background-color .15s, color .15s; }
 html[data-ui="v2"] #rail button.active,
 html[data-ui="v2"] #rail button[aria-pressed="true"] { background: var(--rail-active-bg); color: var(--rail-active-ink); box-shadow: none; }
 html[data-ui="v2"] #rail button.active:hover,
 html[data-ui="v2"] #rail button[aria-pressed="true"]:hover { background: #e8edf0; }
-html[data-ui="v2"] #rail button.active::before,
-html[data-ui="v2"] #rail button[aria-pressed="true"]::before { content: ''; position: absolute; left: -4px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: #fff; }
 html[data-ui="v2"] #rail button.active:focus-visible,
 html[data-ui="v2"] #rail button[aria-pressed="true"]:focus-visible { outline-color: #8fb4d0; }
-@media (max-width: 700px) {
-  html[data-ui="v2"] #rail button.active::before,
-  html[data-ui="v2"] #rail button[aria-pressed="true"]::before { left: 10px; right: 10px; top: -4px; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
-}
 
 /* Rounded chip style (as used by the attribution) shared by map overlays and controls. */
 html[data-ui="v2"] #zoomLevel,
@@ -67,14 +61,14 @@ html[data-ui="v2"] .maplibregl-ctrl-group.tour-copy-control button { min-width: 
 @media (min-width: 701px) {
   html[data-ui="v2"] body { position: relative; background: #e9edf0; }
   html[data-ui="v2"] #side { position: absolute; top: var(--float-gap); bottom: var(--float-gap); left: var(--float-gap); border: 0; border-radius: var(--card-radius); overflow: hidden; box-shadow: var(--chip-shadow); }
-  html[data-ui="v2"] #geo { left: calc(var(--side-w) + 2 * var(--float-gap)); transition: left .18s ease; }
+  html[data-ui="v2"] #geo { left: 50%; transform: translateX(-50%); width: min(360px, calc(100vw - 2 * (var(--side-w) + 2 * var(--float-gap)))); }
   html[data-ui="v2"] #mapinfo { left: calc(var(--side-w) + 2 * var(--float-gap)); transition: left .18s ease; }
   html[data-ui="v2"] .maplibregl-ctrl-bottom-left { left: calc(var(--side-w) + var(--float-gap)); transition: left .18s ease; }
   html[data-ui="v2"] body.has-table #panel,
   html[data-ui="v2"] body.has-table #panelSplitter { margin-left: calc(var(--side-w) + 2 * var(--float-gap)); }
 }
 @media (min-width: 701px) and (prefers-reduced-motion: reduce) {
-  html[data-ui="v2"] #geo, html[data-ui="v2"] #mapinfo, html[data-ui="v2"] .maplibregl-ctrl-bottom-left { transition: none; }
+  html[data-ui="v2"] #mapinfo, html[data-ui="v2"] .maplibregl-ctrl-bottom-left { transition: none; }
 }
 
 /* Mobile: the bottom dock floats with margins and rounded corners; the sheet expands from it. */
