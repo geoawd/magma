@@ -1,0 +1,10 @@
+/* Experimental UI variant. Every rule is scoped to html[data-ui="v2"]; see js/ui-variant.js. */
+html[data-ui="v2"] {
+  --chip-bg: rgba(255,255,255,.94);
+  --chip-radius: 999px;
+  --card-radius: 12px;
+  --chip-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.18);
+  --float-gap: 8px;
+  --rail-active-bg: #fff;
+  --rail-active-ink: #1f2a33;
+}
