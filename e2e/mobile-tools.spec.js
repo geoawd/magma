@@ -49,6 +49,6 @@ test('page policy restricts scripts while allowing secure map data and workers',
   expect(policy).toContain("object-src 'none'");
   expect(policy).toContain("'wasm-unsafe-eval'");
   expect(policy).toContain("worker-src 'self' blob: https://unpkg.com");
-  expect(policy).toContain("connect-src 'self' blob: data: https:");
+  expect(policy).toContain("connect-src 'self' blob: data: https: cog:");
   expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
 });
