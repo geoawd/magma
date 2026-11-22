@@ -11,5 +11,8 @@ test('parses Irish Grid letter-square references in spaced and compact forms', (
 test('parses numeric Irish Grid coordinates and rejects malformed references', () => {
   assert.deepEqual(parseIrishGridReference('333740 373960'), { E: 333740, N: 373960 });
   assert.deepEqual(parseIrishGridReference('E 333740 N 373960'), { E: 333740, N: 373960 });
+  assert.deepEqual(parseIrishGridReference('343534, 345564'), { E: 343534, N: 345564 });
+  assert.deepEqual(parseIrishGridReference('343534/345564'), { E: 343534, N: 345564 });
+  assert.deepEqual(parseIrishGridReference('343534 / 345564'), { E: 343534, N: 345564 });
   assert.equal(parseIrishGridReference('not a grid reference'), null);
 });

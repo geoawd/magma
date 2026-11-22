@@ -21,7 +21,7 @@ export function parseIrishGridReference(query) {
       };
     }
   }
-  match = normalized.match(/^(?:E\s*)?(\d{5,6})\s*(?:,|N|\s)\s*(?:N\s*)?(\d{5,6})$/);
+  match = normalized.match(/^(?:E\s*)?(\d{5,6})\s*(?:[,/]|N|\s)\s*(?:N\s*)?(\d{5,6})$/);
   return match ? { E: Number(match[1]), N: Number(match[2]) } : null;
 }
 
