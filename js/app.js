@@ -545,6 +545,7 @@ function syncAddDataButton() {
   const button = $('addDataBtn');
   if (!button) return;
   const active = tool === 'legend' && !$('addDataPanel').hidden;
+  document.body.classList.toggle('add-data-open', active);
   button.classList.toggle('active', active);
   button.setAttribute('aria-pressed', String(active));
 }
@@ -2100,6 +2101,10 @@ function filterAddDataPicker(resetExpansion = false) {
   const noResults = list.querySelector('.add-data-no-results');
   if (noResults) noResults.hidden = !query || visibleGroups > 0;
   $('addDataApply').disabled = !list.querySelector('input[data-kind]:checked');
+  if (uiV2) {
+    const count = list.querySelectorAll('input[data-kind]:checked').length;
+    $('addDataApply').textContent = count ? `Add ${count} selected` : 'Add selected';
+  }
 }
 function closeAddDataPanel() {
   $('addDataPanel').hidden = true;
@@ -2167,6 +2172,10 @@ function openAddDataPanel() {
   }
   $('legend').hidden = true;
   $('addDataPanel').hidden = false;
+  if (uiV2) {
+    $('addDataPanel').querySelector('.add-data-head strong').textContent = `Add data to ${activeThemeName || 'theme'}`;
+    $('addDataApply').textContent = 'Add selected';
+  }
   renderAddDataPicker();
   syncAddDataButton();
 }

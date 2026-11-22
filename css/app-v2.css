@@ -42,6 +42,14 @@ html[data-ui="v2"] #geoIn { padding-left: 16px; }
 html[data-ui="v2"] #geoList { border-radius: 14px; box-shadow: var(--chip-shadow); }
 html[data-ui="v2"] .maplibregl-ctrl-attrib { border-radius: 14px; background: var(--chip-bg); box-shadow: var(--chip-shadow); }
 
+/* Add data: behaves like the Search and Information pages (own header, no theme bar or legend header). */
+html[data-ui="v2"] body.add-data-open #legendPage > .dhead,
+html[data-ui="v2"] body.add-data-open #legendPage > .themebar { display: none; }
+html[data-ui="v2"] .add-data-head { padding: 8px 12px; font-size: 14px; font-weight: 600; }
+html[data-ui="v2"] .add-data-head button { width: auto; height: auto; padding: 2px 8px; font-size: 18px; line-height: 1; }
+html[data-ui="v2"] .add-data-actions { position: sticky; bottom: 0; background: #fff; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+html[data-ui="v2"] #addDataApply { min-height: 36px; }
+
 /* Share view, Copy tour stop and the Report buttons sit together in the bottom-right stack. */
 html[data-ui="v2"] .map-copy-link-control { margin-bottom: 10px; }
 html[data-ui="v2"] #shareMapBtn { min-width: 120px; min-height: 30px; padding: 5px 8px; border-radius: 10px; background: var(--chip-bg); color: var(--ink); text-decoration: none; box-shadow: var(--chip-shadow); }
