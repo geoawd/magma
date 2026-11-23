@@ -120,6 +120,18 @@
   #searchFields { border: 1px solid var(--line); border-radius: 4px; max-height: 200px; overflow: auto; padding: 6px; }
   #searchFields label { display: flex; gap: 6px; padding: 1px 0; }
   .hint { color: var(--muted); font-size: 12px; }
+  .theme-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 6px; }
+  .theme-option { display: grid; gap: 6px; min-width: 0; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); text-align: left; }
+  .theme-option:hover { background: var(--hover); }
+  .theme-option[aria-pressed="true"] { border-color: var(--sec); box-shadow: 0 0 0 2px var(--sec); }
+  .theme-preview { display: flex; width: 100%; height: 54px; overflow: hidden; border: 1px solid var(--line); border-radius: 4px; background: #e8edf0; }
+  .theme-preview-rail { width: 13px; flex: none; background: #1f2a33; }
+  .theme-preview-panel { display: grid; align-content: start; gap: 5px; width: 45px; margin: 4px; padding: 5px; border-radius: 3px; background: #fff; }
+  .theme-preview-panel i { display: block; height: 5px; border-radius: 2px; background: #d6dbe0; }
+  .theme-preview-dark { background: #11191e; }
+  .theme-preview-dark .theme-preview-rail { background: #18242c; }
+  .theme-preview-dark .theme-preview-panel { background: #222c33; }
+  .theme-preview-dark .theme-preview-panel i { background: #46535c; }
 
   /* ---- map + results panel share the column to the right of the menu ---- */
   #main { flex: 1; min-width: 0; display: flex; flex-direction: column; }

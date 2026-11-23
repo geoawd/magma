@@ -183,3 +183,46 @@ h1 { margin: 0; font-size: clamp(28px, 5vw, 42px); }
   .dataset-actions { grid-row: 2; }
   .metadata-row { grid-template-columns: minmax(100px, 0.4fr) minmax(0, 1fr); }
 }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  color: #e4eaee;
+  background: #1b252b;
+}
+
+html[data-theme="dark"] .back-link,
+html[data-theme="dark"] .dataset-url,
+html[data-theme="dark"] .metadata-row a,
+html[data-theme="dark"] .metadata-record-link a { color: #a3cbe7; }
+
+html[data-theme="dark"] .eyebrow,
+html[data-theme="dark"] .note,
+html[data-theme="dark"] .status,
+html[data-theme="dark"] .dataset-meta,
+html[data-theme="dark"] .metadata-label,
+html[data-theme="dark"] .metadata-state,
+html[data-theme="dark"] .metadata-record-link,
+html[data-theme="dark"] .dataset-message,
+html[data-theme="dark"] .group-count { color: #aab5bd; }
+
+html[data-theme="dark"] #catalogueSearch,
+html[data-theme="dark"] .dataset-group,
+html[data-theme="dark"] .dataset-metadata,
+html[data-theme="dark"] .dataset-actions button {
+  border-color: #46535c;
+  background: #222c33;
+  color: #e4eaee;
+}
+
+html[data-theme="dark"] .dataset-type {
+  background: #344b59;
+  color: #d2e7f2;
+}
+
+html[data-theme="dark"] .dataset-card,
+html[data-theme="dark"] .metadata-row { border-color: #46535c; }
+html[data-theme="dark"] .dataset-metadata { background: #1b252b; }
+html[data-theme="dark"] .dataset-actions button { color: #a3cbe7; }
+html[data-theme="dark"] .dataset-actions button:hover { background: #34424b; }
+html[data-theme="dark"] .status.error,
+html[data-theme="dark"] .dataset-message.error { color: #ff9a9a; }

@@ -1,0 +1,251 @@
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ac: #466579;
+  --sec: #91b5cc;
+  --hover: #34424b;
+  --line: #46535c;
+  --ink: #e4eaee;
+  --muted: #aab5bd;
+  --rail-bg: #18242c;
+  --surface: #222c33;
+  --surface-raised: #2b363e;
+  --surface-inset: #1b252b;
+  --control-bg: #1e282f;
+  --link: #a3cbe7;
+  background: var(--surface);
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] #main,
+html[data-theme="dark"] #side,
+html[data-theme="dark"] #drawer,
+html[data-theme="dark"] .dpage,
+html[data-theme="dark"] #panel {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] button:not(.primary),
+html[data-theme="dark"] input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  border-color: var(--line);
+  background-color: var(--control-bg);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] button:hover:not(.primary) { background-color: var(--hover); }
+html[data-theme="dark"] button.primary { border-color: var(--ac); background-color: var(--ac); color: #fff; }
+html[data-theme="dark"] button.primary:hover { background-color: #567b91; }
+html[data-theme="dark"] input[type="checkbox"],
+html[data-theme="dark"] input[type="range"] { accent-color: var(--sec); }
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: var(--muted); opacity: 1; }
+html[data-theme="dark"] a { color: var(--link); }
+
+html[data-theme="dark"] #rail,
+html[data-theme="dark"] #tabs,
+html[data-theme="dark"] .lghead,
+html[data-theme="dark"] #addDataList legend.add-data-group-head,
+html[data-theme="dark"] .idtitle,
+html[data-theme="dark"] .idhead { background-color: var(--rail-bg); }
+
+html[data-theme="dark"] .dhead,
+html[data-theme="dark"] .themebar,
+html[data-theme="dark"] .add-data-head,
+html[data-theme="dark"] .add-data-actions,
+html[data-theme="dark"] .add-data-own,
+html[data-theme="dark"] #panel header,
+html[data-theme="dark"] #jsonControls,
+html[data-theme="dark"] .json-help-popover > header,
+html[data-theme="dark"] #notificationLocation {
+  background-color: var(--surface-raised);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .dbody,
+html[data-theme="dark"] #legendPage,
+html[data-theme="dark"] #searchPage,
+html[data-theme="dark"] #aboutPage,
+html[data-theme="dark"] #addDataPanel,
+html[data-theme="dark"] #tablewrap,
+html[data-theme="dark"] .idbody,
+html[data-theme="dark"] .json-help-popover,
+html[data-theme="dark"] .json-dropdown-panel,
+html[data-theme="dark"] .geojson-ramp-options,
+html[data-theme="dark"] .cog-ramp-options,
+html[data-theme="dark"] .tour-popover,
+html[data-theme="dark"] #mobileMoreToolsMenu,
+html[data-theme="dark"] #geoList,
+html[data-theme="dark"] #sessionRestoreDialog,
+html[data-theme="dark"] #spaceMouseSettingsDialog,
+html[data-theme="dark"] #notificationDialog,
+html[data-theme="dark"] #geojsonStyleDialog,
+html[data-theme="dark"] #userLayerDialog,
+html[data-theme="dark"] .maplibregl-popup-content {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .lpanel,
+html[data-theme="dark"] #searchFields,
+html[data-theme="dark"] #panelSplitter,
+html[data-theme="dark"] #tablewrap thead tr.json-filter-row th,
+html[data-theme="dark"] #tablewrap thead tr.vector-filter-row th {
+  background-color: var(--surface-inset);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] #sessionRestoreDialog,
+html[data-theme="dark"] #spaceMouseSettingsDialog,
+html[data-theme="dark"] #notificationDialog,
+html[data-theme="dark"] #geojsonStyleDialog,
+html[data-theme="dark"] #userLayerDialog { border-color: var(--line); }
+
+html[data-theme="dark"] #spaceMouseSettingsForm > input,
+html[data-theme="dark"] #spaceMouseSettingsForm select,
+html[data-theme="dark"] #workspaceControls > input,
+html[data-theme="dark"] #workspaceControls > select,
+html[data-theme="dark"] #geojsonStyleForm select,
+html[data-theme="dark"] #geojsonStyleForm input:not([type="color"]),
+html[data-theme="dark"] #notificationFields input,
+html[data-theme="dark"] #notificationFields select,
+html[data-theme="dark"] #notificationFields textarea,
+html[data-theme="dark"] #notificationPreview,
+html[data-theme="dark"] #addDataSearch,
+html[data-theme="dark"] #themeSel,
+html[data-theme="dark"] .json-link-filters select,
+html[data-theme="dark"] .lpanel select,
+html[data-theme="dark"] .terrain-model-row select,
+html[data-theme="dark"] .hillshade-settings select,
+html[data-theme="dark"] .cog-ramp-mode-select,
+html[data-theme="dark"] .json-dropdown-search {
+  border-color: var(--line);
+  background-color: var(--control-bg);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .themebar select,
+html[data-theme="dark"] .json-link-filters select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23e4eaee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m1 1.500 5 5 5-5'/%3E%3C/svg%3E");
+}
+
+html[data-theme="dark"] .themebar { background-color: var(--surface-raised); }
+html[data-theme="dark"] .lpanel { border-color: var(--line); }
+html[data-theme="dark"] .lghead:hover,
+html[data-theme="dark"] #addDataList .add-data-group-head:hover { background-color: #263640; }
+html[data-theme="dark"] .lgexpand:hover,
+html[data-theme="dark"] .lremove:hover,
+html[data-theme="dark"] .lgeye:hover,
+html[data-theme="dark"] .lgeye[aria-pressed="true"],
+html[data-theme="dark"] #addDataList .add-data-collapse:hover { background-color: rgba(255,255,255,.12); }
+html[data-theme="dark"] .cbtn { background-color: #4a6579; }
+html[data-theme="dark"] .cbtn:hover { background-color: #5d7a92; }
+
+html[data-theme="dark"] .geojson-ramp-button,
+html[data-theme="dark"] .geojson-ramp-option,
+html[data-theme="dark"] .cog-ramp-picker-button,
+html[data-theme="dark"] .cog-ramp-option,
+html[data-theme="dark"] .json-dropdown-option,
+html[data-theme="dark"] .json-help-close {
+  border-color: var(--line);
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .geojson-ramp-option:hover,
+html[data-theme="dark"] .geojson-ramp-option[aria-selected="true"],
+html[data-theme="dark"] .cog-ramp-option:hover,
+html[data-theme="dark"] .cog-ramp-option[aria-selected="true"],
+html[data-theme="dark"] .json-dropdown-option:hover { background-color: var(--hover); }
+
+html[data-theme="dark"] .geojson-ramp-options,
+html[data-theme="dark"] .cog-ramp-options,
+html[data-theme="dark"] .json-dropdown-panel,
+html[data-theme="dark"] .json-help-popover,
+html[data-theme="dark"] .tour-popover,
+html[data-theme="dark"] #mobileMoreToolsMenu {
+  border-color: var(--line);
+  box-shadow: 0 5px 18px rgba(0,0,0,.45);
+}
+
+html[data-theme="dark"] #panelSplitter::after,
+html[data-theme="dark"] #drawerDragHandle::after { background-color: var(--muted); }
+html[data-theme="dark"] #panelSplitter:hover,
+html[data-theme="dark"] #panelSplitter:focus-visible,
+html[data-theme="dark"] #drawerDragHandle.dragging { background-color: var(--hover); }
+html[data-theme="dark"] th { background-color: var(--surface-raised); }
+html[data-theme="dark"] th,
+html[data-theme="dark"] td,
+html[data-theme="dark"] .arow,
+html[data-theme="dark"] .pophead { border-color: var(--line); }
+html[data-theme="dark"] #tablewrap th[data-sortable="true"]:hover { background-color: var(--hover); }
+html[data-theme="dark"] .maplibregl-popup-content th { color: var(--muted); }
+html[data-theme="dark"] .pophead .nav {
+  border-color: var(--line);
+  background-color: var(--surface-raised);
+  color: var(--ink);
+}
+html[data-theme="dark"] .pophead .nav:disabled { background-color: var(--surface-inset); }
+html[data-theme="dark"] .pophead .nav:hover:not(:disabled) { background-color: var(--ac); color: #fff; }
+html[data-theme="dark"] .idsec + .idsec .idhead { border-color: rgba(255,255,255,.18); }
+html[data-theme="dark"] #geoList li { border-color: var(--line); }
+html[data-theme="dark"] #geoList .geo-result:hover { background-color: var(--hover); }
+html[data-theme="dark"] #sessionRestoreDialog::backdrop,
+html[data-theme="dark"] #spaceMouseSettingsDialog::backdrop,
+html[data-theme="dark"] #notificationDialog::backdrop,
+html[data-theme="dark"] #geojsonStyleDialog::backdrop,
+html[data-theme="dark"] #userLayerDialog::backdrop { background: rgba(0,0,0,.72); }
+
+html[data-theme="dark"] .maplibregl-ctrl-group,
+html[data-theme="dark"] .maplibregl-ctrl-group button,
+html[data-theme="dark"] .maplibregl-ctrl-scale,
+html[data-theme="dark"] .maplibregl-ctrl-attrib,
+html[data-theme="dark"] #zoomLevel,
+html[data-theme="dark"] #coords,
+html[data-theme="dark"] #cogValues,
+html[data-theme="dark"] .geobox,
+html[data-theme="dark"] #geoList,
+html[data-theme="dark"] #shareMapBtn {
+  border-color: var(--line);
+  background-color: var(--surface-raised);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+html[data-theme="dark"] .maplibregl-ctrl-group button:hover,
+html[data-theme="dark"] #shareMapBtn:hover { background-color: var(--hover); }
+html[data-theme="dark"] .maplibregl-ctrl-attrib a,
+html[data-theme="dark"] .maplibregl-ctrl-attrib button,
+html[data-theme="dark"] #shareMapBtn { color: var(--link); }
+
+html[data-theme="dark"] .theme-option {
+  border-color: var(--line);
+  background-color: var(--surface-raised);
+  color: var(--ink);
+}
+html[data-theme="dark"] .theme-option:hover { background-color: var(--hover); }
+html[data-theme="dark"] .theme-option[aria-pressed="true"] { border-color: var(--sec); }
+html[data-theme="dark"] .theme-preview-light { background-color: #e8edf0; }
+html[data-theme="dark"] .theme-preview-light .theme-preview-rail { background-color: #1f2a33; }
+html[data-theme="dark"] .theme-preview-light .theme-preview-panel { background-color: #fff; }
+html[data-theme="dark"] .theme-preview-light .theme-preview-panel i { background-color: #d6dbe0; }
+
+html[data-theme="dark"][data-ui="v2"] body { background-color: var(--surface-inset); }
+html[data-theme="dark"][data-ui="v2"] {
+  --chip-bg: rgba(34, 44, 51, .96);
+  --chip-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 2px 8px rgba(0,0,0,.4);
+  --rail-active-bg: #dce7ed;
+  --rail-active-ink: #18242c;
+}
+html[data-theme="dark"][data-ui="v2"] #panel header,
+html[data-theme="dark"][data-ui="v2"] .add-data-actions { background-color: var(--surface); }
+html[data-theme="dark"][data-ui="v2"] #jsonControls,
+html[data-theme="dark"][data-ui="v2"] #tabs { background-color: var(--surface-raised); }
+html[data-theme="dark"][data-ui="v2"] #tabs .tab { color: var(--ink); }
+html[data-theme="dark"][data-ui="v2"] #tabs .tab:hover,
+html[data-theme="dark"][data-ui="v2"] #tabs .json-tab-help:hover,
+html[data-theme="dark"][data-ui="v2"] #tabs .json-tab-hide:hover { background-color: var(--hover); color: var(--ink); }
+html[data-theme="dark"][data-ui="v2"] #tabs .tab.on { background-color: var(--ac); color: #fff; }
+html[data-theme="dark"][data-ui="v2"] #panelSplitter:hover,
+html[data-theme="dark"][data-ui="v2"] #panelSplitter:focus-visible { background-color: var(--hover); }

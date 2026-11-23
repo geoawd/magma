@@ -8,9 +8,11 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="modulepreload" href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs" integrity="sha384-tG0qQdL7veKvVoyu6PbnmddDls/OVkTjaK9oVY5eq9afBA6zYptFui69Dx57duAh" crossorigin="anonymous">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.css" integrity="sha384-yFNc3bs28S14jOJo1ZO9SnLiAmtyY2a3H9be8GkLMpDGlO5r1zZNP8fYu+fOCE/w" crossorigin="anonymous">
+<script src="js/theme-preference.js"></script>
 <script src="js/ui-variant.js"></script>
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/app-v2.css">
+<link rel="stylesheet" href="css/app-dark.css">
 <style id="pageStyle"></style>
 </head>
 <body>
@@ -76,6 +78,25 @@
       <div class="dhead"><h2 class="dtitle">Information</h2><button class="dclose" aria-label="Close">&times;</button></div>
       <div class="dbody">
         <!-- Edit the headings and text below. Add more sections by copying a <section class="lgroup"> block. -->
+        <section class="lgroup theme-group" id="themeGroup">
+          <h3 class="lghead"><button class="lgcollapse" id="themeHeading" type="button" aria-expanded="true"><span>Theme</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
+          <div class="lgbody">
+            <div class="theme-options" role="group" aria-label="Choose app theme">
+              <button class="theme-option" type="button" data-theme-choice="light" aria-pressed="false">
+                <span class="theme-preview theme-preview-light" aria-hidden="true">
+                  <span class="theme-preview-rail"></span><span class="theme-preview-panel"><i></i><i></i><i></i></span>
+                </span>
+                <span>Light</span>
+              </button>
+              <button class="theme-option" type="button" data-theme-choice="dark" aria-pressed="false">
+                <span class="theme-preview theme-preview-dark" aria-hidden="true">
+                  <span class="theme-preview-rail"></span><span class="theme-preview-panel"><i></i><i></i><i></i></span>
+                </span>
+                <span>Dark</span>
+              </button>
+            </div>
+          </div>
+        </section>
         <section class="lgroup">
           <h3 class="lghead"><button class="lgcollapse" type="button" aria-expanded="true"><span>About</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></h3>
           <div class="lgbody info-copy">

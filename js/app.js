@@ -173,6 +173,7 @@ const map = new maplibregl.Map({
   pitch: sharedMapView?.pitch || 0,
   maxPitch: 80
 });
+map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
 const mapFeatureQueries = createMapFeatureQueryController({
   map,
   getConfig: () => CONFIG,

@@ -11,11 +11,16 @@ test('map attribution includes the public-sector licence alongside source attrib
   const toggle = attribution.locator('.maplibregl-ctrl-attrib-button');
   await expect(toggle).toBeVisible();
   await expect(attribution).toHaveClass(/maplibregl-compact/);
+  await expect(attribution).not.toHaveClass(/maplibregl-compact-show/);
+  await expect(attribution.locator('.maplibregl-ctrl-attrib-inner')).toBeHidden();
   await toggle.click();
+  await expect(attribution).toHaveClass(/maplibregl-compact-show/);
   await expect(attribution.locator('a[href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"]'))
     .toHaveText('Open Government Licence v3.0');
   await expect(attribution.locator('a[href="https://www.openstreetmap.org/copyright"]'))
     .toHaveText('OpenStreetMap');
+  await toggle.click();
+  await expect(attribution).not.toHaveClass(/maplibregl-compact-show/);
 });
 
 test('configured map notifications are advanced-only and collect a six-digit grid point', async ({ page }) => {
