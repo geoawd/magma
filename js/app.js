@@ -4893,25 +4893,79 @@ function mapImage() {
     map.triggerRepaint();
   });
 }
-function buildKey() {
-  let html = '';
-  document.querySelectorAll('#legend .lgroup').forEach(sec => {
-    if (sec.hidden) return;
-    let items = '';
-    sec.querySelectorAll('.lgbody > div').forEach(el => {
-      if (el.hidden || el.dataset.nokey || el.classList.contains('offscale')) return;
-      if (el.hidden || el.classList.contains('offscale')) return;
-      const name = esc(el.querySelector('.lname span').textContent);
-      if (el.dataset.sl) {
-        const ents = [...el.querySelectorAll('.ent')].filter(e => e.querySelector('input').checked && !e.classList.contains('nv'));
-        if (ents.length) items += `<b>${name}</b>` + ents.map(e => `<div class="pv-ent">${e.querySelector('.sw').outerHTML}<span>${esc(e.lastElementChild.textContent)}</span></div>`).join('');
-      } else if (el.querySelector('input').checked) {
-        items += `<b>${name}</b>` + (el.querySelector('img') ? el.querySelector('img').outerHTML : '');
-      }
-    });
-    if (items) html += `<h4>${esc(sec.querySelector('.lghead span').textContent)}</h4>${items}`;
+function printableLegendMarkup(source) {
+  if (source.hidden) return '';
+  const clone = source.cloneNode(true);
+  clone.querySelectorAll('[hidden], .nv').forEach(element => element.remove());
+  clone.querySelectorAll('.geojson-class-entry').forEach(entry => {
+    const checkbox = entry.querySelector('input[type="checkbox"]');
+    if (checkbox && !checkbox.checked) entry.remove();
   });
-  return html;
+  clone.querySelectorAll('input, button, select, textarea').forEach(element => element.remove());
+  clone.classList.add('pv-legend');
+  return clone.outerHTML;
+}
+function buildKey() {
+  const key = document.createElement('div');
+  document.querySelectorAll('#legend .lgroup').forEach(section => {
+    if (section.hidden || section.classList.contains('group-hidden')) return;
+    const items = document.createElement('div');
+    if (section.classList.contains('json-theme-legend')) {
+      if (section.classList.contains('json-link-filters')) return;
+      section.querySelectorAll('.json-legend-row').forEach(row => {
+        items.appendChild(row.cloneNode(true));
+      });
+    } else {
+      section.querySelectorAll('.lgbody > div').forEach(layer => {
+        if (layer.hidden || layer.classList.contains('offscale') || layer.classList.contains('legend-off')) return;
+        const label = layer.querySelector('.lname span');
+        const checkbox = layer.querySelector(':scope > .grprow .lname input[type="checkbox"]');
+        if (!label || !checkbox?.checked) return;
+
+        const item = document.createElement('div');
+        item.className = 'pv-layer';
+        const name = document.createElement('b');
+        name.textContent = label.textContent.trim();
+        item.appendChild(name);
+        if (layer.dataset.nokey) {
+          const model = layer.querySelector('.terrain-model option:checked')?.textContent.trim();
+          const exaggeration = layer.querySelector('.terrain-exaggeration')?.value;
+          const detail = document.createElement('div');
+          detail.className = 'pv-ent';
+          detail.textContent = model
+            ? `Terrain model: ${model}${exaggeration ? `; exaggeration ${exaggeration}x` : ''}`
+            : 'Terrain enabled';
+          item.appendChild(detail);
+        } else if (layer.dataset.sl) {
+          layer.querySelectorAll('.ent').forEach(entry => {
+            if (entry.hidden || entry.classList.contains('nv')) return;
+            const entryCheckbox = entry.querySelector('input[type="checkbox"]');
+            if (entryCheckbox && !entryCheckbox.checked) return;
+            const clone = entry.cloneNode(true);
+            clone.classList.add('pv-ent');
+            clone.querySelectorAll('input, button').forEach(element => element.remove());
+            item.appendChild(clone);
+          });
+        } else {
+          [...layer.children].filter(element => element.tagName === 'IMG').forEach(image => {
+            item.appendChild(image.cloneNode(true));
+          });
+          layer.querySelectorAll('.arcgis-legend, .geojson-class-legend, .cog-ramp-legend').forEach(legend => {
+            const markup = printableLegendMarkup(legend);
+            if (markup) item.insertAdjacentHTML('beforeend', markup);
+          });
+        }
+        items.appendChild(item);
+      });
+    }
+    if (!items.childElementCount) return;
+    const heading = document.createElement('h4');
+    heading.textContent = section.querySelector('.lghead span')?.textContent.trim() || 'Layers';
+    const group = document.createElement('section');
+    group.append(heading, items);
+    key.appendChild(group);
+  });
+  return key.innerHTML;
 }
 ///////////////////////////////////////////////////////////////////////////
 // Captures the current map and layer key, then opens the print layout.

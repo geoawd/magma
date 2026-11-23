@@ -31,6 +31,48 @@ test('desktop keeps globe and print tools on the rail instead of More map tools'
   await expect(page.locator('#printBtn')).toBeVisible();
 });
 
+test('printing stays light in dark mode and includes the active layer key', async ({ page }) => {
+  await page.locator('html').evaluate(element => { element.dataset.theme = 'dark'; });
+  const activeLegend = await page.locator('#legend .lgbody > div[data-sl]').evaluateAll(layers => {
+    const layer = layers.find(candidate => {
+      const section = candidate.closest('.lgroup');
+      return !candidate.hidden && !candidate.classList.contains('offscale') &&
+        !section?.hidden && !section?.classList.contains('group-hidden') &&
+        candidate.querySelector('.ent');
+    });
+    if (!layer) return null;
+    const checkbox = layer.querySelector(':scope > .grprow .lname input[type="checkbox"]');
+    const label = layer.querySelector('.lname span');
+    if (!checkbox || !label) return null;
+    if (!checkbox.checked) checkbox.click();
+    const entry = [...layer.querySelectorAll('.ent')].find(candidate => {
+      const categoryCheckbox = candidate.querySelector('input[type="checkbox"]');
+      return !candidate.classList.contains('nv') && (!categoryCheckbox || categoryCheckbox.checked);
+    });
+    const spans = entry?.querySelectorAll('.ent-toggle > span');
+    return {
+      name: label.textContent.trim(),
+      category: spans?.[spans.length - 1]?.textContent.trim()
+    };
+  });
+  expect(activeLegend?.name).toBeTruthy();
+  expect(activeLegend?.category).toBeTruthy();
+
+  await page.getByRole('button', { name: 'More map tools' }).click();
+  await page.getByRole('button', { name: 'Print map' }).click();
+  await expect.poll(() => page.evaluate(() => window.__printCalled)).toBe(true);
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('#printView .pv-key')).toContainText(activeLegend.name);
+  await expect(page.locator('#printView .pv-key')).toContainText(activeLegend.category);
+  await expect(page.locator('#printView .pv-key .pv-ent .sw')).not.toHaveCount(0);
+  const printColors = await page.evaluate(() => ({
+    background: getComputedStyle(document.documentElement).backgroundColor,
+    text: getComputedStyle(document.querySelector('#printView')).color,
+    colorScheme: getComputedStyle(document.documentElement).colorScheme
+  }));
+  expect(printColors).toEqual({ background: 'rgb(255, 255, 255)', text: 'rgb(0, 0, 0)', colorScheme: 'light' });
+});
+
 test('tablet drawer hides location search and restores it when closed', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   const locationSearch = page.locator('#geo');
