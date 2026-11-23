@@ -94,7 +94,7 @@ window.TOURS = [
 //       popup: {
 //          lngLat: [-5.97201, 55.0515],
 //          maxWidth: 'min(560px, calc(100vw - 32px))',
-//         html: '<iframe width="560" height="315" style="display:block;width:100%;height:auto;aspect-ratio:16/9;border:0" src="https://www.youtube.com/embed/7nMXtsZty6g?si=-UqeOfDjA5qcX6i0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>'
+//          html: '<iframe width="560" height="315" style="display:block;width:100%;height:auto;aspect-ratio:16/9;border:0" src="https://www.youtube-nocookie.com/embed/7nMXtsZty6g?si=-UqeOfDjA5qcX6i0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>'
 //        }
 //      },
     ]

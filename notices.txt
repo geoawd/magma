@@ -1,7 +1,7 @@
 THIRD-PARTY SOFTWARE NOTICES
 ============================
 
-The MapLibre application loads these libraries from CDNs at runtime. License
+The MapLibre application self-hosts these libraries under `vendor/` and `js/`. License
 identifiers, copyright notices, and upstream license sources are listed below.
 
 1. MapLibre GL JS 6.19.0

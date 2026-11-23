@@ -2,7 +2,7 @@
 
 ## What this project is
 
-This repository contains a static, browser-based map viewer for Northern Ireland geology and site-investigation data. It uses MapLibre GL JS and configuration-driven raster and JSON-backed themes; PMTiles remains supported for optional vector datasets. There is no bundler or build step; most third-party browser libraries are loaded from CDNs.
+This repository contains a static, browser-based map viewer for Northern Ireland geology and site-investigation data. It uses MapLibre GL JS and configuration-driven raster and JSON-backed themes; PMTiles remains supported for optional vector datasets. There is no bundler or build step; third-party browser libraries are self-hosted under `vendor/` or as local scripts under `js/`.
 
 ## Run locally
 

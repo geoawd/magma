@@ -75,7 +75,14 @@ test('page policy restricts scripts while allowing secure map data and workers',
   const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
   expect(policy).toContain("object-src 'none'");
   expect(policy).toContain("'wasm-unsafe-eval'");
-  expect(policy).toContain("worker-src 'self' blob: https://unpkg.com");
+  expect(policy).toContain("script-src 'self' 'wasm-unsafe-eval'");
+  expect(policy).toContain("worker-src 'self' blob:");
   expect(policy).toContain("connect-src 'self' blob: data: https: cog:");
+  expect(policy).toContain("img-src 'self' data: blob: https:");
+  expect(policy).not.toContain('unpkg.com');
+  expect(policy).not.toContain('cdn.jsdelivr.net');
+  expect(policy).not.toContain('cdnjs.cloudflare.com');
+  expect(policy).not.toContain('child-src');
+  expect(policy).toContain("form-action 'self'");
   expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
 });

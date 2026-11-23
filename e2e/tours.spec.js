@@ -10,10 +10,10 @@ test('Garron Point tour config embeds the responsive YouTube video', async ({ pa
     const stop = tour.stops.find(item => item.title === 'Video explanation');
     return stop.popup;
   });
-  expect(popup.html).toContain('https://www.youtube.com/embed/7nMXtsZty6g?si=-UqeOfDjA5qcX6i0');
+  expect(popup.html).toContain('https://www.youtube-nocookie.com/embed/7nMXtsZty6g?si=-UqeOfDjA5qcX6i0');
   expect(popup.html).toContain('allowfullscreen');
   expect(popup.maxWidth).toBe('min(560px, calc(100vw - 32px))');
 
   const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
-  expect(policy).toContain("frame-src 'self' blob: https://www.youtube.com");
+  expect(policy).toContain("frame-src 'self' blob: https://www.youtube-nocookie.com");
 });

@@ -9,8 +9,8 @@ export function createTerraDrawController({
   function ensureLoaded() {
     if (!controlPromise) {
       controlPromise = (async () => {
-        const css = 'https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.css';
-        const script = 'https://cdn.jsdelivr.net/npm/@watergis/maplibre-gl-terradraw@1.0.1/dist/maplibre-gl-terradraw.umd.js';
+        const css = 'vendor/maplibre-gl-terradraw/1.0.1/dist/maplibre-gl-terradraw.css';
+        const script = 'vendor/maplibre-gl-terradraw/1.0.1/dist/maplibre-gl-terradraw.umd.js';
         await Promise.all([
           loadStylesheet(css, 'sha384-kWhXkxsLl6DODYRUoNdPQrEwAFVzLoegtEL9WR3Xybrqmi+2HSENt8VyRofcRDUG'),
           loadScript(script, 'sha384-yhep21kwwLZCV1aZfqjNeKXP6znnkpri9p4oBTDjwidlfwiFuxVEDfhTtTaEi1Ag')

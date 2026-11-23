@@ -1,4 +1,4 @@
-import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.19.0/dist/maplibre-gl.mjs';
+import * as maplibregl from '../vendor/maplibre-gl/6.19.0/dist/maplibre-gl.mjs';
 import { cogClassColorLut } from './cog-classes.js';
 import { registerCogProjections } from './cog-projections.js';
 import {
@@ -58,7 +58,7 @@ import { loadOptionalScript, loadOptionalStylesheet } from './optional-vendors.j
 window.maplibregl = maplibregl;
 const CONFIG = window.CONFIG;
 const USER_LAYERS_KEY = `mapviewer.user-layers${window.CONFIG_PROFILE === 'internal' ? '.internal' : ''}.v1`;
-const XLSX_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const XLSX_SCRIPT = 'vendor/xlsx/0.18.5/xlsx.full.min.js';
 const XLSX_INTEGRITY = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
 async function ensureXlsx() {
   if (!window.XLSX) await loadOptionalScript(XLSX_SCRIPT, XLSX_INTEGRITY);
