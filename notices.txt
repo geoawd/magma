@@ -4,11 +4,11 @@ THIRD-PARTY SOFTWARE NOTICES
 The MapLibre application loads these libraries from CDNs at runtime. License
 identifiers, copyright notices, and upstream license sources are listed below.
 
-1. MapLibre GL JS 6.13.0
+1. MapLibre GL JS 6.19.0
    License: BSD-3-Clause
    Copyright (c) 2023, MapLibre contributors
    License and bundled component notices:
-   https://unpkg.com/maplibre-gl@6.13.0/LICENSE.txt
+   https://unpkg.com/maplibre-gl@6.19.0/LICENSE.txt
    Includes notices for Mapbox GL JS, glfx.js, and d3-color.
 
 2. PMTiles 3.2.0
