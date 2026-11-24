@@ -138,10 +138,124 @@ async function openUserLayerForm(page, url, group) {
   await page.locator('#userLayerGroup').fill(group);
 }
 
+async function mockCogMetadata(page, metadata) {
+  await page.evaluate(async metadata => {
+    if (!window.MaplibreCOGProtocol) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = '/js/maplibre-cog-protocol.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    window.MaplibreCOGProtocol.getCogMetadata = async () => metadata;
+  }, metadata);
+}
+
 test('custom ArcGIS services reject insecure HTTP outside localhost', async ({ page }) => {
   await openUserLayerForm(page, 'http://services.example.test/arcgis/rest/services/Test/MapServer', 'Test');
   await page.getByRole('button', { name: 'Add layer' }).click();
   await expect(page.locator('#userLayerError')).toContainText('must use HTTPS');
+});
+
+test('source choice switches between REST and COG fields', async ({ page }) => {
+  await page.getByRole('button', { name: 'Add data to the current theme' }).click();
+  await page.getByRole('button', { name: 'Add your own layer' }).click();
+
+  await expect(page.locator('#userLayerUrl')).toBeVisible();
+  await expect(page.locator('#userLayerUrl')).toBeEnabled();
+  await expect(page.locator('#userLayerCogUrl')).toBeDisabled();
+  await page.locator('#userLayerTypeCog').check();
+  await expect(page.locator('#userLayerUrl')).toBeHidden();
+  await expect(page.locator('#userLayerUrl')).toBeDisabled();
+  await expect(page.locator('#userLayerCogUrl')).toBeVisible();
+  await expect(page.locator('#userLayerCogUrl')).toBeEnabled();
+  await expect(page.locator('#userLayerCogUrl')).toHaveAttribute('required', '');
+});
+
+test('rejects remote COGs when the server does not support byte ranges', async ({ page }) => {
+  await page.route('https://cog.example.test/**', route => route.fulfill({
+    status: 200,
+    headers: { 'access-control-allow-origin': '*' },
+    body: 'range requests are not supported'
+  }));
+  await page.getByRole('button', { name: 'Add data to the current theme' }).click();
+  await page.getByRole('button', { name: 'Add your own layer' }).click();
+  await page.locator('#userLayerTypeCog').check();
+  await page.locator('#userLayerCogUrl').fill('https://cog.example.test/raster.tif');
+  await page.locator('#userLayerGroup').fill('Remote rasters');
+  await page.getByRole('button', { name: 'Add layer' }).click();
+
+  await expect(page.locator('#userLayerError')).toContainText('ignored byte-range requests (HTTP 200)');
+  expect(await page.evaluate(() => localStorage.getItem('mapviewer.user-layers.v1'))).toBeNull();
+});
+
+test('rejects remote rasters without readable COG metadata', async ({ page }) => {
+  await page.route('https://cog.example.test/**', route => route.fulfill({
+    status: 206,
+    headers: {
+      'access-control-allow-origin': '*',
+      'content-range': 'bytes 0-0/1024'
+    },
+    body: Buffer.from([0])
+  }));
+  await mockCogMetadata(page, { images: [], bitsPerSample: [], bbox: null });
+  await page.getByRole('button', { name: 'Add data to the current theme' }).click();
+  await page.getByRole('button', { name: 'Add your own layer' }).click();
+  await page.locator('#userLayerTypeCog').check();
+  await page.locator('#userLayerCogUrl').fill('https://cog.example.test/not-a-cog.tif');
+  await page.locator('#userLayerGroup').fill('Remote rasters');
+  await page.getByRole('button', { name: 'Add layer' }).click();
+
+  await expect(page.locator('#userLayerError')).toContainText('readable, georeferenced Cloud Optimized GeoTIFF');
+  expect(await page.evaluate(() => localStorage.getItem('mapviewer.user-layers.v1'))).toBeNull();
+});
+
+test('adds and restores a validated remote COG overlay', async ({ page }) => {
+  await page.route('https://cog.example.test/**', route => route.fulfill({
+    status: 206,
+    headers: {
+      'access-control-allow-origin': '*',
+      'content-range': 'bytes 0-0/1024',
+      'content-type': 'image/tiff'
+    },
+    body: Buffer.from([0])
+  }));
+  await mockCogMetadata(page, {
+    images: [{}],
+    bitsPerSample: [16],
+    bbox: [0, 0, 100, 100]
+  });
+  await page.getByRole('button', { name: 'Add data to the current theme' }).click();
+  await page.getByRole('button', { name: 'Add your own layer' }).click();
+  await page.locator('#userLayerTypeCog').check();
+  await page.locator('#userLayerCogUrl').fill('https://cog.example.test/bedrock.tif');
+  await page.locator('#userLayerGroup').fill('Remote rasters');
+  await page.getByRole('button', { name: 'Add layer' }).click();
+
+  const row = page.locator('#legend [data-order-key^="overlay:user-layer-"]').filter({ hasText: 'bedrock' });
+  await expect(row).toBeVisible();
+  const groupOrder = await page.locator('#legend > .lgroup').evaluateAll(groups =>
+    groups.map(group => group.dataset.groupName)
+  );
+  expect(groupOrder.indexOf('Remote rasters')).toBeLessThan(groupOrder.indexOf('Terrain'));
+  expect(groupOrder.indexOf('Remote rasters')).toBeLessThan(groupOrder.indexOf('Basemaps'));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mapviewer.user-layers.v1')));
+  expect(saved).toHaveLength(1);
+  expect(saved[0]).toMatchObject({
+    name: 'bedrock',
+    group: 'Remote rasters',
+    serviceType: 'cog',
+    cog: 'https://cog.example.test/bedrock.tif',
+    userAdded: true
+  });
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Resume' }).click();
+  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
+  await expect(page.locator('#legend [data-order-key^="overlay:user-layer-"]').filter({ hasText: 'bedrock' }))
+    .toBeVisible();
 });
 
 test('adds each MapServer sublayer separately in the selected group', async ({ page }) => {

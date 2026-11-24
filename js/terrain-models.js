@@ -1,3 +1,5 @@
+import { createRangeRequestValidator } from './range-request-validator.js';
+
 export function normalizeTerrainModels(terrain = {}, warn = (...args) => console.warn(...args)) {
   const configured = Array.isArray(terrain.models) && terrain.models.length ? terrain.models : terrain.cog
     ? [{
@@ -33,39 +35,9 @@ export function normalizeTerrainModels(terrain = {}, warn = (...args) => console
 }
 
 export function createTerrainRangeValidator({ fetchImpl = fetch, baseUrl = globalThis.location?.href } = {}) {
-  const checks = new Map();
-  const verified = new Set();
-
-  function verify(model) {
-    const url = new URL(model.cog, baseUrl).href;
-    if (!checks.has(url)) {
-      let tracked;
-      const pending = (async () => {
-        const controller = new AbortController();
-        try {
-          const response = await fetchImpl(url, {
-            headers: { Range: 'bytes=0-0' },
-            signal: controller.signal
-          });
-          if (response.status !== 206) {
-            controller.abort();
-            throw new Error(`The server ignored byte-range requests (HTTP ${response.status}); refusing to download the full DEM.`);
-          }
-          await response.body?.cancel();
-          verified.add(url);
-        } catch (error) {
-          controller.abort();
-          throw error;
-        }
-      })();
-      tracked = pending.catch(error => {
-        if (checks.get(url) === tracked) checks.delete(url);
-        throw error;
-      });
-      checks.set(url, tracked);
-    }
-    return checks.get(url);
-  }
-
-  return { verify, verified };
+  const validator = createRangeRequestValidator({ fetchImpl, baseUrl, resourceName: 'DEM' });
+  return {
+    verify: model => validator.verify(model.cog),
+    verified: validator.verified
+  };
 }

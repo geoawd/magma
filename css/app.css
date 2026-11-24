@@ -266,7 +266,15 @@
   #userLayerDialog::backdrop { background: rgba(15, 23, 30, .58); }
   #userLayerForm { display: grid; gap: 8px; padding: 16px; }
   .user-layer-head h2 { margin: 0 0 8px; font-size: 18px; }
+  #userLayerForm .user-layer-types { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 7px 10px 9px; border: 1px solid var(--line); border-radius: 5px; }
+  #userLayerForm .user-layer-types legend { padding: 0 4px; font-weight: 600; }
+  #userLayerForm .user-layer-types label { display: flex; align-items: center; gap: 6px; }
+  #userLayerForm .user-layer-types input[type=radio] { width: auto; min-height: 0; margin: 0; }
+  #userLayerForm .user-layer-fields { display: grid; gap: 8px; }
+  #userLayerForm [hidden] { display: none; }
   #userLayerForm input { box-sizing: border-box; width: 100%; min-height: 36px; padding: 7px 9px; border: 1px solid #8a949e; border-radius: 5px; font: inherit; }
+  #userLayerForm .user-layer-types input[type=radio] { padding: 0; }
+  .user-layer-help { margin: 0; color: var(--muted); font-size: 12px; }
   .user-layer-error { margin: 0; color: #a12020; }
   .user-layer-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
   .lgroup { margin-bottom: 10px; }

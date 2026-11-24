@@ -181,8 +181,20 @@
 <dialog id="userLayerDialog" aria-labelledby="userLayerTitle">
   <form id="userLayerForm">
     <div class="user-layer-head"><h2 id="userLayerTitle">Add your own layer</h2></div>
-    <label for="userLayerUrl">ArcGIS REST MapServer URL</label>
-    <input id="userLayerUrl" type="url" required autocomplete="url" placeholder="https://example.org/...">
+    <fieldset class="user-layer-types">
+      <legend>Data source</legend>
+      <label><input id="userLayerTypeRest" type="radio" name="userLayerType" value="esri-rest" checked> ArcGIS REST MapServer</label>
+      <label><input id="userLayerTypeCog" type="radio" name="userLayerType" value="cog"> Cloud Optimized GeoTIFF</label>
+    </fieldset>
+    <div id="userLayerRestFields" class="user-layer-fields">
+      <label for="userLayerUrl">ArcGIS REST MapServer URL</label>
+      <input id="userLayerUrl" type="url" required autocomplete="url" placeholder="https://example.org/...">
+    </div>
+    <div id="userLayerCogFields" class="user-layer-fields" hidden>
+      <label for="userLayerCogUrl">Remote COG URL</label>
+      <input id="userLayerCogUrl" type="url" autocomplete="url" placeholder="https://example.org/raster.tif" disabled>
+      <p class="user-layer-help">The server must support byte-range requests. COGs must be georeferenced but can support different CRS.</p>
+    </div>
     <label for="userLayerGroup">Group</label>
     <input id="userLayerGroup" type="text" required maxlength="80" value="user added layers">
     <p id="userLayerError" class="user-layer-error" role="alert" hidden></p>

@@ -1,6 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createRangeRequestValidator } from '../js/range-request-validator.js';
 import { createTerrainRangeValidator, normalizeTerrainModels } from '../js/terrain-models.js';
+
+test('shared range validator accepts direct URLs and names the requested resource', async () => {
+  let fetchCount = 0;
+  const validator = createRangeRequestValidator({
+    baseUrl: 'https://example.test/map/',
+    resourceName: 'COG file',
+    fetchImpl: async (url, options) => {
+      fetchCount++;
+      assert.equal(url, 'https://example.test/map/raster.tif');
+      assert.equal(options.headers.Range, 'bytes=0-0');
+      return { status: 200 };
+    }
+  });
+
+  await assert.rejects(validator.verify('raster.tif'), /refusing to download the full COG file/);
+  assert.equal(fetchCount, 1);
+});
 
 test('terrain models normalize legacy config and skip invalid or duplicate entries', () => {
   const warnings = [];

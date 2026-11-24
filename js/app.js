@@ -51,6 +51,7 @@ import { createOverlayLegendController } from './overlay-legend-controller.js';
 import { createCogRampControlsController } from './cog-ramp-controls.js';
 import { createCogOverlayLayerController } from './cog-overlay-layer-controller.js';
 import { createTerraDrawController } from './terra-draw-controller.js';
+import { createRangeRequestValidator } from './range-request-validator.js';
 import { escapeHtml, parseServiceUrl, safeExternalUrl } from './safe-content.js';
 import { createWorkspaceStore } from './workspaces.js';
 import { loadOptionalScript, loadOptionalStylesheet } from './optional-vendors.js';
@@ -58,6 +59,7 @@ import { loadOptionalScript, loadOptionalStylesheet } from './optional-vendors.j
 window.maplibregl = maplibregl;
 const CONFIG = window.CONFIG;
 const USER_LAYERS_KEY = `mapviewer.user-layers${window.CONFIG_PROFILE === 'internal' ? '.internal' : ''}.v1`;
+const userCogRangeValidator = createRangeRequestValidator({ baseUrl: location.href, resourceName: 'COG file' });
 const XLSX_SCRIPT = 'vendor/xlsx/0.18.5/xlsx.full.min.js';
 const XLSX_INTEGRITY = 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw';
 async function ensureXlsx() {
@@ -73,23 +75,35 @@ function loadUserLayers() {
     saved.forEach(layer => {
       if (!layer || layer.userAdded !== true || typeof layer.id !== 'string' || ids.has(layer.id) ||
           typeof layer.name !== 'string' || typeof layer.group !== 'string' ||
-          layer.serviceType !== 'esri-rest') return;
-      const restored = {
-        id: layer.id, name: layer.name, group: layer.group, userAdded: true,
-        serviceType: 'esri-rest', global: false,
-        visible: typeof layer.visible === 'boolean' ? layer.visible : true
-      };
-      if (typeof layer.url !== 'string' && typeof layer.tiles !== 'string') return;
-      try { httpServiceUrl(layer.url || layer.tiles.replace(/\{z\}|\{x\}|\{y\}/g, '0')); }
-      catch (error) {
+          !['esri-rest', 'cog'].includes(layer.serviceType)) return;
+      const sourceUrl = layer.serviceType === 'cog' ? layer.cog : layer.url || layer.tiles;
+      if (typeof sourceUrl !== 'string') return;
+      let validatedUrl;
+      try {
+        const validationUrl = layer.serviceType === 'esri-rest' && !layer.url
+          ? sourceUrl.replace(/\{z\}|\{x\}|\{y\}/g, '0')
+          : sourceUrl;
+        validatedUrl = httpServiceUrl(validationUrl);
+        if (layer.serviceType === 'cog' && validatedUrl.hash)
+          throw new Error('COG URLs must not include a fragment.');
+      } catch (error) {
         console.warn(`Ignoring saved user layer "${layer.name}": ${error.message}`);
         return;
       }
-      if (typeof layer.url === 'string') restored.url = layer.url;
-      if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
-      if (typeof layer.layers === 'string') {
-        restored.layers = layer.layers;
-        if (typeof layer.url === 'string') restored.queryable = true;
+      const restored = {
+        id: layer.id, name: layer.name, group: layer.group, userAdded: true,
+        serviceType: layer.serviceType, global: false,
+        visible: typeof layer.visible === 'boolean' ? layer.visible : true
+      };
+      if (layer.serviceType === 'cog') {
+        restored.cog = validatedUrl.href;
+      } else {
+        if (typeof layer.url === 'string') restored.url = layer.url;
+        if (typeof layer.tiles === 'string') restored.tiles = layer.tiles;
+        if (typeof layer.layers === 'string') {
+          restored.layers = layer.layers;
+          if (typeof layer.url === 'string') restored.queryable = true;
+        }
       }
       ids.add(restored.id);
       CONFIG.overlays ||= [];
@@ -2195,11 +2209,28 @@ $('addOwnLayerBtn').onclick = () => {
   $('userLayerError').hidden = true;
   $('userLayerError').textContent = '';
   $('userLayerForm').reset();
+  syncUserLayerSourceFields();
   $('userLayerGroup').value = 'user added layers';
   $('userLayerDialog').showModal();
   $('userLayerUrl').focus();
 };
 $('userLayerCancel').onclick = () => $('userLayerDialog').close();
+function selectedUserLayerType() {
+  return $('userLayerForm').elements.userLayerType.value;
+}
+function syncUserLayerSourceFields() {
+  const isCog = selectedUserLayerType() === 'cog';
+  $('userLayerRestFields').hidden = isCog;
+  $('userLayerCogFields').hidden = !isCog;
+  $('userLayerUrl').disabled = isCog;
+  $('userLayerUrl').required = !isCog;
+  $('userLayerCogUrl').disabled = !isCog;
+  $('userLayerCogUrl').required = isCog;
+}
+syncUserLayerSourceFields();
+$('userLayerForm').addEventListener('change', event => {
+  if (event.target.name === 'userLayerType') syncUserLayerSourceFields();
+});
 function httpServiceUrl(value) {
   return parseServiceUrl(value);
 }
@@ -2244,6 +2275,31 @@ async function getEsriServiceLayers(inputUrl) {
 function persistUserLayers(layers) {
   localStorage.setItem(USER_LAYERS_KEY, JSON.stringify(layers));
 }
+async function createUserCogOverlay(url, group) {
+  if (url.hash) throw new Error('COG URLs must not include a fragment.');
+  await userCogRangeValidator.verify(url.href);
+  const protocol = await ensureCogProtocol();
+  const metadata = await protocol.getCogMetadata(url.href);
+  if (!metadata || !Array.isArray(metadata.images) || !metadata.images.length ||
+      !Array.isArray(metadata.bitsPerSample) || !metadata.bitsPerSample.length ||
+      !Array.isArray(metadata.bbox) || metadata.bbox.length !== 4 ||
+      !metadata.bbox.every(Number.isFinite)) {
+    throw new Error('The URL did not return a readable, georeferenced Cloud Optimized GeoTIFF.');
+  }
+  const filename = url.pathname.split('/').filter(Boolean).pop() || '';
+  const name = filename.replace(/\.tiff?$/i, '') || 'Remote COG';
+  return {
+    id: `user-layer-${crypto.randomUUID()}`,
+    name,
+    group,
+    serviceType: 'cog',
+    userAdded: true,
+    global: false,
+    visible: true,
+    opacity: 1,
+    cog: url.href
+  };
+}
 async function submitUserLayer(event) {
   event.preventDefault();
   const submit = $('userLayerSubmit');
@@ -2252,24 +2308,30 @@ async function submitUserLayer(event) {
   errorOutput.textContent = '';
   submit.disabled = true;
   try {
-    const url = httpServiceUrl($('userLayerUrl').value.trim());
     const group = $('userLayerGroup').value.trim();
     if (!group) throw new Error('Enter a group for the layers.');
-    const serviceLayers = await getEsriServiceLayers(url);
-    const overlays = serviceLayers.map(layer => ({
-      id: `user-layer-${crypto.randomUUID()}`,
-      name: layer.name,
-      group,
-      serviceType: 'esri-rest',
-      userAdded: true,
-      global: false,
-      visible: layer.visible,
-      opacity: 1,
-      ...(layer.url && layer.layers ? { queryable: true } : {}),
-      ...(layer.url ? { url: layer.url } : {}),
-      ...(layer.tiles ? { tiles: layer.tiles } : {}),
-      ...(layer.layers ? { layers: layer.layers } : {})
-    }));
+    let overlays;
+    if (selectedUserLayerType() === 'cog') {
+      const url = httpServiceUrl($('userLayerCogUrl').value.trim());
+      overlays = [await createUserCogOverlay(url, group)];
+    } else {
+      const url = httpServiceUrl($('userLayerUrl').value.trim());
+      const serviceLayers = await getEsriServiceLayers(url);
+      overlays = serviceLayers.map(layer => ({
+        id: `user-layer-${crypto.randomUUID()}`,
+        name: layer.name,
+        group,
+        serviceType: 'esri-rest',
+        userAdded: true,
+        global: false,
+        visible: layer.visible,
+        opacity: 1,
+        ...(layer.url && layer.layers ? { queryable: true } : {}),
+        ...(layer.url ? { url: layer.url } : {}),
+        ...(layer.tiles ? { tiles: layer.tiles } : {}),
+        ...(layer.layers ? { layers: layer.layers } : {})
+      }));
+    }
     const savedUserLayers = (CONFIG.overlays || []).filter(layer => layer.userAdded);
     const userLayers = [...savedUserLayers, ...overlays];
     persistUserLayers(userLayers);
@@ -2279,6 +2341,7 @@ async function submitUserLayer(event) {
       const firstSymbol = map.getStyle().layers.find(layer => layer.type === 'symbol');
       overlays.forEach(overlay => addRasterLayer(overlay, firstSymbol?.id));
       buildOverlayLegend(overlays);
+      placeOverlayGroupsAboveBasemapsAndTerrain(overlays);
     } catch (error) {
       const newIds = new Set(overlays.map(overlay => overlay.id));
       CONFIG.overlays = CONFIG.overlays.filter(layer => !newIds.has(layer.id));
@@ -4353,6 +4416,19 @@ map.on('moveend', updateArcgisLegendInView);
 ///////////////////////////////////////////////////////////////////////////
 function buildOverlayLegend(overlays = allOverlays()) {
   overlayLegendController.build(overlays);
+}
+function placeOverlayGroupsAboveBasemapsAndTerrain(overlays) {
+  const foundationGroups = new Set(['Basemaps', CONFIG.terrain?.group || 'Terrain']);
+  const legend = $('legend');
+  const sections = [...legend.children].filter(element => element.matches('.lgroup'));
+  const anchor = sections.find(section => foundationGroups.has(section.dataset.groupName));
+  if (!anchor) return;
+  [...new Set(overlays.map(overlay => overlay.group || 'Overlays'))]
+    .filter(name => !foundationGroups.has(name))
+    .forEach(name => {
+      const section = overlayLegendGroups.get(name)?.body.parentElement;
+      if (section?.parentElement === legend) legend.insertBefore(section, anchor);
+    });
 }
 
 ///////////////////////////////////////////////////////////////////////////
