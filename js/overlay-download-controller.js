@@ -28,7 +28,7 @@ export function createOverlayDownloadController({
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5M8 14h8M8 17h5"/></svg><span>ArcGIS Pro</span>
         </button>
         <button class="cog-source-copy" type="button" aria-label="Copy source URL to clipboard" title="Copy source URL to clipboard">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"/></svg><span>Copy URL</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"/></svg><span>URL</span>
         </button>
       </div>
       <div class="cog-download-status" role="status" aria-live="polite"></div>
@@ -44,7 +44,7 @@ export function createOverlayDownloadController({
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5M8 14h8M8 17h5"/></svg><span>QGIS</span>
         </button>
         <button class="geojson-source-copy" type="button" aria-label="Copy source URL to clipboard" title="Copy source URL to clipboard">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"/></svg><span>Copy URL</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"/></svg><span>URL</span>
         </button>
       </div>
       <div class="cog-download-status geojson-download-status" role="status" aria-live="polite"></div>

@@ -1549,7 +1549,7 @@ legendunits: '%',
   tileSize: 256,
   opacity: 1,
   visible: false,
-  hillshade_option: true
+  hillshade_option: true,
 
 },
 

@@ -100,6 +100,76 @@ window.TOURS = [
     ]
   },
   {
+    id: 'Short Overview',
+    name: 'Short Overview of some key datasets',
+    stops:[
+            {
+        title: 'Northern Ireland, with the 10m DEM',
+        description: 'This shows the 10m DEM with a hillshade emphasing the relief of the terrain.',
+        target: '#map',
+        theme: "Site Investigations",
+        layers: {
+          overlays: [],
+          hideOverlays: ["esri_world_imagery","lot1_ortho_ni","Boreholes","Site Reports"]
+        },
+        center: [-6.92288, 54.67077],
+        zoom: 7.98,
+        bearing: 0,
+        pitch: 0,
+        terrain: false,
+        duration: 1200
+      },
+            {
+        title: 'Geotechnical data in the greater Belfast area.',
+        description: 'This stop shows the boreholes located in Belfast.',
+        target: '#map',
+        theme: "Site Investigations",
+        layers: {
+          overlays: ["Boreholes"],
+          hideOverlays: ["esri_world_imagery","lot1_ortho_ni","Site Reports"]
+        },
+        center: [-5.9587, 54.59643],
+        zoom: 12.57,
+        bearing: 0,
+        pitch: 0,
+        terrain: false,
+        duration: 1200
+      },
+            {
+        title: 'Looking to the north in 3D',
+        description: 'This stop shows the map in the 3D view.',
+        target: '#map',
+        theme: "Site Investigations",
+        layers: {
+          overlays: ["Boreholes"],
+          hideOverlays: ["esri_world_imagery","lot1_ortho_ni","Site Reports"]
+        },
+        center: [-5.9587, 54.59643],
+        zoom: 12.57,
+        bearing: 0,
+        pitch: 67,
+        terrain: true,
+        duration: 1200
+      },
+                 {
+        title: 'Garron Point',
+        description: 'Garron Point, rotation landslip.',
+        target: '#map',
+        theme: "Site Investigations",
+        layers: {
+          overlays: ["lot1_ortho_ni","Boreholes"],
+          hideOverlays: ["esri_world_imagery","Site Reports"]
+        },
+        center: [-5.97059, 55.0492],
+        zoom: 14.67,
+        bearing: -177.33,
+        pitch: 70,
+        terrain: true,
+        duration: 1200
+      }
+    ]
+  },
+  {
     id: 'Coastal Sites',
     name: 'Coastal Sites',
     stops: [
