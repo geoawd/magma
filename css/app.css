@@ -520,13 +520,10 @@
   .maplibregl-popup-content th, .maplibregl-popup-content td { position: static; border: none; border-bottom: 1px solid #eee; padding: 2px 0; white-space: normal; max-width: none; overflow: visible; vertical-align: top; word-break: break-word; }
   .maplibregl-popup-content th { background: none; color: #666; font-weight: 600; padding-right: 10px; white-space: nowrap; width: 1%; }
   .maplibregl-popup-content a { color: #234b6b; }
-  body:not(.advanced-mode) .advanced-only,
-  body:not(.advanced-mode) .advanced-drawing-tools { display: none !important; }
+  body:not(.advanced-mode) .advanced-only { display: none !important; }
 
   /* ---- mobile: menu along the bottom, drawer expands upwards ---- */
   @media (max-width: 700px) {
-    .advanced-drawing-tools { display: none !important; }
-    body.advanced-mode.mobile-drawing-tools-open .advanced-drawing-tools { display: flex !important; }
     body { flex-direction: column-reverse; }
     #side { flex-direction: column-reverse; border-right: 0; border-top: 1px solid var(--line); }
     #rail { width: auto; height: 52px; flex-direction: row; justify-content: space-around; padding: 4px 0 env(safe-area-inset-bottom, 0); height: calc(52px + env(safe-area-inset-bottom, 0)); }
@@ -536,7 +533,6 @@
     #rail #moreToolsBtn { display: grid; }
     #mobileMoreToolsMenu:not([hidden]) { position: fixed; z-index: 20; right: 8px; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); display: grid; min-width: 176px; gap: 5px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.24); }
     #mobileMoreToolsMenu button { min-height: 40px; text-align: left; }
-    #mobileDrawingToolsBtn[aria-pressed="true"] { background: #e6edf2; }
     #drawer { display: flex; flex-direction: column; width: auto; height: 0; max-height: 80dvh; transition: height .18s ease; }
     body.drawer-open #drawer { width: auto; height: min(var(--mobile-drawer-height, 45dvh), 80dvh); }
     #drawerDragHandle { display: grid; place-items: center; width: 100%; height: 22px; min-height: 22px; flex: none; border: 0; border-radius: 0; background: #fff; cursor: ns-resize; touch-action: none; user-select: none; }
@@ -555,5 +551,5 @@
     .idwrap { min-width: 0; max-height: min(65dvh, 560px); }
     .pophead .nav { width: 44px; min-width: 44px; height: 40px; }
   }
-  @media (hover: none) { #coords, #cogValues, .advanced-drawing-tools { display: none !important; } }
+  @media (hover: none) { #coords, #cogValues { display: none !important; } }
   @media (prefers-reduced-motion: reduce) { #drawer { transition: none; } }

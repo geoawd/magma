@@ -341,45 +341,20 @@ test('keyboard users can select a map box', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/box-on/);
 });
 
-test('Terra Draw controls are advanced-only and follow Find My Location', async ({ page }) => {
-  const drawControl = page.locator('.advanced-drawing-tools');
-  await expect(drawControl).toHaveCount(0);
-  await page.getByRole('button', { name: 'Advanced mode' }).click();
-  await expect(drawControl).toBeVisible({ timeout: 20_000 });
-
-  const drawControlFollowsGeolocate = await page.locator('.maplibregl-ctrl-top-right').evaluate(container => {
-    const locationControl = container.querySelector('.maplibregl-ctrl-geolocate')?.closest('.maplibregl-ctrl');
-    const drawingControl = container.querySelector('.advanced-drawing-tools');
-    return !!locationControl && !!drawingControl &&
-      [...container.children].indexOf(drawingControl) === [...container.children].indexOf(locationControl) + 1;
-  });
-  expect(drawControlFollowsGeolocate).toBe(true);
-});
-
-test('advanced mode keeps drawing controls hidden on mobile', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Advanced mode' }).click();
-  const drawingControl = page.locator('.advanced-drawing-tools');
-  await expect(drawingControl).toBeAttached({ timeout: 20_000 });
-  await expect(drawingControl).toBeHidden();
-});
-
-test('standard mode hides drawing and advanced COG controls until enabled', async ({ page }) => {
+test('box selection remains available and advanced mode does not load drawing tools', async ({ page }) => {
   const advancedMode = page.getByRole('button', { name: 'Advanced mode' });
-  const drawControl = page.locator('.advanced-drawing-tools');
   const boxButton = page.getByRole('button', { name: 'Select by box' });
   await expect(advancedMode).toHaveAttribute('aria-pressed', 'false');
-  await expect(drawControl).toBeHidden();
+  await expect(page.locator('.advanced-drawing-tools')).toHaveCount(0);
   await expect(boxButton).toBeVisible();
   await boxButton.click();
   await expect(page.locator('body')).toHaveClass(/box-on/);
   await advancedMode.click();
   await expect(advancedMode).toHaveAttribute('aria-pressed', 'true');
   await expect(boxButton).toBeVisible();
-  await expect(drawControl).toBeVisible();
+  await expect(page.locator('.advanced-drawing-tools')).toHaveCount(0);
   await advancedMode.click();
   await expect(page.locator('body')).not.toHaveClass(/box-on/);
-  await expect(drawControl).toBeHidden();
 
   await page.evaluate(() => {
     window.MaplibreCOGProtocol.getCogMetadata = async () => ({

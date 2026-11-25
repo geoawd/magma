@@ -50,7 +50,6 @@ import { createVectorLegendController } from './vector-legend-controller.js';
 import { createOverlayLegendController } from './overlay-legend-controller.js';
 import { createCogRampControlsController } from './cog-ramp-controls.js';
 import { createCogOverlayLayerController } from './cog-overlay-layer-controller.js';
-import { createTerraDrawController } from './terra-draw-controller.js';
 import { createRangeRequestValidator } from './range-request-validator.js';
 import { escapeHtml, parseServiceUrl, safeExternalUrl } from './safe-content.js';
 import { createWorkspaceStore } from './workspaces.js';
@@ -170,12 +169,6 @@ advancedModeBtn.onclick = () => {
   document.body.classList.toggle('advanced-mode', enabled);
   if (!enabled) notificationController.cancelPick();
   if (!enabled && boxMode) setBox(false);
-  if (!enabled) {
-    document.body.classList.remove('mobile-drawing-tools-open');
-    $('mobileDrawingToolsBtn').setAttribute('aria-pressed', 'false');
-  } else {
-    ensureTerraDrawControl().catch(error => toast(`Could not load drawing tools: ${error.message}`));
-  }
 };
 const map = new maplibregl.Map({
   container: 'map',
@@ -201,15 +194,6 @@ const {
   arcgisBoxPolygon,
   withLinked
 } = mapFeatureQueries;
-const terraDrawController = createTerraDrawController({
-  map,
-  window,
-  loadStylesheet: loadOptionalStylesheet,
-  loadScript: loadOptionalScript
-});
-function ensureTerraDrawControl() {
-  return terraDrawController.ensureLoaded();
-}
 const arcgisQueryController = createArcgisQueryController({
   getOverlays: () => (CONFIG.overlays || []).filter(overlay =>
     overlay.queryable === true && !overlay.geojson && !overlay.cog &&
@@ -587,13 +571,6 @@ const closeMobileMoreTools = (restoreFocus = false) => {
 };
 $('mobileGlobeTool').onclick = () => { $('globeBtn').click(); closeMobileMoreTools(true); };
 $('mobilePrintTool').onclick = () => { $('printBtn').click(); closeMobileMoreTools(true); };
-$('mobileDrawingToolsBtn').onclick = () => {
-  const opening = !document.body.classList.contains('mobile-drawing-tools-open');
-  document.body.classList.toggle('mobile-drawing-tools-open', opening);
-  $('mobileDrawingToolsBtn').setAttribute('aria-pressed', String(opening));
-  if (opening) ensureTerraDrawControl().catch(error => toast(`Could not load drawing tools: ${error.message}`));
-  closeMobileMoreTools(true);
-};
 document.addEventListener('pointerdown', event => {
   if (!event.target.closest('#mobileMoreToolsMenu, #moreToolsBtn')) closeMobileMoreTools();
 });

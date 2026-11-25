@@ -14,6 +14,7 @@ test('mobile More map tools provides globe and print actions', async ({ page }) 
   await expect(moreTools).toBeVisible();
   await moreTools.click();
   await expect(menu).toBeVisible();
+  await expect(menu.getByRole('button')).toHaveCount(2);
 
   await page.getByRole('button', { name: 'Toggle globe view' }).click();
   await expect(page.locator('#globeBtn')).toHaveAttribute('aria-pressed', 'true');
@@ -98,19 +99,6 @@ test('coordinates sit just above the scale bar', async ({ page }) => {
   expect(gap).toBeGreaterThanOrEqual(6);
   expect(gap).toBeLessThanOrEqual(16);
   await expect(mapInfo).toBeVisible();
-});
-
-test('drawing controls load on demand and are available from the mobile tools menu', async ({ page }) => {
-  await expect(page.locator('#themeSel option').first()).toBeAttached({ timeout: 20_000 });
-  await page.getByRole('button', { name: 'Legend and layers' }).click();
-  await expect(page.getByRole('button', { name: 'Advanced mode' })).toBeVisible();
-  await page.getByRole('button', { name: 'Advanced mode' }).click();
-  const drawingControl = page.locator('.advanced-drawing-tools');
-  await expect(drawingControl).toBeAttached({ timeout: 20_000 });
-  await page.getByRole('button', { name: 'More map tools' }).click();
-  await page.getByRole('button', { name: 'Drawing tools' }).click();
-  await expect(drawingControl).toBeVisible();
-  await expect(page.locator('body')).toHaveClass(/mobile-drawing-tools-open/);
 });
 
 test('page policy restricts scripts while allowing secure map data and workers', async ({ page }) => {
